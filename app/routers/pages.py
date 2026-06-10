@@ -1,8 +1,8 @@
-from datetime import date, timedelta
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response as RawResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
@@ -14,20 +14,10 @@ from app.auth import (
     hash_password,
     require_roles,
 )
-from app.calendar_utils import (
-    build_month_grid,
-    filter_plans_by_view,
-    group_plans_by_date,
-    month_end,
-    month_start,
-    parse_ref_date,
-    period_label,
-    shift_ref_date,
-    week_end,
-    week_start,
-)
+from app.calendar_context import build_calendar_context
 from app.database import get_db
 from app.models import Activity, ActivityCompletion, LessonPlan, User, UserRole
+from app.pdf_export import build_lesson_plan_pdf, pdf_filename
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -37,6 +27,26 @@ def render(request: Request, name: str, context: dict, status_code: int = 200):
     base = {"request": request, "app_name": "Home School Tracker"}
     base.update(context)
     return templates.TemplateResponse(name, base, status_code=status_code)
+
+
+def load_completions_for_plans(
+    db: Session, student_id: int, plans: list[LessonPlan]
+) -> dict[int, dict[int, bool]]:
+    result: dict[int, dict[int, bool]] = {}
+    for plan in plans:
+        activity_map: dict[int, bool] = {}
+        for activity in plan.activities:
+            completion = (
+                db.query(ActivityCompletion)
+                .filter(
+                    ActivityCompletion.activity_id == activity.id,
+                    ActivityCompletion.student_id == student_id,
+                )
+                .first()
+            )
+            activity_map[activity.id] = completion.completed if completion else False
+        result[plan.id] = activity_map
+    return result
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -176,6 +186,16 @@ async def toggle_user(
     return RedirectResponse(url="/administrator", status_code=status.HTTP_303_SEE_OTHER)
 
 
+def _fetch_teacher_plans(db: Session, teacher_id: int) -> list[LessonPlan]:
+    return (
+        db.query(LessonPlan)
+        .options(joinedload(LessonPlan.activities), joinedload(LessonPlan.student))
+        .filter(LessonPlan.teacher_id == teacher_id)
+        .order_by(LessonPlan.plan_date.desc())
+        .all()
+    )
+
+
 @router.get("/teacher", response_class=HTMLResponse)
 async def teacher_dashboard(
     request: Request,
@@ -185,40 +205,8 @@ async def teacher_dashboard(
     ref_date: str | None = Query(None),
 ):
     students = db.query(User).filter(User.role == UserRole.student, User.is_active == True).all()
-    all_plans = (
-        db.query(LessonPlan)
-        .options(joinedload(LessonPlan.activities), joinedload(LessonPlan.student))
-        .filter(LessonPlan.teacher_id == current_user.id)
-        .order_by(LessonPlan.plan_date.desc())
-        .all()
-    )
-
-    ref = parse_ref_date(ref_date)
-    lesson_plans = filter_plans_by_view(all_plans, view, ref)
-    grouped_plans = group_plans_by_date(lesson_plans)
-    sorted_grouped_plans = sorted(grouped_plans.items(), key=lambda item: item[0])
-
-    week_days = []
-    if view == "weekly":
-        start = week_start(ref)
-        for i in range(7):
-            d = start + timedelta(days=i)
-            week_days.append({
-                "date": d,
-                "label": d.strftime("%a"),
-                "day_num": d.day,
-                "is_today": d == date.today(),
-                "is_ref": d == ref,
-                "plans": grouped_plans.get(d, []),
-            })
-
-    month_grid = []
-    if view == "monthly":
-        month_plan_dates = {p.plan_date for p in all_plans if month_start(ref) <= p.plan_date <= month_end(ref)}
-        month_grid = build_month_grid(ref, month_plan_dates)
-
-    prev_ref = shift_ref_date(ref, view, -1).isoformat()
-    next_ref = shift_ref_date(ref, view, 1).isoformat()
+    all_plans = _fetch_teacher_plans(db, current_user.id)
+    calendar = build_calendar_context(all_plans, view, ref_date)
 
     return render(
         request,
@@ -226,18 +214,36 @@ async def teacher_dashboard(
         {
             "user": current_user,
             "students": students,
-            "lesson_plans": lesson_plans,
-            "grouped_plans": grouped_plans,
-            "sorted_grouped_plans": sorted_grouped_plans,
             "today": date.today().isoformat(),
-            "view": view,
-            "ref_date": ref.isoformat(),
-            "period_label": period_label(view, ref),
-            "prev_ref": prev_ref,
-            "next_ref": next_ref,
-            "week_days": week_days,
-            "month_grid": month_grid,
+            "base_path": "/teacher",
+            "pdf_path": "/teacher/lesson-plans.pdf",
+            "plan_card_partial": "teacher/partials/plan_card.html",
+            "empty_hint": "Create one to get started!",
+            **calendar,
         },
+    )
+
+
+@router.get("/teacher/lesson-plans.pdf")
+async def teacher_lesson_plans_pdf(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    ref_date: str | None = Query(None),
+):
+    all_plans = _fetch_teacher_plans(db, current_user.id)
+    calendar = build_calendar_context(all_plans, view, ref_date)
+    pdf_bytes = build_lesson_plan_pdf(
+        calendar["lesson_plans"],
+        view,
+        calendar["ref"],
+        subtitle=f"Teacher: {current_user.full_name}",
+    )
+    filename = pdf_filename(view, calendar["ref"], "teacher")
+    return RawResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
@@ -278,49 +284,90 @@ async def create_lesson_plan(
     return RedirectResponse(url="/teacher?success=plan", status_code=status.HTTP_303_SEE_OTHER)
 
 
+def _fetch_student_plans(db: Session, student_id: int) -> list[LessonPlan]:
+    return (
+        db.query(LessonPlan)
+        .options(joinedload(LessonPlan.activities), joinedload(LessonPlan.teacher))
+        .filter(LessonPlan.student_id == student_id)
+        .order_by(LessonPlan.plan_date.desc())
+        .all()
+    )
+
+
 @router.get("/student", response_class=HTMLResponse)
 async def student_dashboard(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.student))],
+    view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    ref_date: str | None = Query(None),
 ):
+    all_plans = _fetch_student_plans(db, current_user.id)
+    calendar = build_calendar_context(all_plans, view, ref_date)
+    ref = calendar["ref"]
     today = date.today()
-    lesson_plan = (
-        db.query(LessonPlan)
-        .options(joinedload(LessonPlan.activities), joinedload(LessonPlan.teacher))
-        .filter(LessonPlan.student_id == current_user.id, LessonPlan.plan_date == today)
-        .first()
-    )
 
-    completions = {}
-    if lesson_plan:
-        for activity in lesson_plan.activities:
-            completion = (
-                db.query(ActivityCompletion)
-                .filter(
-                    ActivityCompletion.activity_id == activity.id,
-                    ActivityCompletion.student_id == current_user.id,
-                )
-                .first()
-            )
-            completions[activity.id] = completion.completed if completion else False
+    lesson_plan = None
+    completions: dict[int, bool] = {}
+    progress = 0
+    done_count = 0
+    total_count = 0
+    show_interactive = view == "daily" and ref == today
 
-    total = len(lesson_plan.activities) if lesson_plan else 0
-    done = sum(1 for v in completions.values() if v)
-    progress = int((done / total) * 100) if total else 0
+    if show_interactive and calendar["lesson_plans"]:
+        lesson_plan = calendar["lesson_plans"][0]
+        plan_completions = load_completions_for_plans(db, current_user.id, [lesson_plan])
+        completions = plan_completions.get(lesson_plan.id, {})
+        total_count = len(lesson_plan.activities)
+        done_count = sum(1 for v in completions.values() if v)
+        progress = int((done_count / total_count) * 100) if total_count else 0
+
+    all_completions = load_completions_for_plans(db, current_user.id, calendar["lesson_plans"])
 
     return render(
         request,
         "student/dashboard.html",
         {
             "user": current_user,
+            "today": today,
+            "base_path": "/student",
+            "pdf_path": "/student/lesson-plans.pdf",
+            "plan_card_partial": "student/partials/plan_card.html",
+            "empty_hint": "Check back later — your teacher may add activities soon!",
             "lesson_plan": lesson_plan,
             "completions": completions,
             "progress": progress,
-            "done_count": done,
-            "total_count": total,
-            "today": today,
+            "done_count": done_count,
+            "total_count": total_count,
+            "show_interactive": show_interactive,
+            "all_completions": all_completions,
+            **calendar,
         },
+    )
+
+
+@router.get("/student/lesson-plans.pdf")
+async def student_lesson_plans_pdf(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.student))],
+    view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    ref_date: str | None = Query(None),
+):
+    all_plans = _fetch_student_plans(db, current_user.id)
+    calendar = build_calendar_context(all_plans, view, ref_date)
+    completions_by_plan = load_completions_for_plans(db, current_user.id, calendar["lesson_plans"])
+    pdf_bytes = build_lesson_plan_pdf(
+        calendar["lesson_plans"],
+        view,
+        calendar["ref"],
+        subtitle=f"Student: {current_user.full_name}",
+        completions_by_plan=completions_by_plan,
+    )
+    filename = pdf_filename(view, calendar["ref"], "student")
+    return RawResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

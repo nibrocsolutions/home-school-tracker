@@ -10,13 +10,18 @@
 <main class="main-content">
     <section class="page-hero student-hero">
         <div>
-            <h1>Today's Adventures</h1>
-            <p>{{ today.strftime('%A, %B %d, %Y') }} — Let's make today awesome!</p>
+            <h1>My Lesson Plans</h1>
+            <p>Track your daily adventures and download your plans anytime.</p>
         </div>
         <div class="hero-emoji" aria-hidden="true">🌟</div>
     </section>
 
-    {% if lesson_plan %}
+    <section class="panel student-calendar-panel">
+        {% set calendar_title = "My Plans" %}
+        {% include "partials/lesson_calendar.html" %}
+    </section>
+
+    {% if show_interactive and lesson_plan %}
     <section class="progress-section">
         <div class="progress-card">
             <div class="progress-header">
@@ -66,12 +71,8 @@
         {% endif %}
     </section>
     {% else %}
-    <section class="empty-day">
-        <div class="empty-day-card">
-            <span class="empty-emoji">📭</span>
-            <h2>No lesson plan for today</h2>
-            <p>Check back later — your teacher may add activities soon!</p>
-        </div>
+    <section class="panel">
+        {% include "partials/plan_list.html" %}
     </section>
     {% endif %}
 </main>

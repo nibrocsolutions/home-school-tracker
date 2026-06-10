@@ -1,0 +1,70 @@
+<div class="calendar-header">
+    <h2>{% if calendar_title %}{{ calendar_title }}{% else %}Lesson Plan Calendar{% endif %}</h2>
+    <div class="calendar-actions">
+        <div class="view-toggle" role="tablist" aria-label="Calendar view">
+            <a href="{{ base_path }}?view=daily&ref_date={{ ref_date }}"
+               class="view-btn {% if view == 'daily' %}active{% endif %}"
+               role="tab" aria-selected="{{ 'true' if view == 'daily' else 'false' }}">Daily</a>
+            <a href="{{ base_path }}?view=weekly&ref_date={{ ref_date }}"
+               class="view-btn {% if view == 'weekly' %}active{% endif %}"
+               role="tab" aria-selected="{{ 'true' if view == 'weekly' else 'false' }}">Weekly</a>
+            <a href="{{ base_path }}?view=monthly&ref_date={{ ref_date }}"
+               class="view-btn {% if view == 'monthly' %}active{% endif %}"
+               role="tab" aria-selected="{{ 'true' if view == 'monthly' else 'false' }}">Monthly</a>
+        </div>
+        <a href="{{ pdf_path }}?view={{ view }}&ref_date={{ ref_date }}" class="btn btn-pdf btn-sm" target="_blank">
+            <span aria-hidden="true">📄</span> Download PDF
+        </a>
+    </div>
+</div>
+
+<div class="calendar-nav">
+    <a href="{{ base_path }}?view={{ view }}&ref_date={{ prev_ref }}" class="cal-nav-btn" aria-label="Previous period">‹</a>
+    <div class="cal-period">
+        <strong>{{ period_label }}</strong>
+        {% if view == 'daily' %}
+        <input type="date" class="cal-date-picker" value="{{ ref_date }}"
+               onchange="window.location.href='{{ base_path }}?view=daily&ref_date=' + this.value">
+        {% endif %}
+    </div>
+    <a href="{{ base_path }}?view={{ view }}&ref_date={{ next_ref }}" class="cal-nav-btn" aria-label="Next period">›</a>
+</div>
+
+{% if view == 'weekly' %}
+<div class="week-strip">
+    {% for day in week_days %}
+    <a href="{{ base_path }}?view=daily&ref_date={{ day.date.isoformat() }}"
+       class="week-day {% if day.is_today %}today{% endif %} {% if day.plans %}has-plans{% endif %}">
+        <span class="week-day-label">{{ day.label }}</span>
+        <span class="week-day-num">{{ day.day_num }}</span>
+        {% if day.plans %}
+        <span class="week-day-count">{{ day.plans | length }} plan{{ 's' if day.plans | length != 1 else '' }}</span>
+        {% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if view == 'monthly' %}
+<div class="month-calendar">
+    <div class="month-weekdays">
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span>
+        <span>Fri</span><span>Sat</span><span>Sun</span>
+    </div>
+    {% for week in month_grid %}
+    <div class="month-week">
+        {% for cell in week %}
+        {% if cell.day %}
+        <a href="{{ base_path }}?view=daily&ref_date={{ cell.date.isoformat() }}"
+           class="month-cell {% if cell.is_today %}today{% endif %} {% if cell.has_plans %}has-plans{% endif %} {% if cell.is_ref %}selected{% endif %}">
+            {{ cell.day }}
+            {% if cell.has_plans %}<span class="month-dot"></span>{% endif %}
+        </a>
+        {% else %}
+        <span class="month-cell empty"></span>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

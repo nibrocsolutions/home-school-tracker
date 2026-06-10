@@ -26,7 +26,7 @@ def month_start(ref: date) -> date:
 def month_end(ref: date) -> date:
     if ref.month == 12:
         return date(ref.year + 1, 1, 1) - timedelta(days=1)
-    return date(ref.month + 1, 1) - timedelta(days=1)
+    return date(ref.year, ref.month + 1, 1) - timedelta(days=1)
 
 
 def shift_ref_date(ref: date, view: str, direction: int) -> date:

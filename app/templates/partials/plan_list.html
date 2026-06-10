@@ -1,0 +1,36 @@
+<div class="plan-list-section">
+    {% if view == 'weekly' and sorted_grouped_plans %}
+        {% for plan_date, plans in sorted_grouped_plans %}
+        <div class="plan-day-group">
+            <h3 class="plan-day-heading">{{ plan_date.strftime('%A, %b %d') }}</h3>
+            {% for plan in plans %}
+            {% if all_completions %}
+            {% set plan_completions = all_completions.get(plan.id, {}) %}
+            {% endif %}
+            {% include plan_card_partial %}
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% elif view == 'monthly' and sorted_grouped_plans %}
+        {% for plan_date, plans in sorted_grouped_plans %}
+        <div class="plan-day-group">
+            <h3 class="plan-day-heading">{{ plan_date.strftime('%A, %b %d') }}</h3>
+            {% for plan in plans %}
+            {% if all_completions %}
+            {% set plan_completions = all_completions.get(plan.id, {}) %}
+            {% endif %}
+            {% include plan_card_partial %}
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% elif lesson_plans %}
+        {% for plan in lesson_plans %}
+        {% if all_completions %}
+        {% set plan_completions = all_completions.get(plan.id, {}) %}
+        {% endif %}
+        {% include plan_card_partial %}
+        {% endfor %}
+    {% else %}
+    <p class="empty-state">No lesson plans for this {{ view }} period.{% if empty_hint %} {{ empty_hint }}{% endif %}</p>
+    {% endif %}
+</div>

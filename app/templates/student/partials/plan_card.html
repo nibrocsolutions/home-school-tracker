@@ -1,0 +1,19 @@
+<article class="plan-card student-plan-card">
+    <div class="plan-card-header">
+        <h3>{{ plan.title }}</h3>
+        <span class="date-badge">{{ plan.plan_date.strftime('%a, %b %d') }}</span>
+    </div>
+    <p class="plan-meta">Teacher: <strong>{{ plan.teacher.full_name }}</strong></p>
+    {% if plan.description %}
+    <p class="plan-desc">{{ plan.description }}</p>
+    {% endif %}
+    <ul class="activity-checklist-preview">
+        {% for act in plan.activities | sort(attribute='sort_order') %}
+        <li class="{% if plan_completions is defined and plan_completions.get(act.id) %}done{% endif %}">
+            <span class="preview-check">{% if plan_completions is defined and plan_completions.get(act.id) %}✓{% else %}○{% endif %}</span>
+            {{ act.title }}
+            {% if not act.is_required %}<span class="optional-tag">Optional</span>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</article>

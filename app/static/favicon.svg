@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Books">
+  <rect width="32" height="32" rx="6" fill="#4f6ef7"/>
+  <rect x="5" y="8" width="9" height="18" rx="1.5" fill="#ff8c42" transform="rotate(-8 9.5 17)"/>
+  <rect x="12" y="7" width="9" height="18" rx="1.5" fill="#22c55e" transform="rotate(2 16.5 16)"/>
+  <rect x="18" y="9" width="9" height="18" rx="1.5" fill="#f472b6" transform="rotate(10 22.5 18)"/>
+  <line x1="7" y1="12" x2="12" y2="11" stroke="#fff" stroke-width="0.8" opacity="0.5"/>
+  <line x1="14" y1="11" x2="19" y2="11" stroke="#fff" stroke-width="0.8" opacity="0.5"/>
+  <line x1="20" y1="13" x2="25" y2="14" stroke="#fff" stroke-width="0.8" opacity="0.5"/>
+</svg>

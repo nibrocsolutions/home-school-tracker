@@ -26,7 +26,7 @@
             <form method="post" action="/teacher/lesson-plans" class="lesson-form" id="lesson-form">
                 <div class="form-row">
                     <label>Title</label>
-                    <input type="text" name="title" required placeholder="e.g. Math & Science Monday">
+                    <input type="text" name="title" required placeholder="e.g. Math & Science Wednesday">
                 </div>
                 <div class="form-row">
                     <label>Description</label>
@@ -67,31 +67,100 @@
             </form>
         </div>
 
-        <div class="panel">
-            <h2>Your Lesson Plans</h2>
-            {% if lesson_plans %}
-            <div class="plan-list">
-                {% for plan in lesson_plans %}
-                <article class="plan-card">
-                    <div class="plan-card-header">
-                        <h3>{{ plan.title }}</h3>
-                        <span class="date-badge">{{ plan.plan_date.strftime('%b %d, %Y') }}</span>
-                    </div>
-                    <p class="plan-meta">Student: <strong>{{ plan.student.full_name }}</strong></p>
-                    {% if plan.description %}
-                    <p class="plan-desc">{{ plan.description }}</p>
+        <div class="panel panel-wide">
+            <div class="calendar-header">
+                <h2>Lesson Plan Calendar</h2>
+                <div class="view-toggle" role="tablist" aria-label="Calendar view">
+                    <a href="/teacher?view=daily&ref_date={{ ref_date }}"
+                       class="view-btn {% if view == 'daily' %}active{% endif %}"
+                       role="tab" aria-selected="{{ 'true' if view == 'daily' else 'false' }}">Daily</a>
+                    <a href="/teacher?view=weekly&ref_date={{ ref_date }}"
+                       class="view-btn {% if view == 'weekly' %}active{% endif %}"
+                       role="tab" aria-selected="{{ 'true' if view == 'weekly' else 'false' }}">Weekly</a>
+                    <a href="/teacher?view=monthly&ref_date={{ ref_date }}"
+                       class="view-btn {% if view == 'monthly' %}active{% endif %}"
+                       role="tab" aria-selected="{{ 'true' if view == 'monthly' else 'false' }}">Monthly</a>
+                </div>
+            </div>
+
+            <div class="calendar-nav">
+                <a href="/teacher?view={{ view }}&ref_date={{ prev_ref }}" class="cal-nav-btn" aria-label="Previous period">‹</a>
+                <div class="cal-period">
+                    <strong>{{ period_label }}</strong>
+                    {% if view == 'daily' %}
+                    <input type="date" class="cal-date-picker" value="{{ ref_date }}"
+                           onchange="window.location.href='/teacher?view=daily&ref_date=' + this.value">
                     {% endif %}
-                    <ul class="activity-preview">
-                        {% for act in plan.activities | sort(attribute='sort_order') %}
-                        <li>{{ act.title }}</li>
-                        {% endfor %}
-                    </ul>
-                </article>
+                </div>
+                <a href="/teacher?view={{ view }}&ref_date={{ next_ref }}" class="cal-nav-btn" aria-label="Next period">›</a>
+            </div>
+
+            {% if view == 'weekly' %}
+            <div class="week-strip">
+                {% for day in week_days %}
+                <a href="/teacher?view=daily&ref_date={{ day.date.isoformat() }}"
+                   class="week-day {% if day.is_today %}today{% endif %} {% if day.plans %}has-plans{% endif %}">
+                    <span class="week-day-label">{{ day.label }}</span>
+                    <span class="week-day-num">{{ day.day_num }}</span>
+                    {% if day.plans %}
+                    <span class="week-day-count">{{ day.plans | length }} plan{{ 's' if day.plans | length != 1 else '' }}</span>
+                    {% endif %}
+                </a>
                 {% endfor %}
             </div>
-            {% else %}
-            <p class="empty-state">No lesson plans yet. Create your first one!</p>
             {% endif %}
+
+            {% if view == 'monthly' %}
+            <div class="month-calendar">
+                <div class="month-weekdays">
+                    <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span>
+                    <span>Fri</span><span>Sat</span><span>Sun</span>
+                </div>
+                {% for week in month_grid %}
+                <div class="month-week">
+                    {% for cell in week %}
+                    {% if cell.day %}
+                    <a href="/teacher?view=daily&ref_date={{ cell.date.isoformat() }}"
+                       class="month-cell {% if cell.is_today %}today{% endif %} {% if cell.has_plans %}has-plans{% endif %} {% if cell.is_ref %}selected{% endif %}">
+                        {{ cell.day }}
+                        {% if cell.has_plans %}<span class="month-dot"></span>{% endif %}
+                    </a>
+                    {% else %}
+                    <span class="month-cell empty"></span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="plan-list-section">
+                {% if view == 'weekly' and sorted_grouped_plans %}
+                    {% for plan_date, plans in sorted_grouped_plans %}
+                    <div class="plan-day-group">
+                        <h3 class="plan-day-heading">{{ plan_date.strftime('%A, %b %d') }}</h3>
+                        {% for plan in plans %}
+                        {% include "teacher/partials/plan_card.html" %}
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                {% elif view == 'monthly' and sorted_grouped_plans %}
+                    {% for plan_date, plans in sorted_grouped_plans %}
+                    <div class="plan-day-group">
+                        <h3 class="plan-day-heading">{{ plan_date.strftime('%A, %b %d') }}</h3>
+                        {% for plan in plans %}
+                        {% include "teacher/partials/plan_card.html" %}
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                {% elif lesson_plans %}
+                    {% for plan in lesson_plans %}
+                    {% include "teacher/partials/plan_card.html" %}
+                    {% endfor %}
+                {% else %}
+                <p class="empty-state">No lesson plans for this {{ view }} period. Create one to get started!</p>
+                {% endif %}
+            </div>
         </div>
     </section>
 </main>

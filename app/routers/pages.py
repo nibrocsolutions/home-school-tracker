@@ -1,7 +1,7 @@
-from datetime import date
+from datetime import date, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
@@ -13,6 +13,18 @@ from app.auth import (
     get_current_user,
     hash_password,
     require_roles,
+)
+from app.calendar_utils import (
+    build_month_grid,
+    filter_plans_by_view,
+    group_plans_by_date,
+    month_end,
+    month_start,
+    parse_ref_date,
+    period_label,
+    shift_ref_date,
+    week_end,
+    week_start,
 )
 from app.database import get_db
 from app.models import Activity, ActivityCompletion, LessonPlan, User, UserRole
@@ -169,15 +181,45 @@ async def teacher_dashboard(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    ref_date: str | None = Query(None),
 ):
     students = db.query(User).filter(User.role == UserRole.student, User.is_active == True).all()
-    lesson_plans = (
+    all_plans = (
         db.query(LessonPlan)
         .options(joinedload(LessonPlan.activities), joinedload(LessonPlan.student))
         .filter(LessonPlan.teacher_id == current_user.id)
         .order_by(LessonPlan.plan_date.desc())
         .all()
     )
+
+    ref = parse_ref_date(ref_date)
+    lesson_plans = filter_plans_by_view(all_plans, view, ref)
+    grouped_plans = group_plans_by_date(lesson_plans)
+    sorted_grouped_plans = sorted(grouped_plans.items(), key=lambda item: item[0])
+
+    week_days = []
+    if view == "weekly":
+        start = week_start(ref)
+        for i in range(7):
+            d = start + timedelta(days=i)
+            week_days.append({
+                "date": d,
+                "label": d.strftime("%a"),
+                "day_num": d.day,
+                "is_today": d == date.today(),
+                "is_ref": d == ref,
+                "plans": grouped_plans.get(d, []),
+            })
+
+    month_grid = []
+    if view == "monthly":
+        month_plan_dates = {p.plan_date for p in all_plans if month_start(ref) <= p.plan_date <= month_end(ref)}
+        month_grid = build_month_grid(ref, month_plan_dates)
+
+    prev_ref = shift_ref_date(ref, view, -1).isoformat()
+    next_ref = shift_ref_date(ref, view, 1).isoformat()
+
     return render(
         request,
         "teacher/dashboard.html",
@@ -185,7 +227,16 @@ async def teacher_dashboard(
             "user": current_user,
             "students": students,
             "lesson_plans": lesson_plans,
+            "grouped_plans": grouped_plans,
+            "sorted_grouped_plans": sorted_grouped_plans,
             "today": date.today().isoformat(),
+            "view": view,
+            "ref_date": ref.isoformat(),
+            "period_label": period_label(view, ref),
+            "prev_ref": prev_ref,
+            "next_ref": next_ref,
+            "week_days": week_days,
+            "month_grid": month_grid,
         },
     )
 

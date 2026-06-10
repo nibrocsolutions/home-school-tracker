@@ -542,6 +542,247 @@ body {
     margin-left: 0.5rem;
 }
 
+/* Teacher calendar */
+@media (min-width: 960px) {
+    .panel-grid {
+        grid-template-columns: minmax(300px, 380px) 1fr;
+        align-items: start;
+    }
+}
+
+.calendar-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.view-toggle {
+    display: flex;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: 0.25rem;
+    gap: 0.25rem;
+}
+
+.view-btn {
+    padding: 0.45rem 1rem;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-decoration: none;
+    color: var(--text-muted);
+    transition: background 0.2s, color 0.2s;
+}
+
+.view-btn:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.view-btn.active {
+    background: var(--surface);
+    color: var(--primary);
+    box-shadow: 0 2px 8px rgba(79, 110, 247, 0.15);
+}
+
+.calendar-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+}
+
+.cal-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    transition: transform 0.15s;
+}
+
+.cal-nav-btn:hover {
+    transform: scale(1.08);
+}
+
+.cal-period {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.cal-period strong {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+}
+
+.cal-date-picker {
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 0.3rem 0.5rem;
+    font-family: var(--font);
+    font-size: 0.85rem;
+}
+
+.week-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.week-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.75rem 0.35rem;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    color: var(--text);
+    border: 2px solid transparent;
+    transition: border-color 0.2s, transform 0.15s;
+}
+
+.week-day:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.week-day.today {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.week-day.has-plans .week-day-num {
+    color: var(--primary);
+}
+
+.week-day-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.week-day-num {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.week-day-count {
+    font-size: 0.65rem;
+    color: var(--primary);
+    font-weight: 700;
+    margin-top: 0.2rem;
+}
+
+.month-calendar {
+    margin-bottom: 1.25rem;
+}
+
+.month-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+}
+
+.month-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.month-cell {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: none;
+    color: var(--text);
+    background: var(--bg);
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.month-cell:hover:not(.empty) {
+    border-color: var(--primary);
+}
+
+.month-cell.empty {
+    background: transparent;
+}
+
+.month-cell.today {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.month-cell.has-plans {
+    font-weight: 800;
+    color: var(--primary);
+}
+
+.month-cell.selected {
+    border-color: var(--primary);
+    background: #ede9fe;
+}
+
+.month-dot {
+    position: absolute;
+    bottom: 4px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--primary);
+}
+
+.plan-list-section {
+    max-height: 480px;
+    overflow-y: auto;
+}
+
+.plan-day-group {
+    margin-bottom: 1.25rem;
+}
+
+.plan-day-heading {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 2px solid var(--border);
+}
+
 /* Teacher plans */
 .lesson-form .form-row {
     margin-bottom: 0.75rem;

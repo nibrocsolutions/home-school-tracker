@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard — {{ app_name }}{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block body %}
+{% set home_url = '/admin' %}
+{% include "partials/nav.html" %}
+
+<main class="main-content">
+    <section class="page-hero admin-hero">
+        <div>
+            <h1>System Administration</h1>
+            <p>Monitor your homeschool platform, user activity, and daily learning metrics.</p>
+        </div>
+        <div class="hero-emoji" aria-hidden="true">⚙️</div>
+    </section>
+
+    <section class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-icon">👥</span>
+            <div>
+                <div class="stat-value">{{ stats.total_users }}</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon">✅</span>
+            <div>
+                <div class="stat-value">{{ stats.active_users }}</div>
+                <div class="stat-label">Active Users</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon">📋</span>
+            <div>
+                <div class="stat-value">{{ stats.lesson_plans }}</div>
+                <div class="stat-label">Lesson Plans</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon">🎯</span>
+            <div>
+                <div class="stat-value">{{ stats.activities_today }}</div>
+                <div class="stat-label">Today's Activities</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel-grid">
+        <div class="panel">
+            <h2>Quick Actions</h2>
+            <div class="action-list">
+                <a href="/administrator" class="action-item">
+                    <span>🧑‍💼</span>
+                    <div>
+                        <strong>User Management</strong>
+                        <p>Create users and manage access</p>
+                    </div>
+                </a>
+                <div class="action-item disabled">
+                    <span>📊</span>
+                    <div>
+                        <strong>System Reports</strong>
+                        <p>Coming soon — usage analytics</p>
+                    </div>
+                </div>
+                <div class="action-item disabled">
+                    <span>🔒</span>
+                    <div>
+                        <strong>Security Settings</strong>
+                        <p>Coming soon — password policies</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>All Users Overview</h2>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr>
+                            <td>{{ u.full_name }}</td>
+                            <td>{{ u.username }}</td>
+                            <td><span class="role-badge {{ u.role.value }}">{{ u.role.value | title }}</span></td>
+                            <td>
+                                {% if u.is_active %}
+                                <span class="status-active">Active</span>
+                                {% else %}
+                                <span class="status-inactive">Inactive</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+{% endblock %}

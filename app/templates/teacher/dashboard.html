@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Teacher Dashboard — {{ app_name }}{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block body %}
+{% set home_url = '/teacher' %}
+{% include "partials/nav.html" %}
+
+<main class="main-content">
+    <section class="page-hero teacher-hero">
+        <div>
+            <h1>Lesson Planning</h1>
+            <p>Design engaging daily plans and activities for your students.</p>
+        </div>
+        <div class="hero-emoji" aria-hidden="true">🍎</div>
+    </section>
+
+    {% if request.query_params.get('success') == 'plan' %}
+    <div class="alert alert-success">Lesson plan created successfully!</div>
+    {% endif %}
+
+    <section class="panel-grid">
+        <div class="panel">
+            <h2>Create Lesson Plan</h2>
+            <form method="post" action="/teacher/lesson-plans" class="lesson-form" id="lesson-form">
+                <div class="form-row">
+                    <label>Title</label>
+                    <input type="text" name="title" required placeholder="e.g. Math & Science Monday">
+                </div>
+                <div class="form-row">
+                    <label>Description</label>
+                    <textarea name="description" rows="2" placeholder="Brief overview of the day's learning"></textarea>
+                </div>
+                <div class="form-row">
+                    <label>Date</label>
+                    <input type="date" name="plan_date" required value="{{ today if today else '' }}">
+                </div>
+                <div class="form-row">
+                    <label>Student</label>
+                    <select name="student_id" required>
+                        <option value="">Select a student</option>
+                        {% for s in students %}
+                        <option value="{{ s.id }}">{{ s.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="activities-builder">
+                    <div class="activities-header">
+                        <h3>Activities</h3>
+                        <button type="button" class="btn btn-ghost btn-sm" id="add-activity">+ Add Activity</button>
+                    </div>
+                    <div id="activities-list">
+                        <div class="activity-row">
+                            <input type="text" name="activity_titles" placeholder="Activity title" required>
+                            <input type="text" name="activity_descriptions" placeholder="Description (optional)">
+                        </div>
+                        <div class="activity-row">
+                            <input type="text" name="activity_titles" placeholder="Activity title">
+                            <input type="text" name="activity_descriptions" placeholder="Description (optional)">
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save Lesson Plan</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>Your Lesson Plans</h2>
+            {% if lesson_plans %}
+            <div class="plan-list">
+                {% for plan in lesson_plans %}
+                <article class="plan-card">
+                    <div class="plan-card-header">
+                        <h3>{{ plan.title }}</h3>
+                        <span class="date-badge">{{ plan.plan_date.strftime('%b %d, %Y') }}</span>
+                    </div>
+                    <p class="plan-meta">Student: <strong>{{ plan.student.full_name }}</strong></p>
+                    {% if plan.description %}
+                    <p class="plan-desc">{{ plan.description }}</p>
+                    {% endif %}
+                    <ul class="activity-preview">
+                        {% for act in plan.activities | sort(attribute='sort_order') %}
+                        <li>{{ act.title }}</li>
+                        {% endfor %}
+                    </ul>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty-state">No lesson plans yet. Create your first one!</p>
+            {% endif %}
+        </div>
+    </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('add-activity')?.addEventListener('click', function() {
+    const list = document.getElementById('activities-list');
+    const row = document.createElement('div');
+    row.className = 'activity-row';
+    row.innerHTML = `
+        <input type="text" name="activity_titles" placeholder="Activity title">
+        <input type="text" name="activity_descriptions" placeholder="Description (optional)">
+        <button type="button" class="btn-remove" aria-label="Remove activity">&times;</button>
+    `;
+    list.appendChild(row);
+    row.querySelector('.btn-remove').addEventListener('click', () => row.remove());
+});
+</script>
+{% endblock %}

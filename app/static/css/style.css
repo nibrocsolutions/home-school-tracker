@@ -359,6 +359,16 @@ body {
     gap: 1rem;
 }
 
+.form-grid-single {
+    grid-template-columns: 1fr;
+}
+
+.form-grid-single .form-row input,
+.form-grid-single .form-row select {
+    width: 100%;
+    box-sizing: border-box;
+}
+
 .form-row {
     display: flex;
     flex-direction: column;
@@ -377,6 +387,9 @@ body {
 .form-row input,
 .form-row select,
 .form-row textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     padding: 0.6rem 0.85rem;
     border: 2px solid var(--border);
     border-radius: var(--radius-sm);
@@ -566,19 +579,76 @@ body {
     gap: 0.75rem;
 }
 
-.btn-pdf {
-    background: linear-gradient(135deg, #ff8c42, #ff6b6b);
+.pdf-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.btn-pdf,
+.btn-pdf-view {
     color: white;
     border: none;
-    box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
     text-decoration: none;
     white-space: nowrap;
 }
 
-.btn-pdf:hover {
+.btn-pdf {
+    background: linear-gradient(135deg, #ff8c42, #ff6b6b);
+    box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
+}
+
+.btn-pdf-view {
+    background: linear-gradient(135deg, var(--primary), #6c5ce7);
+    box-shadow: 0 4px 12px rgba(79, 110, 247, 0.3);
+}
+
+.btn-pdf:hover,
+.btn-pdf-view:hover {
     color: white;
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(255, 140, 66, 0.4);
+}
+
+.student-picker {
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    background: var(--bg);
+}
+
+.student-picker-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.student-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+.student-check {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 8px;
+    cursor: pointer;
+    background: var(--surface);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.student-check:hover {
+    background: #ede9fe;
+}
+
+.student-check input[type="checkbox"] {
+    width: auto;
+    accent-color: var(--primary);
 }
 
 .student-calendar-panel {

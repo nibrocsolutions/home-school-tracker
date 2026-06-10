@@ -12,9 +12,16 @@
                class="view-btn {% if view == 'monthly' %}active{% endif %}"
                role="tab" aria-selected="{{ 'true' if view == 'monthly' else 'false' }}">Monthly</a>
         </div>
-        <a href="{{ pdf_path }}?view={{ view }}&ref_date={{ ref_date }}" class="btn btn-pdf btn-sm" target="_blank">
-            <span aria-hidden="true">📄</span> Download PDF
-        </a>
+        <div class="pdf-buttons">
+            <a href="{{ pdf_path }}?view={{ view }}&ref_date={{ ref_date }}&disposition=inline"
+               class="btn btn-pdf-view btn-sm" target="_blank" rel="noopener">
+                <span aria-hidden="true">👁</span> View PDF
+            </a>
+            <a href="{{ pdf_path }}?view={{ view }}&ref_date={{ ref_date }}&disposition=attachment"
+               class="btn btn-pdf btn-sm">
+                <span aria-hidden="true">📄</span> Download PDF
+            </a>
+        </div>
     </div>
 </div>
 

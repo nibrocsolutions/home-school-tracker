@@ -17,7 +17,7 @@ from app.auth import (
 from app.calendar_context import build_calendar_context
 from app.database import get_db
 from app.models import Activity, ActivityCompletion, LessonPlan, User, UserRole
-from app.pdf_export import build_lesson_plan_pdf, pdf_filename
+from app.pdf_export import build_lesson_plan_pdf, pdf_filename, pdf_response_headers
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -230,6 +230,7 @@ async def teacher_lesson_plans_pdf(
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
     view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
     ref_date: str | None = Query(None),
+    disposition: str = Query("attachment", pattern="^(inline|attachment)$"),
 ):
     all_plans = _fetch_teacher_plans(db, current_user.id)
     calendar = build_calendar_context(all_plans, view, ref_date)
@@ -243,7 +244,7 @@ async def teacher_lesson_plans_pdf(
     return RawResponse(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers=pdf_response_headers(filename, inline=disposition == "inline"),
     )
 
 
@@ -254,34 +255,49 @@ async def create_lesson_plan(
     title: str = Form(...),
     description: str = Form(""),
     plan_date: str = Form(...),
-    student_id: int = Form(...),
+    student_ids: list[int] = Form(...),
     activity_titles: list[str] = Form(...),
     activity_descriptions: list[str] = Form(default=[]),
 ):
-    plan = LessonPlan(
-        title=title,
-        description=description or None,
-        plan_date=date.fromisoformat(plan_date),
-        teacher_id=current_user.id,
-        student_id=student_id,
-    )
-    db.add(plan)
-    db.flush()
+    if not student_ids:
+        return RedirectResponse(
+            url="/teacher?error=students",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
+    activities_data = []
     for idx, act_title in enumerate(activity_titles):
         if not act_title.strip():
             continue
         desc = activity_descriptions[idx] if idx < len(activity_descriptions) else ""
-        db.add(
-            Activity(
-                lesson_plan_id=plan.id,
-                title=act_title.strip(),
-                description=desc.strip() or None,
-                sort_order=idx + 1,
-            )
+        activities_data.append((act_title.strip(), desc.strip() or None, idx + 1))
+
+    parsed_date = date.fromisoformat(plan_date)
+    for student_id in student_ids:
+        plan = LessonPlan(
+            title=title,
+            description=description or None,
+            plan_date=parsed_date,
+            teacher_id=current_user.id,
+            student_id=student_id,
         )
+        db.add(plan)
+        db.flush()
+        for act_title, act_desc, sort_order in activities_data:
+            db.add(
+                Activity(
+                    lesson_plan_id=plan.id,
+                    title=act_title,
+                    description=act_desc,
+                    sort_order=sort_order,
+                )
+            )
     db.commit()
-    return RedirectResponse(url="/teacher?success=plan", status_code=status.HTTP_303_SEE_OTHER)
+    count = len(student_ids)
+    return RedirectResponse(
+        url=f"/teacher?success=plan&count={count}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 def _fetch_student_plans(db: Session, student_id: int) -> list[LessonPlan]:
@@ -352,6 +368,7 @@ async def student_lesson_plans_pdf(
     current_user: Annotated[User, Depends(require_roles(UserRole.student))],
     view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
     ref_date: str | None = Query(None),
+    disposition: str = Query("attachment", pattern="^(inline|attachment)$"),
 ):
     all_plans = _fetch_student_plans(db, current_user.id)
     calendar = build_calendar_context(all_plans, view, ref_date)
@@ -367,7 +384,7 @@ async def student_lesson_plans_pdf(
     return RawResponse(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers=pdf_response_headers(filename, inline=disposition == "inline"),
     )
 
 

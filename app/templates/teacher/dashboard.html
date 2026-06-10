@@ -17,7 +17,13 @@
     </section>
 
     {% if request.query_params.get('success') == 'plan' %}
-    <div class="alert alert-success">Lesson plan created successfully!</div>
+    <div class="alert alert-success">
+        Lesson plan{{ 's' if request.query_params.get('count', '1') != '1' else '' }} created successfully
+        {% if request.query_params.get('count') %}for {{ request.query_params.get('count') }} student{{ 's' if request.query_params.get('count') != '1' else '' }}{% endif %}!
+    </div>
+    {% endif %}
+    {% if request.query_params.get('error') == 'students' %}
+    <div class="alert alert-error">Please select at least one student.</div>
     {% endif %}
 
     <section class="panel-grid">
@@ -37,13 +43,24 @@
                     <input type="date" name="plan_date" required value="{{ today if today else '' }}">
                 </div>
                 <div class="form-row">
-                    <label>Student</label>
-                    <select name="student_id" required>
-                        <option value="">Select a student</option>
-                        {% for s in students %}
-                        <option value="{{ s.id }}">{{ s.full_name }}</option>
-                        {% endfor %}
-                    </select>
+                    <label>Students</label>
+                    <div class="student-picker">
+                        <div class="student-picker-actions">
+                            <button type="button" class="btn btn-ghost btn-sm" id="select-all-students">Select All</button>
+                            <button type="button" class="btn btn-ghost btn-sm" id="clear-all-students">Clear All</button>
+                        </div>
+                        <div class="student-checkboxes">
+                            {% for s in students %}
+                            <label class="student-check">
+                                <input type="checkbox" name="student_ids" value="{{ s.id }}">
+                                <span>{{ s.full_name }}</span>
+                            </label>
+                            {% endfor %}
+                            {% if not students %}
+                            <p class="empty-state">No students available.</p>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
 
                 <div class="activities-builder">
@@ -77,6 +94,19 @@
 
 {% block scripts %}
 <script>
+document.getElementById('select-all-students')?.addEventListener('click', function() {
+    document.querySelectorAll('.student-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = true);
+});
+document.getElementById('clear-all-students')?.addEventListener('click', function() {
+    document.querySelectorAll('.student-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
+});
+document.getElementById('lesson-form')?.addEventListener('submit', function(e) {
+    const checked = document.querySelectorAll('.student-checkboxes input[type="checkbox"]:checked');
+    if (checked.length === 0) {
+        e.preventDefault();
+        alert('Please select at least one student.');
+    }
+});
 document.getElementById('add-activity')?.addEventListener('click', function() {
     const list = document.getElementById('activities-list');
     const row = document.createElement('div');

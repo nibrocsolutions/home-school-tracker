@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}My Day — {{ app_name }}{% endblock %}
+{% block body_class %}dashboard-page student-theme{% endblock %}
+
+{% block body %}
+{% set home_url = '/student' %}
+{% include "partials/nav.html" %}
+
+<main class="main-content">
+    <section class="page-hero student-hero">
+        <div>
+            <h1>Today's Adventures</h1>
+            <p>{{ today.strftime('%A, %B %d, %Y') }} — Let's make today awesome!</p>
+        </div>
+        <div class="hero-emoji" aria-hidden="true">🌟</div>
+    </section>
+
+    {% if lesson_plan %}
+    <section class="progress-section">
+        <div class="progress-card">
+            <div class="progress-header">
+                <h2>{{ lesson_plan.title }}</h2>
+                <span class="progress-pill">{{ done_count }}/{{ total_count }} done</span>
+            </div>
+            {% if lesson_plan.description %}
+            <p class="plan-desc">{{ lesson_plan.description }}</p>
+            {% endif %}
+            <p class="plan-meta">Teacher: <strong>{{ lesson_plan.teacher.full_name }}</strong></p>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar" style="width: {{ progress }}%"></div>
+            </div>
+            <span class="progress-label">{{ progress }}% complete</span>
+        </div>
+    </section>
+
+    <section class="checklist-section">
+        <h2 class="section-title">Your Checklist</h2>
+        <div class="checklist">
+            {% for act in lesson_plan.activities | sort(attribute='sort_order') %}
+            <form method="post" action="/student/activities/{{ act.id }}/toggle" class="checklist-item {% if completions.get(act.id) %}completed{% endif %}">
+                <button type="submit" class="checkbox-btn" aria-label="Toggle {{ act.title }}">
+                    <span class="check-icon">{% if completions.get(act.id) %}✓{% endif %}</span>
+                </button>
+                <div class="checklist-content">
+                    <strong>{{ act.title }}</strong>
+                    {% if act.description %}
+                    <p>{{ act.description }}</p>
+                    {% endif %}
+                    {% if not act.is_required %}
+                    <span class="optional-tag">Optional</span>
+                    {% endif %}
+                </div>
+            </form>
+            {% endfor %}
+        </div>
+
+        {% if progress == 100 %}
+        <div class="celebration-banner">
+            <span>🎉</span>
+            <div>
+                <strong>Amazing work!</strong>
+                <p>You completed all of today's activities. High five!</p>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+    {% else %}
+    <section class="empty-day">
+        <div class="empty-day-card">
+            <span class="empty-emoji">📭</span>
+            <h2>No lesson plan for today</h2>
+            <p>Check back later — your teacher may add activities soon!</p>
+        </div>
+    </section>
+    {% endif %}
+</main>
+{% endblock %}

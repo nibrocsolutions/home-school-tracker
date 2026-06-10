@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In — {{ app_name }}{% endblock %}
+{% block body_class %}login-page{% endblock %}
+
+{% block body %}
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="brand">
+            <div class="brand-icon" aria-hidden="true">📚</div>
+            <h1>{{ app_name }}</h1>
+            <p class="tagline">Learning adventures, organized beautifully.</p>
+        </div>
+
+        {% if request.query_params.get('error') == 'invalid' %}
+        <div class="alert alert-error">Invalid username or password. Please try again.</div>
+        {% endif %}
+
+        <form method="post" action="/login" class="login-form">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required autofocus placeholder="Enter your username">
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required placeholder="Enter your password">
+
+            <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+        </form>
+
+        <div class="demo-accounts">
+            <h3>Demo Accounts</h3>
+            <div class="demo-grid">
+                <div class="demo-item"><span class="role-badge admin">Admin</span> admin / admin123</div>
+                <div class="demo-item"><span class="role-badge administrator">Administrator</span> administrator / admin123</div>
+                <div class="demo-item"><span class="role-badge teacher">Teacher</span> teacher / teacher123</div>
+                <div class="demo-item"><span class="role-badge student">Student</span> student / student123</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="login-decoration">
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Administrator — {{ app_name }}{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block body %}
+{% set home_url = '/administrator' %}
+{% include "partials/nav.html" %}
+
+<main class="main-content">
+    <section class="page-hero admin-hero">
+        <div>
+            <h1>User Management</h1>
+            <p>Create accounts, manage access, and oversee your homeschool community.</p>
+        </div>
+        <div class="hero-emoji" aria-hidden="true">🧑‍💼</div>
+    </section>
+
+    {% if request.query_params.get('success') == 'created' %}
+    <div class="alert alert-success">New user created successfully!</div>
+    {% endif %}
+    {% if request.query_params.get('error') == 'exists' %}
+    <div class="alert alert-error">Username or email already exists.</div>
+    {% endif %}
+    {% if request.query_params.get('error') == 'self' %}
+    <div class="alert alert-error">You cannot deactivate your own account.</div>
+    {% endif %}
+
+    <section class="panel-grid">
+        <div class="panel">
+            <h2>Create New User</h2>
+            <form method="post" action="/administrator/users" class="form-grid">
+                <div class="form-row">
+                    <label>First Name</label>
+                    <input type="text" name="first_name" required>
+                </div>
+                <div class="form-row">
+                    <label>Last Name</label>
+                    <input type="text" name="last_name" required>
+                </div>
+                <div class="form-row">
+                    <label>Username</label>
+                    <input type="text" name="username" required>
+                </div>
+                <div class="form-row">
+                    <label>Email</label>
+                    <input type="email" name="email" required>
+                </div>
+                <div class="form-row">
+                    <label>Password</label>
+                    <input type="password" name="password" required minlength="6">
+                </div>
+                <div class="form-row">
+                    <label>Role</label>
+                    <select name="role" required>
+                        <option value="admin">Admin</option>
+                        <option value="administrator">Administrator</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="student">Student</option>
+                    </select>
+                </div>
+                <div class="form-row full-width">
+                    <button type="submit" class="btn btn-primary">Create User</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>Directory Summary</h2>
+            <div class="directory-stats">
+                <div class="dir-stat"><span>{{ admins | length }}</span> Admins</div>
+                <div class="dir-stat"><span>{{ administrators | length }}</span> Administrators</div>
+                <div class="dir-stat"><span>{{ teachers | length }}</span> Teachers</div>
+                <div class="dir-stat"><span>{{ students | length }}</span> Students</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="user-sections">
+        {% for section_title, section_users in [
+            ('Admins', admins),
+            ('Administrators', administrators),
+            ('Teachers', teachers),
+            ('Students', students)
+        ] %}
+        <div class="panel">
+            <h2>{{ section_title }} <span class="count-badge">{{ section_users | length }}</span></h2>
+            {% if section_users %}
+            <div class="user-cards">
+                {% for u in section_users %}
+                <div class="user-card {% if not u.is_active %}inactive{% endif %}">
+                    <div class="user-card-avatar">{{ u.first_name[0] }}{{ u.last_name[0] }}</div>
+                    <div class="user-card-info">
+                        <strong>{{ u.full_name }}</strong>
+                        <span>@{{ u.username }}</span>
+                        <span class="role-badge {{ u.role.value }}">{{ u.role.value | title }}</span>
+                    </div>
+                    <form method="post" action="/administrator/users/{{ u.id }}/toggle">
+                        <button type="submit" class="btn btn-sm {% if u.is_active %}btn-ghost{% else %}btn-primary{% endif %}">
+                            {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
+                        </button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty-state">No users in this category yet.</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </section>
+</main>
+{% endblock %}

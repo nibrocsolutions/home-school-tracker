@@ -1,0 +1,18 @@
+<header class="app-header">
+    <div class="header-inner">
+        <a href="{{ home_url }}" class="logo">
+            <span class="logo-icon">📚</span>
+            <span class="logo-text">{{ app_name }}</span>
+        </a>
+        <div class="header-right">
+            <div class="user-pill">
+                <span class="user-avatar">{{ user.first_name[0] }}{{ user.last_name[0] }}</span>
+                <div>
+                    <strong>{{ user.full_name }}</strong>
+                    <span class="role-badge {{ user.role.value }}">{{ user.role.value | title }}</span>
+                </div>
+            </div>
+            <a href="/logout" class="btn btn-ghost btn-sm">Sign Out</a>
+        </div>
+    </div>
+</header>

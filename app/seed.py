@@ -5,9 +5,54 @@ from sqlalchemy.orm import Session
 from app.auth import hash_password
 from app.models import Activity, LessonPlan, User, UserRole
 
+WEEKDAYS = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+]
+
+DEMO_PROFILES = {
+    "admin": ("Robert", "Corbin"),
+    "administrator": ("Joe", "Principal"),
+    "teacher": ("Jenny", "Corbin"),
+    "student": ("Ella", "Corbin"),
+}
+
+
+def day_name(plan_date: date) -> str:
+    return plan_date.strftime("%A")
+
+
+def fix_lesson_plan_weekday_titles(db: Session) -> None:
+    for plan in db.query(LessonPlan).all():
+        correct = plan.plan_date.strftime("%A")
+        for weekday in WEEKDAYS:
+            if weekday in plan.title and weekday != correct:
+                plan.title = plan.title.replace(weekday, correct)
+                break
+    db.commit()
+
+
+def update_demo_profiles(db: Session) -> None:
+    changed = False
+    for username, (first_name, last_name) in DEMO_PROFILES.items():
+        user = db.query(User).filter(User.username == username).first()
+        if user and (user.first_name != first_name or user.last_name != last_name):
+            user.first_name = first_name
+            user.last_name = last_name
+            changed = True
+    if changed:
+        db.commit()
+    fix_lesson_plan_weekday_titles(db)
+
 
 def seed_database(db: Session) -> None:
     if db.query(User).first():
+        update_demo_profiles(db)
         return
 
     users = [
@@ -16,32 +61,32 @@ def seed_database(db: Session) -> None:
             email="admin@homeschool.local",
             password_hash=hash_password("admin123"),
             role=UserRole.admin,
-            first_name="Alex",
-            last_name="Rivera",
+            first_name="Robert",
+            last_name="Corbin",
         ),
         User(
             username="administrator",
             email="administrator@homeschool.local",
             password_hash=hash_password("admin123"),
             role=UserRole.administrator,
-            first_name="Jordan",
-            last_name="Mitchell",
+            first_name="Joe",
+            last_name="Principal",
         ),
         User(
             username="teacher",
             email="teacher@homeschool.local",
             password_hash=hash_password("teacher123"),
             role=UserRole.teacher,
-            first_name="Sam",
-            last_name="Chen",
+            first_name="Jenny",
+            last_name="Corbin",
         ),
         User(
             username="student",
             email="student@homeschool.local",
             password_hash=hash_password("student123"),
             role=UserRole.student,
-            first_name="Riley",
-            last_name="Chen",
+            first_name="Ella",
+            last_name="Corbin",
         ),
         User(
             username="student2",
@@ -56,17 +101,19 @@ def seed_database(db: Session) -> None:
     db.flush()
 
     teacher = next(u for u in users if u.role == UserRole.teacher)
-    riley = next(u for u in users if u.username == "student")
+    ella = next(u for u in users if u.username == "student")
     morgan = next(u for u in users if u.username == "student2")
     today = date.today()
+    tomorrow = today + timedelta(days=1)
+    yesterday = today - timedelta(days=1)
 
     plans = [
         LessonPlan(
-            title="Math & Science Monday",
-            description="Kick off the week with numbers, experiments, and curiosity!",
+            title=f"Math & Science {day_name(today)}",
+            description="Kick off the day with numbers, experiments, and curiosity!",
             plan_date=today,
             teacher_id=teacher.id,
-            student_id=riley.id,
+            student_id=ella.id,
             activities=[
                 Activity(
                     title="Morning Math Warm-up",
@@ -92,7 +139,7 @@ def seed_database(db: Session) -> None:
             ],
         ),
         LessonPlan(
-            title="Language Arts & History",
+            title=f"Language Arts & History — {day_name(today)}",
             description="Stories from the past and words that paint pictures.",
             plan_date=today,
             teacher_id=teacher.id,
@@ -116,11 +163,11 @@ def seed_database(db: Session) -> None:
             ],
         ),
         LessonPlan(
-            title="Outdoor Exploration Tuesday",
-            description="Tomorrow's preview — nature walk and geography.",
-            plan_date=today + timedelta(days=1),
+            title=f"Outdoor Exploration {day_name(tomorrow)}",
+            description="Nature walk and geography adventures.",
+            plan_date=tomorrow,
             teacher_id=teacher.id,
-            student_id=riley.id,
+            student_id=ella.id,
             activities=[
                 Activity(
                     title="Nature Walk",
@@ -130,6 +177,25 @@ def seed_database(db: Session) -> None:
                 Activity(
                     title="Map Skills",
                     description="Label continents and oceans on a blank world map.",
+                    sort_order=2,
+                ),
+            ],
+        ),
+        LessonPlan(
+            title=f"Review & Reflection {day_name(yesterday)}",
+            description="Look back at the week and strengthen key skills.",
+            plan_date=yesterday,
+            teacher_id=teacher.id,
+            student_id=ella.id,
+            activities=[
+                Activity(
+                    title="Spelling Review",
+                    description="Practice this week's vocabulary words.",
+                    sort_order=1,
+                ),
+                Activity(
+                    title="Math Quiz",
+                    description="Complete the 10-question review worksheet.",
                     sort_order=2,
                 ),
             ],

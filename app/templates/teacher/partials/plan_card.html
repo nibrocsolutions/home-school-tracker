@@ -1,0 +1,15 @@
+<article class="plan-card">
+    <div class="plan-card-header">
+        <h3>{{ plan.title }}</h3>
+        <span class="date-badge">{{ plan.plan_date.strftime('%a, %b %d') }}</span>
+    </div>
+    <p class="plan-meta">Student: <strong>{{ plan.student.full_name }}</strong></p>
+    {% if plan.description %}
+    <p class="plan-desc">{{ plan.description }}</p>
+    {% endif %}
+    <ul class="activity-preview">
+        {% for act in plan.activities | sort(attribute='sort_order') %}
+        <li>{{ act.title }}</li>
+        {% endfor %}
+    </ul>
+</article>

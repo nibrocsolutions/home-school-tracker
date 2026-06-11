@@ -8,22 +8,21 @@
 {% include "partials/nav.html" %}
 
 <main class="main-content">
-    <section class="page-hero teacher-hero">
+    <section class="page-hero teacher-hero dashboard-hero">
         <div>
             <h1>Teacher Dashboard</h1>
-            <p>Plan lessons and track required school days for your homeschool year.</p>
+            <p>Plan lessons and track school days.</p>
         </div>
-        <div class="hero-emoji" aria-hidden="true">🍎</div>
     </section>
 
     <nav class="page-tabs" role="tablist" aria-label="Teacher dashboard sections">
         <a href="/teacher?tab=lessons"
-           class="page-tab btn-tab {% if tab == 'lessons' %}active{% endif %}"
+           class="btn page-tab-btn {% if tab == 'lessons' %}btn-primary{% else %}btn-tab-inactive{% endif %}"
            role="tab" aria-selected="{{ 'true' if tab == 'lessons' else 'false' }}">
             Lesson Planning
         </a>
         <a href="/teacher?tab=school-days"
-           class="page-tab btn-tab {% if tab == 'school-days' %}active{% endif %}"
+           class="btn page-tab-btn {% if tab == 'school-days' %}btn-primary{% else %}btn-tab-inactive{% endif %}"
            role="tab" aria-selected="{{ 'true' if tab == 'school-days' else 'false' }}">
             School Day Tracking
         </a>

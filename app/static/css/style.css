@@ -1219,6 +1219,244 @@ body {
     border: 1px solid #bbf7d0;
 }
 
+/* Teacher page tabs */
+.page-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 0.35rem;
+    box-shadow: var(--shadow);
+}
+
+.page-tab {
+    flex: 1;
+    text-align: center;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-decoration: none;
+    color: var(--text-muted);
+    transition: background 0.2s, color 0.2s;
+}
+
+.page-tab:hover {
+    color: var(--text);
+    background: var(--bg);
+}
+
+.page-tab.active {
+    background: linear-gradient(135deg, var(--primary), #6c5ce7);
+    color: white;
+    box-shadow: 0 4px 14px rgba(79, 110, 247, 0.25);
+}
+
+.section-hint {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+/* School day tracking */
+.school-day-tracking {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.school-year-form .form-row-inline {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.school-year-form .form-row-inline > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.school-year-form label {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.school-year-form input {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 0.95rem;
+}
+
+.school-year-form input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.counter-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.counter-table th,
+.counter-table td {
+    padding: 0.85rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.counter-table th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+}
+
+.counter-table td:last-child,
+.counter-table th:last-child {
+    text-align: right;
+}
+
+.counter-approved {
+    color: var(--success);
+}
+
+.counter-remaining {
+    color: var(--primary);
+}
+
+.counter-remaining-row td {
+    font-weight: 700;
+}
+
+.school-day-complete {
+    margin-top: 1rem;
+}
+
+.school-day-calendar-panel .school-year-range {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.school-day-calendar .month-week {
+    gap: 0.35rem;
+}
+
+.school-day-cell-form {
+    display: contents;
+}
+
+.school-day-cell {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text);
+    background: var(--bg);
+    border: 2px solid transparent;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    min-height: 52px;
+}
+
+button.school-day-cell {
+    cursor: pointer;
+    font-family: var(--font);
+    width: 100%;
+    padding: 0;
+}
+
+button.school-day-cell:hover {
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.school-day-cell.today {
+    border-color: var(--accent);
+}
+
+.school-day-cell.approved {
+    background: #dcfce7;
+    border-color: var(--success);
+    color: #166534;
+}
+
+.school-day-cell.approved:hover {
+    background: #bbf7d0;
+}
+
+.school-day-cell.out-of-range {
+    background: #f3f4f6;
+    color: #9ca3af;
+    opacity: 0.7;
+}
+
+.school-day-cell.empty {
+    background: transparent;
+    border: none;
+}
+
+.school-day-num {
+    line-height: 1.2;
+}
+
+.school-day-check {
+    font-size: 0.75rem;
+    font-weight: 800;
+    margin-top: 0.1rem;
+}
+
+.school-day-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 2px solid transparent;
+}
+
+.legend-swatch.in-range {
+    background: var(--bg);
+    border-color: var(--border);
+}
+
+.legend-swatch.approved {
+    background: #dcfce7;
+    border-color: var(--success);
+}
+
+.legend-swatch.out-of-range {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+@media (max-width: 768px) {
+    .school-year-form .form-row-inline {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Responsive */
 @media (max-width: 640px) {
     .page-hero {

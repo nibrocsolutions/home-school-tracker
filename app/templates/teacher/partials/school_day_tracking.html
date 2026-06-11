@@ -1,0 +1,125 @@
+<section class="school-day-tracking">
+    <div class="panel">
+        <h2>School Year Settings</h2>
+        <p class="section-hint">Set the date range for this school year and how many full school days are required.</p>
+        <form method="post" action="/teacher/school-days/config" class="school-year-form">
+            <input type="hidden" name="cal_month" value="{{ cal_month_param }}">
+            <div class="form-row form-row-inline">
+                <div>
+                    <label for="start_date">First Day of School</label>
+                    <input type="date" id="start_date" name="start_date" required
+                           value="{{ school_year.start_date.isoformat() if school_year else '' }}">
+                </div>
+                <div>
+                    <label for="end_date">Last Day of School</label>
+                    <input type="date" id="end_date" name="end_date" required
+                           value="{{ school_year.end_date.isoformat() if school_year else '' }}">
+                </div>
+                <div>
+                    <label for="required_days">Required Full Days</label>
+                    <input type="number" id="required_days" name="required_days" min="1" required
+                           value="{{ required_days }}">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Save School Year</button>
+        </form>
+    </div>
+
+    <div class="panel">
+        <h2>Progress</h2>
+        <table class="counter-table" aria-label="School day progress">
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Full Days Approved</td>
+                    <td><strong class="counter-approved">{{ approved_count }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Required Full Days</td>
+                    <td><strong>{{ required_days }}</strong></td>
+                </tr>
+                <tr class="counter-remaining-row">
+                    <td>Remaining</td>
+                    <td><strong class="counter-remaining">{{ remaining_days }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        {% if school_year and approved_count >= required_days %}
+        <div class="alert alert-success school-day-complete">
+            All required school days have been approved for this school year!
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="panel school-day-calendar-panel">
+        <div class="calendar-header">
+            <h2>Approve Full School Days</h2>
+            <p class="section-hint">Click a day within your school year range to mark it as a full school day.</p>
+        </div>
+
+        {% if not school_year %}
+        <p class="empty-state">Save your school year dates above to start tracking full school days.</p>
+        {% else %}
+        <div class="calendar-nav">
+            <a href="/teacher?tab=school-days&cal_month={{ prev_cal_month }}"
+               class="cal-nav-btn" aria-label="Previous month">‹</a>
+            <div class="cal-period">
+                <strong>{{ cal_month_label }}</strong>
+                <span class="school-year-range">
+                    {{ school_year.start_date.strftime('%b %d, %Y') }} – {{ school_year.end_date.strftime('%b %d, %Y') }}
+                </span>
+            </div>
+            <a href="/teacher?tab=school-days&cal_month={{ next_cal_month }}"
+               class="cal-nav-btn" aria-label="Next month">›</a>
+        </div>
+
+        <div class="month-calendar school-day-calendar">
+            <div class="month-weekdays">
+                <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span>
+                <span>Fri</span><span>Sat</span><span>Sun</span>
+            </div>
+            {% for week in school_day_grid %}
+            <div class="month-week">
+                {% for cell in week %}
+                {% if cell.day %}
+                    {% if cell.in_range %}
+                    <form method="post" action="/teacher/school-days/toggle" class="school-day-cell-form">
+                        <input type="hidden" name="day_date" value="{{ cell.date.isoformat() }}">
+                        <input type="hidden" name="cal_month" value="{{ cal_month_param }}">
+                        <button type="submit"
+                                class="school-day-cell {% if cell.is_approved %}approved{% endif %} {% if cell.is_today %}today{% endif %}"
+                                aria-label="{{ cell.date.strftime('%B %d, %Y') }}{% if cell.is_approved %}, approved full school day{% else %}, not yet approved{% endif %}"
+                                title="{{ cell.date.strftime('%B %d, %Y') }}">
+                            <span class="school-day-num">{{ cell.day }}</span>
+                            {% if cell.is_approved %}
+                            <span class="school-day-check" aria-hidden="true">✓</span>
+                            {% endif %}
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="school-day-cell out-of-range {% if cell.is_today %}today{% endif %}"
+                          aria-hidden="true">
+                        <span class="school-day-num">{{ cell.day }}</span>
+                    </span>
+                    {% endif %}
+                {% else %}
+                <span class="school-day-cell empty"></span>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="school-day-legend">
+            <span class="legend-item"><span class="legend-swatch in-range"></span> In school year range</span>
+            <span class="legend-item"><span class="legend-swatch approved"></span> Approved full day</span>
+            <span class="legend-item"><span class="legend-swatch out-of-range"></span> Outside range</span>
+        </div>
+        {% endif %}
+    </div>
+</section>

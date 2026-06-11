@@ -17,7 +17,16 @@ from app.auth import (
 from app.backup import export_database, import_database
 from app.calendar_context import build_calendar_context
 from app.database import get_db
-from app.models import Activity, ActivityCompletion, LessonPlan, User, UserRole
+from app.models import (
+    Activity,
+    ActivityCompletion,
+    ApprovedSchoolDay,
+    LessonPlan,
+    SchoolDayYear,
+    User,
+    UserRole,
+)
+from app.school_day_context import build_school_day_context
 from app.pdf_export import build_lesson_plan_pdf, pdf_filename, pdf_response_headers
 
 router = APIRouter()
@@ -242,17 +251,48 @@ def _fetch_teacher_plans(db: Session, teacher_id: int) -> list[LessonPlan]:
     )
 
 
+def _fetch_school_day_year(db: Session, teacher_id: int) -> SchoolDayYear | None:
+    return (
+        db.query(SchoolDayYear)
+        .options(joinedload(SchoolDayYear.approved_days))
+        .filter(SchoolDayYear.teacher_id == teacher_id)
+        .first()
+    )
+
+
+def _school_days_redirect(
+    cal_month: str | None = None,
+    success: str | None = None,
+    error: str | None = None,
+) -> RedirectResponse:
+    params = ["tab=school-days"]
+    if cal_month:
+        params.append(f"cal_month={cal_month}")
+    if success:
+        params.append(f"success={success}")
+    if error:
+        params.append(f"error={error}")
+    return RedirectResponse(
+        url=f"/teacher?{'&'.join(params)}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
 @router.get("/teacher", response_class=HTMLResponse)
 async def teacher_dashboard(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    tab: str = Query("lessons", pattern="^(lessons|school-days)$"),
     view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
     ref_date: str | None = Query(None),
+    cal_month: str | None = Query(None),
 ):
     students = db.query(User).filter(User.role == UserRole.student, User.is_active == True).all()
     all_plans = _fetch_teacher_plans(db, current_user.id)
     calendar = build_calendar_context(all_plans, view, ref_date)
+    school_year = _fetch_school_day_year(db, current_user.id)
+    school_days = build_school_day_context(school_year, cal_month)
 
     return render(
         request,
@@ -261,11 +301,13 @@ async def teacher_dashboard(
             "user": current_user,
             "students": students,
             "today": date.today().isoformat(),
+            "tab": tab,
             "base_path": "/teacher",
             "pdf_path": "/teacher/lesson-plans.pdf",
             "plan_card_partial": "teacher/partials/plan_card.html",
             "empty_hint": "Create one to get started!",
             **calendar,
+            **school_days,
         },
     )
 
@@ -344,6 +386,86 @@ async def create_lesson_plan(
         url=f"/teacher?success=plan&count={count}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
+
+
+@router.post("/teacher/school-days/config")
+async def save_school_day_config(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    start_date: str = Form(...),
+    end_date: str = Form(...),
+    required_days: int = Form(180),
+    cal_month: str | None = Form(None),
+):
+    try:
+        parsed_start = date.fromisoformat(start_date)
+        parsed_end = date.fromisoformat(end_date)
+    except ValueError:
+        return _school_days_redirect(cal_month=cal_month, error="dates")
+
+    if parsed_start > parsed_end:
+        return _school_days_redirect(cal_month=cal_month, error="range")
+
+    if required_days < 1:
+        return _school_days_redirect(cal_month=cal_month, error="required")
+
+    school_year = _fetch_school_day_year(db, current_user.id)
+    if school_year:
+        school_year.start_date = parsed_start
+        school_year.end_date = parsed_end
+        school_year.required_days = required_days
+        school_year.updated_at = datetime.utcnow()
+    else:
+        school_year = SchoolDayYear(
+            teacher_id=current_user.id,
+            start_date=parsed_start,
+            end_date=parsed_end,
+            required_days=required_days,
+        )
+        db.add(school_year)
+
+    db.commit()
+    return _school_days_redirect(cal_month=cal_month, success="config")
+
+
+@router.post("/teacher/school-days/toggle")
+async def toggle_school_day(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    day_date: str = Form(...),
+    cal_month: str | None = Form(None),
+):
+    school_year = _fetch_school_day_year(db, current_user.id)
+    if not school_year:
+        return _school_days_redirect(cal_month=cal_month, error="config")
+
+    try:
+        parsed_day = date.fromisoformat(day_date)
+    except ValueError:
+        return _school_days_redirect(cal_month=cal_month, error="date")
+
+    if not (school_year.start_date <= parsed_day <= school_year.end_date):
+        return _school_days_redirect(cal_month=cal_month, error="range")
+
+    existing = (
+        db.query(ApprovedSchoolDay)
+        .filter(
+            ApprovedSchoolDay.school_day_year_id == school_year.id,
+            ApprovedSchoolDay.day_date == parsed_day,
+        )
+        .first()
+    )
+    if existing:
+        db.delete(existing)
+    else:
+        db.add(
+            ApprovedSchoolDay(
+                school_day_year_id=school_year.id,
+                day_date=parsed_day,
+            )
+        )
+    db.commit()
+    return _school_days_redirect(cal_month=cal_month)
 
 
 def _fetch_student_plans(db: Session, student_id: int) -> list[LessonPlan]:

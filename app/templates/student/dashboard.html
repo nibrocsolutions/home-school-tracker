@@ -5,16 +5,11 @@
 
 {% block body %}
 {% set home_url = '/student' %}
+{% set page_title = 'My Lesson Plans' %}
+{% set page_subtitle = 'View your plans and track daily activities.' %}
 {% include "partials/nav.html" %}
 
 <main class="main-content">
-    <section class="page-hero student-hero dashboard-hero">
-        <div>
-            <h1>My Lesson Plans</h1>
-            <p>View your plans and track daily activities.</p>
-        </div>
-    </section>
-
     <section class="panel student-calendar-panel">
         {% set calendar_title = "My Plans" %}
         {% include "partials/lesson_calendar.html" %}

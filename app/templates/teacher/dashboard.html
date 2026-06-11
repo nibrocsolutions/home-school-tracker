@@ -18,12 +18,12 @@
 
     <nav class="page-tabs" role="tablist" aria-label="Teacher dashboard sections">
         <a href="/teacher?tab=lessons"
-           class="page-tab {% if tab == 'lessons' %}active{% endif %}"
+           class="page-tab btn-tab {% if tab == 'lessons' %}active{% endif %}"
            role="tab" aria-selected="{{ 'true' if tab == 'lessons' else 'false' }}">
             Lesson Planning
         </a>
         <a href="/teacher?tab=school-days"
-           class="page-tab {% if tab == 'school-days' %}active{% endif %}"
+           class="page-tab btn-tab {% if tab == 'school-days' %}active{% endif %}"
            role="tab" aria-selected="{{ 'true' if tab == 'school-days' else 'false' }}">
             School Day Tracking
         </a>

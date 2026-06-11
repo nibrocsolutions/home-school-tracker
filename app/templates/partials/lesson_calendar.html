@@ -1,3 +1,4 @@
+<div class="lesson-calendar" data-preserve-scroll>
 <div class="calendar-header">
     <h2>{% if calendar_title %}{{ calendar_title }}{% else %}Lesson Plan Calendar{% endif %}</h2>
     <div class="calendar-actions">
@@ -31,7 +32,7 @@
         <strong>{{ period_label }}</strong>
         {% if view == 'daily' %}
         <input type="date" class="cal-date-picker" value="{{ ref_date }}"
-               onchange="window.location.href='{{ base_path }}?view=daily&ref_date=' + this.value">
+               data-nav-url="{{ base_path }}?view=daily&ref_date=">
         {% endif %}
     </div>
     <a href="{{ base_path }}?view={{ view }}&ref_date={{ next_ref }}" class="cal-nav-btn" aria-label="Next period">›</a>
@@ -75,3 +76,4 @@
     {% endfor %}
 </div>
 {% endif %}
+</div>

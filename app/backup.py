@@ -5,7 +5,15 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.models import Activity, ActivityCompletion, LessonPlan, User, UserRole
+from app.models import (
+    Activity,
+    ActivityCompletion,
+    ApprovedSchoolDay,
+    LessonPlan,
+    SchoolDayYear,
+    User,
+    UserRole,
+)
 
 BACKUP_VERSION = 1
 
@@ -71,6 +79,27 @@ def export_database(db: Session) -> bytes:
             }
             for completion in db.query(ActivityCompletion).order_by(ActivityCompletion.id).all()
         ],
+        "school_day_years": [
+            {
+                "id": year.id,
+                "teacher_id": year.teacher_id,
+                "start_date": _serialize_date(year.start_date),
+                "end_date": _serialize_date(year.end_date),
+                "required_days": year.required_days,
+                "created_at": _serialize_datetime(year.created_at),
+                "updated_at": _serialize_datetime(year.updated_at),
+            }
+            for year in db.query(SchoolDayYear).order_by(SchoolDayYear.id).all()
+        ],
+        "approved_school_days": [
+            {
+                "id": day.id,
+                "school_day_year_id": day.school_day_year_id,
+                "day_date": _serialize_date(day.day_date),
+                "approved_at": _serialize_datetime(day.approved_at),
+            }
+            for day in db.query(ApprovedSchoolDay).order_by(ApprovedSchoolDay.id).all()
+        ],
     }
     return json.dumps(payload, indent=2).encode("utf-8")
 
@@ -91,6 +120,9 @@ def _validate_backup(data: dict[str, Any]) -> None:
     for key in ("users", "lesson_plans", "activities", "activity_completions"):
         if key not in data or not isinstance(data[key], list):
             raise ValueError(f"Backup file is missing a valid '{key}' section.")
+    for key in ("school_day_years", "approved_school_days"):
+        if key in data and not isinstance(data[key], list):
+            raise ValueError(f"Backup file is missing a valid '{key}' section.")
 
 
 def import_database(db: Session, raw: bytes) -> None:
@@ -101,6 +133,8 @@ def import_database(db: Session, raw: bytes) -> None:
 
     _validate_backup(data)
 
+    db.query(ApprovedSchoolDay).delete()
+    db.query(SchoolDayYear).delete()
     db.query(ActivityCompletion).delete()
     db.query(Activity).delete()
     db.query(LessonPlan).delete()
@@ -161,6 +195,29 @@ def import_database(db: Session, raw: bytes) -> None:
             )
         )
 
+    for row in data.get("school_day_years", []):
+        db.add(
+            SchoolDayYear(
+                id=row["id"],
+                teacher_id=row["teacher_id"],
+                start_date=_parse_date(row["start_date"]),
+                end_date=_parse_date(row["end_date"]),
+                required_days=row["required_days"],
+                created_at=_parse_datetime(row["created_at"]),
+                updated_at=_parse_datetime(row.get("updated_at")),
+            )
+        )
+
+    for row in data.get("approved_school_days", []):
+        db.add(
+            ApprovedSchoolDay(
+                id=row["id"],
+                school_day_year_id=row["school_day_year_id"],
+                day_date=_parse_date(row["day_date"]),
+                approved_at=_parse_datetime(row.get("approved_at")),
+            )
+        )
+
     db.flush()
     _reset_sequences(db)
     db.commit()
@@ -172,6 +229,8 @@ def _reset_sequences(db: Session) -> None:
         ("lesson_plans", "id"),
         ("activities", "id"),
         ("activity_completions", "id"),
+        ("school_day_years", "id"),
+        ("approved_school_days", "id"),
     ):
         db.execute(
             text(

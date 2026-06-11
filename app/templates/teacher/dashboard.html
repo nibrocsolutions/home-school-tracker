@@ -10,11 +10,24 @@
 <main class="main-content">
     <section class="page-hero teacher-hero">
         <div>
-            <h1>Lesson Planning</h1>
-            <p>Design engaging daily plans and activities for your students.</p>
+            <h1>Teacher Dashboard</h1>
+            <p>Plan lessons and track required school days for your homeschool year.</p>
         </div>
         <div class="hero-emoji" aria-hidden="true">🍎</div>
     </section>
+
+    <nav class="page-tabs" role="tablist" aria-label="Teacher dashboard sections">
+        <a href="/teacher?tab=lessons"
+           class="page-tab {% if tab == 'lessons' %}active{% endif %}"
+           role="tab" aria-selected="{{ 'true' if tab == 'lessons' else 'false' }}">
+            Lesson Planning
+        </a>
+        <a href="/teacher?tab=school-days"
+           class="page-tab {% if tab == 'school-days' %}active{% endif %}"
+           role="tab" aria-selected="{{ 'true' if tab == 'school-days' else 'false' }}">
+            School Day Tracking
+        </a>
+    </nav>
 
     {% if request.query_params.get('success') == 'plan' %}
     <div class="alert alert-success">
@@ -25,7 +38,28 @@
     {% if request.query_params.get('error') == 'students' %}
     <div class="alert alert-error">Please select at least one student.</div>
     {% endif %}
+    {% if request.query_params.get('success') == 'config' %}
+    <div class="alert alert-success">School year settings saved.</div>
+    {% endif %}
+    {% if request.query_params.get('error') == 'dates' %}
+    <div class="alert alert-error">Please enter valid start and end dates.</div>
+    {% endif %}
+    {% if request.query_params.get('error') == 'range' %}
+    <div class="alert alert-error">The start date must be on or before the end date, and days must fall within your school year.</div>
+    {% endif %}
+    {% if request.query_params.get('error') == 'required' %}
+    <div class="alert alert-error">Required full days must be at least 1.</div>
+    {% endif %}
+    {% if request.query_params.get('error') == 'config' %}
+    <div class="alert alert-error">Save your school year settings before approving days.</div>
+    {% endif %}
+    {% if request.query_params.get('error') == 'date' %}
+    <div class="alert alert-error">That date could not be updated. Please try again.</div>
+    {% endif %}
 
+    {% if tab == 'school-days' %}
+        {% include "teacher/partials/school_day_tracking.html" %}
+    {% else %}
     <section class="panel-grid">
         <div class="panel">
             <h2>Create Lesson Plan</h2>
@@ -89,6 +123,7 @@
             {% include "partials/plan_list.html" %}
         </div>
     </section>
+    {% endif %}
 </main>
 {% endblock %}
 

@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.auth import hash_password
@@ -17,10 +18,14 @@ WEEKDAYS = [
 
 DEMO_PROFILES = {
     "admin": ("Robert", "Corbin"),
-    "administrator": ("Joe", "Principal"),
     "teacher": ("Jenny", "Corbin"),
     "student": ("Ella", "Corbin"),
 }
+
+
+def migrate_legacy_roles(db: Session) -> None:
+    db.execute(text("UPDATE users SET role = 'admin' WHERE role::text = 'administrator'"))
+    db.commit()
 
 
 def day_name(plan_date: date) -> str:
@@ -51,6 +56,8 @@ def update_demo_profiles(db: Session) -> None:
 
 
 def seed_database(db: Session) -> None:
+    migrate_legacy_roles(db)
+
     if db.query(User).first():
         update_demo_profiles(db)
         return
@@ -63,14 +70,6 @@ def seed_database(db: Session) -> None:
             role=UserRole.admin,
             first_name="Robert",
             last_name="Corbin",
-        ),
-        User(
-            username="administrator",
-            email="administrator@homeschool.local",
-            password_hash=hash_password("admin123"),
-            role=UserRole.administrator,
-            first_name="Joe",
-            last_name="Principal",
         ),
         User(
             username="teacher",

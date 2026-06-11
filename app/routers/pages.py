@@ -1,7 +1,7 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response as RawResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
@@ -14,6 +14,7 @@ from app.auth import (
     hash_password,
     require_roles,
 )
+from app.backup import export_database, import_database
 from app.calendar_context import build_calendar_context
 from app.database import get_db
 from app.models import Activity, ActivityCompletion, LessonPlan, User, UserRole
@@ -107,33 +108,31 @@ async def admin_dashboard(
     )
 
 
-@router.get("/administrator", response_class=HTMLResponse)
-async def administrator_dashboard(
+@router.get("/admin/users", response_class=HTMLResponse)
+async def admin_users(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_roles(UserRole.administrator, UserRole.admin))],
+    current_user: Annotated[User, Depends(require_roles(UserRole.admin))],
 ):
     admins = db.query(User).filter(User.role == UserRole.admin).all()
-    administrators = db.query(User).filter(User.role == UserRole.administrator).all()
     teachers = db.query(User).filter(User.role == UserRole.teacher).all()
     students = db.query(User).filter(User.role == UserRole.student).all()
     return render(
         request,
-        "administrator/dashboard.html",
+        "admin/users.html",
         {
             "user": current_user,
             "admins": admins,
-            "administrators": administrators,
             "teachers": teachers,
             "students": students,
         },
     )
 
 
-@router.post("/administrator/users")
+@router.post("/admin/users")
 async def create_user(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_roles(UserRole.administrator, UserRole.admin))],
+    current_user: Annotated[User, Depends(require_roles(UserRole.admin))],
     username: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
@@ -143,14 +142,14 @@ async def create_user(
 ):
     if db.query(User).filter((User.username == username) | (User.email == email)).first():
         return RedirectResponse(
-            url="/administrator?error=exists",
+            url="/admin/users?error=exists",
             status_code=status.HTTP_303_SEE_OTHER,
         )
     try:
         user_role = UserRole(role)
     except ValueError:
         return RedirectResponse(
-            url="/administrator?error=role",
+            url="/admin/users?error=role",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -164,26 +163,73 @@ async def create_user(
     )
     db.add(new_user)
     db.commit()
-    return RedirectResponse(url="/administrator?success=created", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/admin/users?success=created", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.post("/administrator/users/{user_id}/toggle")
+@router.post("/admin/users/{user_id}/toggle")
 async def toggle_user(
     user_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_roles(UserRole.administrator, UserRole.admin))],
+    current_user: Annotated[User, Depends(require_roles(UserRole.admin))],
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if user.id == current_user.id:
         return RedirectResponse(
-            url="/administrator?error=self",
+            url="/admin/users?error=self",
             status_code=status.HTTP_303_SEE_OTHER,
         )
     user.is_active = not user.is_active
     db.commit()
-    return RedirectResponse(url="/administrator", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/admin/users", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/admin/backup", response_class=HTMLResponse)
+async def admin_backup_page(
+    request: Request,
+    current_user: Annotated[User, Depends(require_roles(UserRole.admin))],
+):
+    return render(request, "admin/backup.html", {"user": current_user})
+
+
+@router.get("/admin/backup/export")
+async def admin_backup_export(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.admin))],
+):
+    backup_bytes = export_database(db)
+    filename = f"hst-backup-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.json"
+    return RawResponse(
+        content=backup_bytes,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/admin/backup/import")
+async def admin_backup_import(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.admin))],
+    backup_file: UploadFile = File(...),
+):
+    raw = await backup_file.read()
+    try:
+        import_database(db, raw)
+    except ValueError:
+        return RedirectResponse(
+            url="/admin/backup?error=invalid",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    return RedirectResponse(
+        url="/admin/backup?success=imported",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.get("/administrator")
+async def administrator_redirect():
+    return RedirectResponse(url="/admin/users", status_code=status.HTTP_301_MOVED_PERMANENTLY)
 
 
 def _fetch_teacher_plans(db: Session, teacher_id: int) -> list[LessonPlan]:

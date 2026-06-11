@@ -296,6 +296,44 @@ body {
 .teacher-hero { border-left: 5px solid #22c55e; }
 .student-hero { border-left: 5px solid var(--accent); background: linear-gradient(135deg, #fff 0%, #fff8f0 100%); }
 
+.dashboard-hero {
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 0.85rem;
+}
+
+.dashboard-hero h1 {
+    font-size: 1.2rem;
+    margin-bottom: 0.1rem;
+}
+
+.dashboard-hero p {
+    font-size: 0.82rem;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.dashboard-page .main-content {
+    padding-top: 1rem;
+}
+
+.dashboard-page .student-calendar-panel {
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.dashboard-page .calendar-header {
+    margin-bottom: 0.75rem;
+}
+
+.dashboard-page .calendar-header h2 {
+    font-size: 1.1rem;
+}
+
+.dashboard-page .calendar-nav {
+    margin-bottom: 0.85rem;
+    padding: 0.5rem 0.75rem;
+}
+
 /* Stats */
 .stats-grid {
     display: grid;
@@ -1224,45 +1262,38 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
-.page-tab {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 180px;
-    padding: 0.8rem 1.5rem;
-    border-radius: var(--radius-sm);
-    font-weight: 700;
+.page-tabs .page-tab-btn {
+    min-width: 210px;
+    padding: 0.8rem 1.75rem;
     font-size: 0.95rem;
     text-decoration: none;
-    color: var(--text);
-    background: var(--surface);
-    border: 2px solid var(--border);
-    box-shadow: 0 2px 8px rgba(45, 49, 66, 0.06);
-    transition: transform 0.15s, box-shadow 0.15s, border-color 0.2s, background 0.2s, color 0.2s;
+    border-radius: var(--radius-sm);
 }
 
-.page-tab:hover {
+.page-tabs .btn-tab-inactive {
+    background: var(--surface);
+    color: var(--text);
+    border: 2px solid var(--border);
+    box-shadow: 0 2px 8px rgba(45, 49, 66, 0.08);
+}
+
+.page-tabs .btn-tab-inactive:hover {
     color: var(--primary);
     border-color: var(--primary);
     background: #f5f7ff;
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(79, 110, 247, 0.15);
+    box-shadow: 0 4px 14px rgba(79, 110, 247, 0.18);
 }
 
-.page-tab.active {
-    color: white;
-    border-color: transparent;
-    background: linear-gradient(135deg, var(--primary), #6c5ce7);
+.page-tabs .btn-primary.page-tab-btn {
     box-shadow: 0 4px 14px rgba(79, 110, 247, 0.35);
 }
 
-.page-tab.active:hover {
+.page-tabs .btn-primary.page-tab-btn:hover {
     color: white;
-    background: linear-gradient(135deg, var(--primary-dark), #5b4cdb);
-    transform: translateY(-1px);
 }
 
 .section-hint {

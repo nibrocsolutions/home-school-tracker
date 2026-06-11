@@ -9,9 +9,8 @@ A self-hosted web application for managing homeschool lesson plans, daily activi
 
 ## Features
 
-- **Four user roles**, each with a dedicated home page:
-  - **Admin** — system overview, metrics, and quick actions
-  - **Administrator** — create users, manage access, view all staff and students
+- **Three user roles**, each with a dedicated home page:
+  - **Admin** — system overview, metrics, user management, and database backup/restore
   - **Teacher** — build daily lesson plans with activities for each student
   - **Student** — interactive checklist for today's assigned tasks
 - **PostgreSQL database** in a separate container with persistent storage
@@ -63,7 +62,6 @@ docker compose down -v
 | Role           | Username        | Password    |
 |----------------|-----------------|-------------|
 | Admin          | `admin`         | `admin123`  |
-| Administrator  | `administrator` | `admin123`  |
 | Teacher        | `teacher`       | `teacher123`|
 | Student        | `student`       | `student123`|
 
@@ -87,6 +85,15 @@ docker compose down -v
 - **DB container** (`hst-db`): PostgreSQL with a named volume (`postgres_data`) for persistence
 
 Both containers restart automatically (`unless-stopped`) — ideal for a always-on Raspberry Pi.
+
+## Database Backup & Restore
+
+Admins can export and import a full JSON backup of all application data from the admin dashboard:
+
+- **Export Backup** — downloads users, lesson plans, activities, and completion records
+- **Import Backup** — restores data from a previously exported file (replaces all current data)
+
+Use daily exports as a safety net when rebuilding the application after a failure.
 
 ## Configuration
 
@@ -130,6 +137,7 @@ home-school-tracker/
 │   ├── models.py         # Database models
 │   ├── auth.py           # Authentication & authorization
 │   ├── seed.py           # Demo data seeder
+│   ├── backup.py         # Database export/import
 │   ├── routers/          # Route handlers
 │   ├── templates/        # HTML templates (Jinja2)
 │   └── static/           # CSS & JavaScript

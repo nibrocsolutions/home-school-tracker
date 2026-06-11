@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Database Backup — {{ app_name }}{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block body %}
+{% set home_url = '/admin' %}
+{% include "partials/nav.html" %}
+
+<main class="main-content">
+    <section class="page-hero admin-hero">
+        <div>
+            <h1>Database Backup</h1>
+            <p>Import a daily backup file to restore users, lesson plans, and activity data.</p>
+        </div>
+        <div class="hero-emoji" aria-hidden="true">💾</div>
+    </section>
+
+    {% if request.query_params.get('success') == 'imported' %}
+    <div class="alert alert-success">Backup imported successfully. All data has been restored.</div>
+    {% endif %}
+    {% if request.query_params.get('error') == 'invalid' %}
+    <div class="alert alert-error">The uploaded file is not a valid backup. Please check the file and try again.</div>
+    {% endif %}
+
+    <section class="panel-grid">
+        <div class="panel">
+            <h2>Import Backup</h2>
+            <p class="panel-description">
+                Upload a <code>.json</code> backup file that was previously exported from this application.
+                Importing will replace all current data with the contents of the backup file.
+            </p>
+            <form method="post" action="/admin/backup/import" enctype="multipart/form-data" class="form-grid form-grid-single">
+                <div class="form-row full-width">
+                    <label for="backup_file">Backup File</label>
+                    <input type="file" id="backup_file" name="backup_file" accept=".json,application/json" required>
+                </div>
+                <div class="form-row full-width">
+                    <button type="submit" class="btn btn-primary" onclick="return confirm('This will replace all current data with the backup. Continue?');">
+                        Import Backup
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>Export Backup</h2>
+            <p class="panel-description">
+                Download a snapshot of all users, lesson plans, activities, and completion records.
+                Store this file safely — it can be used to rebuild the application after a failure.
+            </p>
+            <a href="/admin/backup/export" class="btn btn-primary">Download Backup File</a>
+            <p style="margin-top: 1rem;">
+                <a href="/admin" class="btn btn-ghost btn-sm">← Back to Admin Dashboard</a>
+            </p>
+        </div>
+    </section>
+</main>
+{% endblock %}

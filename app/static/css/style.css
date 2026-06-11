@@ -1222,35 +1222,47 @@ body {
 /* Teacher page tabs */
 .page-tabs {
     display: flex;
-    gap: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
     margin-bottom: 1.5rem;
-    background: var(--surface);
-    border-radius: var(--radius);
-    padding: 0.35rem;
-    box-shadow: var(--shadow);
 }
 
 .page-tab {
-    flex: 1;
-    text-align: center;
-    padding: 0.75rem 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 180px;
+    padding: 0.8rem 1.5rem;
     border-radius: var(--radius-sm);
     font-weight: 700;
     font-size: 0.95rem;
     text-decoration: none;
-    color: var(--text-muted);
-    transition: background 0.2s, color 0.2s;
+    color: var(--text);
+    background: var(--surface);
+    border: 2px solid var(--border);
+    box-shadow: 0 2px 8px rgba(45, 49, 66, 0.06);
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.2s, background 0.2s, color 0.2s;
 }
 
 .page-tab:hover {
-    color: var(--text);
-    background: var(--bg);
+    color: var(--primary);
+    border-color: var(--primary);
+    background: #f5f7ff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(79, 110, 247, 0.15);
 }
 
 .page-tab.active {
-    background: linear-gradient(135deg, var(--primary), #6c5ce7);
     color: white;
-    box-shadow: 0 4px 14px rgba(79, 110, 247, 0.25);
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--primary), #6c5ce7);
+    box-shadow: 0 4px 14px rgba(79, 110, 247, 0.35);
+}
+
+.page-tab.active:hover {
+    color: white;
+    background: linear-gradient(135deg, var(--primary-dark), #5b4cdb);
+    transform: translateY(-1px);
 }
 
 .section-hint {
@@ -1260,22 +1272,19 @@ body {
 }
 
 /* School day tracking */
-.school-day-tracking {
-    display: grid;
+.school-day-tracking.panel-grid {
+    grid-template-columns: minmax(280px, 360px) 1fr;
+    align-items: start;
+}
+
+.school-day-sidebar {
+    display: flex;
+    flex-direction: column;
     gap: 1.5rem;
 }
 
-.school-year-form .form-row-inline {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1rem;
+.school-year-form .form-row {
     margin-bottom: 1rem;
-}
-
-.school-year-form .form-row-inline > div {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
 }
 
 .school-year-form label {
@@ -1451,8 +1460,8 @@ button.school-day-cell:hover {
     border-color: #d1d5db;
 }
 
-@media (max-width: 768px) {
-    .school-year-form .form-row-inline {
+@media (max-width: 960px) {
+    .school-day-tracking.panel-grid {
         grid-template-columns: 1fr;
     }
 }

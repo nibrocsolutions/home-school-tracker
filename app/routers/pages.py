@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
-from fastapi.responses import HTMLResponse, RedirectResponse, Response as RawResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response as RawResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
@@ -26,7 +26,7 @@ from app.models import (
     User,
     UserRole,
 )
-from app.school_day_context import build_school_day_context
+from app.school_day_context import approved_dates_in_range, build_school_day_context
 from app.pdf_export import build_lesson_plan_pdf, pdf_filename, pdf_response_headers
 
 router = APIRouter()
@@ -430,21 +430,29 @@ async def save_school_day_config(
 
 @router.post("/teacher/school-days/toggle")
 async def toggle_school_day(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
     day_date: str = Form(...),
     cal_month: str | None = Form(None),
 ):
+    ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
     school_year = _fetch_school_day_year(db, current_user.id)
     if not school_year:
+        if ajax:
+            return JSONResponse({"error": "config"}, status_code=400)
         return _school_days_redirect(cal_month=cal_month, error="config")
 
     try:
         parsed_day = date.fromisoformat(day_date)
     except ValueError:
+        if ajax:
+            return JSONResponse({"error": "date"}, status_code=400)
         return _school_days_redirect(cal_month=cal_month, error="date")
 
     if not (school_year.start_date <= parsed_day <= school_year.end_date):
+        if ajax:
+            return JSONResponse({"error": "range"}, status_code=400)
         return _school_days_redirect(cal_month=cal_month, error="range")
 
     existing = (
@@ -457,6 +465,7 @@ async def toggle_school_day(
     )
     if existing:
         db.delete(existing)
+        is_approved = False
     else:
         db.add(
             ApprovedSchoolDay(
@@ -464,7 +473,23 @@ async def toggle_school_day(
                 day_date=parsed_day,
             )
         )
+        is_approved = True
     db.commit()
+
+    if ajax:
+        school_year = _fetch_school_day_year(db, current_user.id)
+        approved_count = len(approved_dates_in_range(school_year))
+        required_days = school_year.required_days
+        return JSONResponse(
+            {
+                "approved": is_approved,
+                "approved_count": approved_count,
+                "required_days": required_days,
+                "remaining_days": max(required_days - approved_count, 0),
+                "complete": approved_count >= required_days,
+            }
+        )
+
     return _school_days_redirect(cal_month=cal_month)
 
 

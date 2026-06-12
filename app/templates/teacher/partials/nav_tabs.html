@@ -1,32 +1,32 @@
-<nav class="browser-tabs" role="tablist" aria-label="Teacher sections">
+<nav class="chrome-tabstrip" role="tablist" aria-label="Teacher sections">
     <a href="/teacher"
-       class="browser-tab {% if active_page == 'overview' %}active{% endif %}"
+       class="chrome-tab {% if active_page == 'overview' %}active{% endif %}"
        role="tab" aria-selected="{{ 'true' if active_page == 'overview' else 'false' }}">
-        Overview
+        <span class="chrome-tab-label">Overview</span>
     </a>
     <a href="/teacher/lesson-plans"
-       class="browser-tab {% if active_page == 'lesson-plans' %}active{% endif %}"
+       class="chrome-tab {% if active_page == 'lesson-plans' %}active{% endif %}"
        role="tab" aria-selected="{{ 'true' if active_page == 'lesson-plans' else 'false' }}">
-        Lesson Plans
+        <span class="chrome-tab-label">Lesson Plans</span>
     </a>
     <a href="/teacher/lesson-plans/new"
-       class="browser-tab {% if active_page == 'create-plan' %}active{% endif %}"
+       class="chrome-tab {% if active_page == 'create-plan' %}active{% endif %}"
        role="tab" aria-selected="{{ 'true' if active_page == 'create-plan' else 'false' }}">
-        Create Plan
+        <span class="chrome-tab-label">Create Plan</span>
     </a>
     <a href="/teacher/weekly-schedule"
-       class="browser-tab {% if active_page == 'weekly-schedule' %}active{% endif %}"
+       class="chrome-tab {% if active_page == 'weekly-schedule' %}active{% endif %}"
        role="tab" aria-selected="{{ 'true' if active_page == 'weekly-schedule' else 'false' }}">
-        Weekly Schedule
+        <span class="chrome-tab-label">Weekly Schedule</span>
     </a>
     <a href="/teacher/student-responses"
-       class="browser-tab {% if active_page == 'student-responses' %}active{% endif %}"
+       class="chrome-tab {% if active_page == 'student-responses' %}active{% endif %}"
        role="tab" aria-selected="{{ 'true' if active_page == 'student-responses' else 'false' }}">
-        Student Responses
+        <span class="chrome-tab-label">Student Responses</span>
     </a>
     <a href="/teacher/school-days"
-       class="browser-tab {% if active_page == 'school-days' %}active{% endif %}"
+       class="chrome-tab {% if active_page == 'school-days' %}active{% endif %}"
        role="tab" aria-selected="{{ 'true' if active_page == 'school-days' else 'false' }}">
-        School Days
+        <span class="chrome-tab-label">School Days</span>
     </a>
 </nav>

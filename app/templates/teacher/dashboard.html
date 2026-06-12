@@ -1,105 +1,99 @@
-{% extends "base.html" %}
+{% extends "teacher/base.html" %}
 
 {% block title %}Teacher Dashboard — {{ app_name }}{% endblock %}
-{% block body_class %}dashboard-page{% endblock %}
+{% block body_class %}dashboard-page teacher-page{% endblock %}
 
-{% block body %}
-{% set home_url = '/teacher' %}
 {% set page_title = 'Teacher Overview' %}
 {% set page_subtitle = 'Jump into lesson planning, schedules, and school day tracking.' %}
-{% include "partials/nav.html" %}
 
-<main class="main-content">
-    {% include "teacher/partials/nav_tabs.html" %}
+{% block teacher_content %}
+<section class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-icon">📋</span>
+        <div>
+            <div class="stat-value">{{ stats.total_plans }}</div>
+            <div class="stat-label">Lesson Plans</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <span class="stat-icon">📅</span>
+        <div>
+            <div class="stat-value">{{ stats.plans_today }}</div>
+            <div class="stat-label">Plans Today</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <span class="stat-icon">🗓️</span>
+        <div>
+            <div class="stat-value">{{ stats.schedule_items }}</div>
+            <div class="stat-label">Schedule Items</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <span class="stat-icon">💬</span>
+        <div>
+            <div class="stat-value">{{ stats.response_count }}</div>
+            <div class="stat-label">Student Responses</div>
+        </div>
+    </div>
+</section>
 
-    <section class="stats-grid">
-        <div class="stat-card">
-            <span class="stat-icon">📋</span>
-            <div>
-                <div class="stat-value">{{ stats.total_plans }}</div>
-                <div class="stat-label">Lesson Plans</div>
-            </div>
+<section class="panel-grid">
+    <div class="panel">
+        <h2>Quick Actions</h2>
+        <div class="action-list">
+            <a href="/teacher/lesson-plans" class="action-item">
+                <span>📅</span>
+                <div>
+                    <strong>Browse Lesson Plans</strong>
+                    <p>View your calendar and existing lesson plans</p>
+                </div>
+            </a>
+            <a href="/teacher/lesson-plans/new" class="action-item">
+                <span>➕</span>
+                <div>
+                    <strong>Create Lesson Plan</strong>
+                    <p>Build a new plan with activities for your students</p>
+                </div>
+            </a>
+            <a href="/teacher/weekly-schedule" class="action-item">
+                <span>🗓️</span>
+                <div>
+                    <strong>Weekly Schedule</strong>
+                    <p>Set recurring subjects and special activities by day</p>
+                </div>
+            </a>
+            <a href="/teacher/student-responses" class="action-item">
+                <span>💬</span>
+                <div>
+                    <strong>Student Responses</strong>
+                    <p>Read messages and reflections from students</p>
+                </div>
+            </a>
+            <a href="/teacher/school-days" class="action-item">
+                <span>✅</span>
+                <div>
+                    <strong>School Day Tracking</strong>
+                    <p>Configure your school year and approve full days</p>
+                </div>
+            </a>
         </div>
-        <div class="stat-card">
-            <span class="stat-icon">📅</span>
-            <div>
-                <div class="stat-value">{{ stats.plans_today }}</div>
-                <div class="stat-label">Plans Today</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <span class="stat-icon">🗓️</span>
-            <div>
-                <div class="stat-value">{{ stats.schedule_items }}</div>
-                <div class="stat-label">Schedule Items</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <span class="stat-icon">💬</span>
-            <div>
-                <div class="stat-value">{{ stats.response_count }}</div>
-                <div class="stat-label">Student Responses</div>
-            </div>
-        </div>
-    </section>
+    </div>
 
-    <section class="panel-grid">
-        <div class="panel">
-            <h2>Quick Actions</h2>
-            <div class="action-list">
-                <a href="/teacher/lesson-plans" class="action-item">
-                    <span>📅</span>
-                    <div>
-                        <strong>Browse Lesson Plans</strong>
-                        <p>View your calendar and existing lesson plans</p>
-                    </div>
-                </a>
-                <a href="/teacher/lesson-plans/new" class="action-item">
-                    <span>➕</span>
-                    <div>
-                        <strong>Create Lesson Plan</strong>
-                        <p>Build a new plan with activities for your students</p>
-                    </div>
-                </a>
-                <a href="/teacher/weekly-schedule" class="action-item">
-                    <span>🗓️</span>
-                    <div>
-                        <strong>Weekly Schedule</strong>
-                        <p>Set recurring subjects and special activities by day</p>
-                    </div>
-                </a>
-                <a href="/teacher/student-responses" class="action-item">
-                    <span>💬</span>
-                    <div>
-                        <strong>Student Responses</strong>
-                        <p>Read messages and reflections from students</p>
-                    </div>
-                </a>
-                <a href="/teacher/school-days" class="action-item">
-                    <span>✅</span>
-                    <div>
-                        <strong>School Day Tracking</strong>
-                        <p>Configure your school year and approve full days</p>
-                    </div>
-                </a>
-            </div>
+    <div class="panel">
+        <h2>Today's Plans</h2>
+        {% if today_plans %}
+        <div class="plan-cards">
+            {% for plan in today_plans %}
+            {% include "teacher/partials/plan_card.html" %}
+            {% endfor %}
         </div>
-
-        <div class="panel">
-            <h2>Today's Plans</h2>
-            {% if today_plans %}
-            <div class="plan-cards">
-                {% for plan in today_plans %}
-                {% include "teacher/partials/plan_card.html" %}
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="empty-state">No lesson plans scheduled for today.</p>
-            <p style="margin-top: 0.75rem;">
-                <a href="/teacher/lesson-plans/new" class="btn btn-primary btn-sm">Create a Plan</a>
-            </p>
-            {% endif %}
-        </div>
-    </section>
-</main>
+        {% else %}
+        <p class="empty-state">No lesson plans scheduled for today.</p>
+        <p style="margin-top: 0.75rem;">
+            <a href="/teacher/lesson-plans/new" class="btn btn-primary btn-sm">Create a Plan</a>
+        </p>
+        {% endif %}
+    </div>
+</section>
 {% endblock %}

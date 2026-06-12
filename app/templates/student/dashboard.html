@@ -14,7 +14,7 @@
     <div class="alert alert-success">Your message was sent to your teacher!</div>
     {% endif %}
     {% if request.query_params.get('error') == 'message' %}
-    <div class="alert alert-error">Please write a message about what you learned.</div>
+    <div class="alert alert-error">Please enter a message before sending.</div>
     {% endif %}
 
     <section class="panel student-calendar-panel">
@@ -78,18 +78,18 @@
                     </div>
                 </form>
 
-                {% if act.activity_type.value == 'history' %}
-                <div class="history-response-form">
+                <div class="activity-message-form">
                     {% if act_data.get('student_message') %}
                     <p class="sent-message"><strong>Your message:</strong> {{ act_data.get('student_message') }}</p>
                     {% endif %}
                     <form method="post" action="/student/activities/{{ act.id }}/message" class="message-form">
-                        <label for="message-{{ act.id }}">Tell your teacher what you learned:</label>
-                        <textarea id="message-{{ act.id }}" name="student_message" rows="3" required placeholder="I learned about...">{{ act_data.get('student_message') or '' }}</textarea>
+                        <label for="message-{{ act.id }}">
+                            Message your teacher <span class="message-optional">(optional)</span>
+                        </label>
+                        <textarea id="message-{{ act.id }}" name="student_message" rows="2" placeholder="Share a note, question, or what you learned...">{{ act_data.get('student_message') or '' }}</textarea>
                         <button type="submit" class="btn btn-primary btn-sm">Send to Teacher</button>
                     </form>
                 </div>
-                {% endif %}
             </div>
             {% endfor %}
         </div>

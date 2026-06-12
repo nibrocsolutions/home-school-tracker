@@ -37,7 +37,7 @@ from app.school_day_context import build_school_day_context
 from app.school_year_utils import (
     count_possible_school_days,
     ensure_planned_days,
-    next_day_type_after_click,
+    planned_day_counts,
 )
 from app.pdf_export import build_lesson_plan_pdf, pdf_filename, pdf_response_headers
 from app.weekly_schedule import (
@@ -949,6 +949,8 @@ async def update_school_day(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
     day_date: str = Form(...),
+    day_type: str = Form(...),
+    is_completed: str = Form("false"),
     cal_month: str | None = Form(None),
 ):
     ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
@@ -970,6 +972,17 @@ async def update_school_day(
             return JSONResponse({"error": "range"}, status_code=400)
         return _school_days_redirect(cal_month=cal_month, error="range")
 
+    try:
+        parsed_type = SchoolDayType(day_type)
+    except ValueError:
+        if ajax:
+            return JSONResponse({"error": "type"}, status_code=400)
+        return _school_days_redirect(cal_month=cal_month, error="date")
+
+    completed = is_completed.lower() in ("true", "1", "on")
+    if parsed_type != SchoolDayType.actual_school:
+        completed = False
+
     planned = (
         db.query(PlannedSchoolDay)
         .filter(
@@ -990,33 +1003,22 @@ async def update_school_day(
             .first()
         )
 
-    next_type, is_completed = next_day_type_after_click(
-        planned.day_type, planned.is_completed
-    )
-    planned.day_type = next_type
-    planned.is_completed = is_completed
+    planned.day_type = parsed_type
+    planned.is_completed = completed
     planned.updated_at = datetime.utcnow()
     db.commit()
 
     if ajax:
         school_year = _fetch_school_day_year(db, current_user.id)
-        planned_map = {
-            day.day_date: day
-            for day in school_year.planned_days
-            if school_year.start_date <= day.day_date <= school_year.end_date
-        }
-        actual_school = [
-            day
-            for day in planned_map.values()
-            if day.day_type == SchoolDayType.actual_school
-        ]
-        completed_count = sum(1 for day in actual_school if day.is_completed)
+        counts = planned_day_counts(school_year)
         required_days = school_year.required_days
+        completed_count = counts["completed_count"]
         return JSONResponse(
             {
-                "day_type": next_type.value,
-                "is_completed": is_completed,
-                "planned_actual_count": len(actual_school),
+                "day_type": parsed_type.value,
+                "is_completed": completed,
+                "planned_actual_count": counts["planned_actual_count"],
+                "planned_school_off_count": counts["planned_school_off_count"],
                 "completed_count": completed_count,
                 "required_days": required_days,
                 "remaining_days": max(required_days - completed_count, 0),

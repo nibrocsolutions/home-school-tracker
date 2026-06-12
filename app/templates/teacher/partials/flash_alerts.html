@@ -23,7 +23,7 @@
 <div class="alert alert-error">Required full days must be at least 1.</div>
 {% endif %}
 {% if request.query_params.get('error') == 'config' %}
-<div class="alert alert-error">Save your school year settings before approving days.</div>
+<div class="alert alert-error">Save your school year settings before updating days.</div>
 {% endif %}
 {% if request.query_params.get('error') == 'date' %}
 <div class="alert alert-error">That date could not be updated. Please try again.</div>

@@ -10,8 +10,9 @@ from app.models import (
     ActivityCompletion,
     ActivityType,
     AppSetting,
-    ApprovedSchoolDay,
     LessonPlan,
+    PlannedSchoolDay,
+    SchoolDayType,
     SchoolDayYear,
     User,
     UserRole,
@@ -125,14 +126,16 @@ def export_database(db: Session) -> bytes:
             }
             for year in db.query(SchoolDayYear).order_by(SchoolDayYear.id).all()
         ],
-        "approved_school_days": [
+        "planned_school_days": [
             {
                 "id": day.id,
                 "school_day_year_id": day.school_day_year_id,
                 "day_date": _serialize_date(day.day_date),
-                "approved_at": _serialize_datetime(day.approved_at),
+                "day_type": day.day_type.value,
+                "is_completed": day.is_completed,
+                "updated_at": _serialize_datetime(day.updated_at),
             }
-            for day in db.query(ApprovedSchoolDay).order_by(ApprovedSchoolDay.id).all()
+            for day in db.query(PlannedSchoolDay).order_by(PlannedSchoolDay.id).all()
         ],
     }
     return json.dumps(payload, indent=2).encode("utf-8")
@@ -154,7 +157,7 @@ def _validate_backup(data: dict[str, Any]) -> None:
     for key in ("users", "lesson_plans", "activities", "activity_completions"):
         if key not in data or not isinstance(data[key], list):
             raise ValueError(f"Backup file is missing a valid '{key}' section.")
-    for key in ("school_day_years", "approved_school_days", "app_settings", "weekly_schedule_items"):
+    for key in ("school_day_years", "planned_school_days", "approved_school_days", "app_settings", "weekly_schedule_items"):
         if key in data and not isinstance(data[key], list):
             raise ValueError(f"Backup file is missing a valid '{key}' section.")
 
@@ -167,7 +170,7 @@ def import_database(db: Session, raw: bytes) -> None:
 
     _validate_backup(data)
 
-    db.query(ApprovedSchoolDay).delete()
+    db.query(PlannedSchoolDay).delete()
     db.query(WeeklyScheduleItem).delete()
     db.query(SchoolDayYear).delete()
     db.query(AppSetting).delete()
@@ -280,13 +283,26 @@ def import_database(db: Session, raw: bytes) -> None:
             )
         )
 
-    for row in data.get("approved_school_days", []):
+    planned_rows = data.get("planned_school_days")
+    if planned_rows is None:
+        planned_rows = data.get("approved_school_days", [])
+
+    for row in planned_rows:
+        day_type_raw = row.get("day_type", "actual_school")
+        try:
+            day_type = SchoolDayType(day_type_raw)
+        except ValueError:
+            day_type = SchoolDayType.actual_school
+        is_completed = row.get("is_completed", "approved_at" in row)
+        updated_at = row.get("updated_at") or row.get("approved_at")
         db.add(
-            ApprovedSchoolDay(
+            PlannedSchoolDay(
                 id=row["id"],
                 school_day_year_id=row["school_day_year_id"],
                 day_date=_parse_date(row["day_date"]),
-                approved_at=_parse_datetime(row.get("approved_at")),
+                day_type=day_type,
+                is_completed=is_completed,
+                updated_at=_parse_datetime(updated_at),
             )
         )
 
@@ -302,7 +318,7 @@ def _reset_sequences(db: Session) -> None:
         ("activities", "id"),
         ("activity_completions", "id"),
         ("school_day_years", "id"),
-        ("approved_school_days", "id"),
+        ("planned_school_days", "id"),
         ("app_settings", "id"),
         ("weekly_schedule_items", "id"),
     ):

@@ -26,7 +26,7 @@
 
         <div class="panel">
             <h2>Progress</h2>
-            <table class="counter-table" aria-label="School day progress">
+            <table class="counter-table" aria-label="School year progress">
                 <thead>
                     <tr>
                         <th>Metric</th>
@@ -34,9 +34,21 @@
                     </tr>
                 </thead>
                 <tbody>
+                    <tr class="counter-possible-row" {% if not school_year %}hidden{% endif %}>
+                        <td>Possible School Days</td>
+                        <td><strong class="counter-possible">{{ possible_days }}</strong></td>
+                    </tr>
+                    <tr class="counter-possible-preview-row" hidden>
+                        <td>Possible School Days</td>
+                        <td><strong class="counter-possible-preview">—</strong></td>
+                    </tr>
                     <tr>
-                        <td>Full Days Approved</td>
-                        <td><strong class="counter-approved">{{ approved_count }}</strong></td>
+                        <td>Planned Actual School Days</td>
+                        <td><strong class="counter-planned-actual">{{ planned_actual_count }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Completed Actual School Days</td>
+                        <td><strong class="counter-completed">{{ completed_count }}</strong></td>
                     </tr>
                     <tr>
                         <td>Required Full Days</td>
@@ -48,22 +60,25 @@
                     </tr>
                 </tbody>
             </table>
+            <p class="section-hint possible-days-hint" {% if school_year %}hidden{% endif %}>
+                Select first and last day of school to see possible school days (Monday–Friday, excluding holidays).
+            </p>
             <div id="school-day-complete-banner"
                  class="alert alert-success school-day-complete"
-                 {% if not (school_year and approved_count >= required_days) %}hidden{% endif %}>
-                All required school days have been approved for this school year!
+                 {% if not (school_year and completed_count >= required_days) %}hidden{% endif %}>
+                All required school days have been completed for this school year!
             </div>
         </div>
     </div>
 
     <div class="panel school-day-calendar-panel" data-preserve-scroll>
         <div class="calendar-header">
-            <h2>Approve Full School Days</h2>
-            <p class="section-hint">Click a day within your school year range to mark it as a full school day.</p>
+            <h2>Approved Full School Days</h2>
+            <p class="section-hint">Click a day to change its type. Click a green day to mark it completed with a check mark.</p>
         </div>
 
         {% if not school_year %}
-        <p class="empty-state">Save your school year dates to start tracking full school days.</p>
+        <p class="empty-state">Save your school year dates to start planning full school days.</p>
         {% else %}
         <div class="calendar-nav">
             <a href="/teacher/school-days?cal_month={{ prev_cal_month }}"
@@ -88,15 +103,15 @@
                 {% for cell in week %}
                 {% if cell.day %}
                     {% if cell.in_range %}
-                    <form method="post" action="/teacher/school-days/toggle" class="school-day-cell-form school-day-toggle-form">
+                    <form method="post" action="/teacher/school-days/update-day" class="school-day-cell-form school-day-update-form">
                         <input type="hidden" name="day_date" value="{{ cell.date.isoformat() }}">
                         <input type="hidden" name="cal_month" value="{{ cal_month_param }}">
                         <button type="submit"
-                                class="school-day-cell {% if cell.is_approved %}approved{% endif %} {% if cell.is_today %}today{% endif %}"
-                                aria-label="{{ cell.date.strftime('%B %d, %Y') }}{% if cell.is_approved %}, approved full school day{% else %}, not yet approved{% endif %}"
+                                class="school-day-cell day-type-{{ cell.day_type.value }}{% if cell.is_completed %} completed{% endif %}{% if cell.is_today %} today{% endif %}"
+                                aria-label="{{ cell.date.strftime('%B %d, %Y') }}, {{ cell.day_type.value | replace('_', ' ') }}{% if cell.is_completed %}, completed{% endif %}"
                                 title="{{ cell.date.strftime('%B %d, %Y') }}">
                             <span class="school-day-num">{{ cell.day }}</span>
-                            {% if cell.is_approved %}
+                            {% if cell.day_type.value == 'actual_school' and cell.is_completed %}
                             <span class="school-day-check" aria-hidden="true">✓</span>
                             {% endif %}
                         </button>
@@ -116,9 +131,10 @@
         </div>
 
         <div class="school-day-legend">
-            <span class="legend-item"><span class="legend-swatch in-range"></span> In school year range</span>
-            <span class="legend-item"><span class="legend-swatch approved"></span> Approved full day</span>
-            <span class="legend-item"><span class="legend-swatch out-of-range"></span> Outside range</span>
+            <span class="legend-item"><span class="legend-swatch day-type-actual_school"></span> Planned actual school days</span>
+            <span class="legend-item"><span class="legend-swatch day-type-school_off"></span> Planned school days off</span>
+            <span class="legend-item"><span class="legend-swatch day-type-holiday"></span> Holidays</span>
+            <span class="legend-item"><span class="legend-swatch day-type-weekend"></span> Weekends</span>
         </div>
         {% endif %}
     </div>

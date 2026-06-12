@@ -1,4 +1,4 @@
-from calendar import monthcalendar
+from calendar import SUNDAY, Calendar
 from datetime import date
 
 from app.calendar_utils import shift_ref_date
@@ -54,7 +54,7 @@ def build_school_day_month_grid(
         if school_year
         else {}
     )
-    weeks = monthcalendar(cal_month.year, cal_month.month)
+    weeks = Calendar(firstweekday=SUNDAY).monthdayscalendar(cal_month.year, cal_month.month)
     grid = []
     for week in weeks:
         row = []
@@ -79,14 +79,13 @@ def build_school_day_month_grid(
                 holiday_name = None
                 if school_year is not None:
                     in_range = school_year.start_date <= d <= school_year.end_date
+                    holiday_name = holiday_names.get(d)
                     if in_range:
                         if d in planned:
                             day_type = planned[d]["day_type"]
                             is_completed = planned[d]["is_completed"]
                         else:
                             day_type = default_day_type(d, holidays)
-                        if day_type == SchoolDayType.holiday:
-                            holiday_name = holiday_names.get(d)
                 row.append(
                     {
                         "day": day_num,

@@ -1014,11 +1014,9 @@ async def update_school_day(
         counts = planned_day_counts(school_year)
         required_days = school_year.required_days
         completed_count = counts["completed_count"]
-        holiday_name = None
-        if parsed_type == SchoolDayType.holiday:
-            holiday_name = holiday_name_for_date(
-                parsed_day, school_year.start_date, school_year.end_date
-            )
+        holiday_name = holiday_name_for_date(
+            parsed_day, school_year.start_date, school_year.end_date
+        )
         return JSONResponse(
             {
                 "day_type": parsed_type.value,

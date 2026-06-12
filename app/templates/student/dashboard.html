@@ -10,6 +10,13 @@
 {% include "partials/nav.html" %}
 
 <main class="main-content">
+    {% if request.query_params.get('success') == 'message' %}
+    <div class="alert alert-success">Your message was sent to your teacher!</div>
+    {% endif %}
+    {% if request.query_params.get('error') == 'message' %}
+    <div class="alert alert-error">Please write a message about what you learned.</div>
+    {% endif %}
+
     <section class="panel student-calendar-panel">
         {% set calendar_title = "My Plans" %}
         {% include "partials/lesson_calendar.html" %}
@@ -37,20 +44,53 @@
         <h2 class="section-title">Your Checklist</h2>
         <div class="checklist">
             {% for act in lesson_plan.activities | sort(attribute='sort_order') %}
-            <form method="post" action="/student/activities/{{ act.id }}/toggle" class="checklist-item {% if completions.get(act.id) %}completed{% endif %}">
-                <button type="submit" class="checkbox-btn" aria-label="Toggle {{ act.title }}">
-                    <span class="check-icon">{% if completions.get(act.id) %}✓{% endif %}</span>
-                </button>
-                <div class="checklist-content">
-                    <strong>{{ act.title }}</strong>
-                    {% if act.description %}
-                    <p>{{ act.description }}</p>
+            {% set act_data = completions.get(act.id, {}) %}
+            <div class="checklist-item-wrap {% if act_data.get('completed') %}completed{% endif %}">
+                <form method="post" action="/student/activities/{{ act.id }}/toggle" class="checklist-item">
+                    <button type="submit" class="checkbox-btn" aria-label="Toggle {{ act.title }}">
+                        <span class="check-icon">{% if act_data.get('completed') %}✓{% endif %}</span>
+                    </button>
+                    <div class="checklist-content">
+                        <strong>{{ act.title }}</strong>
+                        {% if act.activity_type.value == 'special' %}
+                        <span class="activity-type-tag special">Special Activity</span>
+                        {% elif act.activity_type.value == 'subject' %}
+                        <span class="activity-type-tag subject">Subject</span>
+                        {% elif act.activity_type.value == 'history' %}
+                        <span class="activity-type-tag history">History</span>
+                        {% endif %}
+                        {% if act.description %}
+                        <p>{{ act.description }}</p>
+                        {% endif %}
+                        {% if act.audio_url %}
+                        <p class="activity-audio-link">
+                            <a href="{{ act.audio_url }}" target="_blank" rel="noopener noreferrer">🎧 Listen to History Lesson Audio</a>
+                        </p>
+                        {% endif %}
+                        {% if act.external_link %}
+                        <p class="activity-external-link">
+                            <a href="{{ act.external_link }}" target="_blank" rel="noopener noreferrer">🔗 Open Resource</a>
+                        </p>
+                        {% endif %}
+                        {% if not act.is_required %}
+                        <span class="optional-tag">Optional</span>
+                        {% endif %}
+                    </div>
+                </form>
+
+                {% if act.activity_type.value == 'history' %}
+                <div class="history-response-form">
+                    {% if act_data.get('student_message') %}
+                    <p class="sent-message"><strong>Your message:</strong> {{ act_data.get('student_message') }}</p>
                     {% endif %}
-                    {% if not act.is_required %}
-                    <span class="optional-tag">Optional</span>
-                    {% endif %}
+                    <form method="post" action="/student/activities/{{ act.id }}/message" class="message-form">
+                        <label for="message-{{ act.id }}">Tell your teacher what you learned:</label>
+                        <textarea id="message-{{ act.id }}" name="student_message" rows="3" required placeholder="I learned about...">{{ act_data.get('student_message') or '' }}</textarea>
+                        <button type="submit" class="btn btn-primary btn-sm">Send to Teacher</button>
+                    </form>
                 </div>
-            </form>
+                {% endif %}
+            </div>
             {% endfor %}
         </div>
 

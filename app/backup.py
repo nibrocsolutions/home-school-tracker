@@ -8,14 +8,17 @@ from sqlalchemy.orm import Session
 from app.models import (
     Activity,
     ActivityCompletion,
+    ActivityType,
+    AppSetting,
     ApprovedSchoolDay,
     LessonPlan,
     SchoolDayYear,
     User,
     UserRole,
+    WeeklyScheduleItem,
 )
 
-BACKUP_VERSION = 1
+BACKUP_VERSION = 2
 
 
 def _serialize_datetime(value: datetime | None) -> str | None:
@@ -41,6 +44,8 @@ def export_database(db: Session) -> bytes:
                 "role": user.role.value,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
+                "age": user.age,
+                "grade": user.grade,
                 "is_active": user.is_active,
                 "created_at": _serialize_datetime(user.created_at),
             }
@@ -66,6 +71,9 @@ def export_database(db: Session) -> bytes:
                 "description": activity.description,
                 "sort_order": activity.sort_order,
                 "is_required": activity.is_required,
+                "activity_type": activity.activity_type.value,
+                "audio_url": activity.audio_url,
+                "external_link": activity.external_link,
             }
             for activity in db.query(Activity).order_by(Activity.id).all()
         ],
@@ -76,8 +84,32 @@ def export_database(db: Session) -> bytes:
                 "student_id": completion.student_id,
                 "completed": completion.completed,
                 "completed_at": _serialize_datetime(completion.completed_at),
+                "student_message": completion.student_message,
             }
             for completion in db.query(ActivityCompletion).order_by(ActivityCompletion.id).all()
+        ],
+        "app_settings": [
+            {
+                "id": setting.id,
+                "sample_lesson_plans_enabled": setting.sample_lesson_plans_enabled,
+                "updated_at": _serialize_datetime(setting.updated_at),
+            }
+            for setting in db.query(AppSetting).order_by(AppSetting.id).all()
+        ],
+        "weekly_schedule_items": [
+            {
+                "id": item.id,
+                "teacher_id": item.teacher_id,
+                "name": item.name,
+                "item_kind": item.item_kind.value,
+                "special_type": item.special_type.value if item.special_type else None,
+                "weekdays": item.weekdays,
+                "description": item.description,
+                "external_link": item.external_link,
+                "audio_url": item.audio_url,
+                "sort_order": item.sort_order,
+            }
+            for item in db.query(WeeklyScheduleItem).order_by(WeeklyScheduleItem.id).all()
         ],
         "school_day_years": [
             {
@@ -115,12 +147,12 @@ def _parse_date(value: str) -> date:
 
 
 def _validate_backup(data: dict[str, Any]) -> None:
-    if data.get("version") != BACKUP_VERSION:
+    if data.get("version") not in (1, BACKUP_VERSION):
         raise ValueError("Unsupported backup file version.")
     for key in ("users", "lesson_plans", "activities", "activity_completions"):
         if key not in data or not isinstance(data[key], list):
             raise ValueError(f"Backup file is missing a valid '{key}' section.")
-    for key in ("school_day_years", "approved_school_days"):
+    for key in ("school_day_years", "approved_school_days", "app_settings", "weekly_schedule_items"):
         if key in data and not isinstance(data[key], list):
             raise ValueError(f"Backup file is missing a valid '{key}' section.")
 
@@ -134,7 +166,9 @@ def import_database(db: Session, raw: bytes) -> None:
     _validate_backup(data)
 
     db.query(ApprovedSchoolDay).delete()
+    db.query(WeeklyScheduleItem).delete()
     db.query(SchoolDayYear).delete()
+    db.query(AppSetting).delete()
     db.query(ActivityCompletion).delete()
     db.query(Activity).delete()
     db.query(LessonPlan).delete()
@@ -154,6 +188,8 @@ def import_database(db: Session, raw: bytes) -> None:
                 role=UserRole(role_value),
                 first_name=row["first_name"],
                 last_name=row["last_name"],
+                age=row.get("age"),
+                grade=row.get("grade"),
                 is_active=row["is_active"],
                 created_at=_parse_datetime(row["created_at"]),
             )
@@ -181,6 +217,9 @@ def import_database(db: Session, raw: bytes) -> None:
                 description=row.get("description"),
                 sort_order=row["sort_order"],
                 is_required=row["is_required"],
+                activity_type=ActivityType(row.get("activity_type", "regular")),
+                audio_url=row.get("audio_url"),
+                external_link=row.get("external_link"),
             )
         )
 
@@ -192,6 +231,35 @@ def import_database(db: Session, raw: bytes) -> None:
                 student_id=row["student_id"],
                 completed=row["completed"],
                 completed_at=_parse_datetime(row.get("completed_at")),
+                student_message=row.get("student_message"),
+            )
+        )
+
+    for row in data.get("app_settings", []):
+        db.add(
+            AppSetting(
+                id=row["id"],
+                sample_lesson_plans_enabled=row.get("sample_lesson_plans_enabled", False),
+                updated_at=_parse_datetime(row.get("updated_at")),
+            )
+        )
+
+    for row in data.get("weekly_schedule_items", []):
+        from app.models import ScheduleItemKind, SpecialActivityKind
+
+        special_type = row.get("special_type")
+        db.add(
+            WeeklyScheduleItem(
+                id=row["id"],
+                teacher_id=row["teacher_id"],
+                name=row["name"],
+                item_kind=ScheduleItemKind(row["item_kind"]),
+                special_type=SpecialActivityKind(special_type) if special_type else None,
+                weekdays=row["weekdays"],
+                description=row.get("description"),
+                external_link=row.get("external_link"),
+                audio_url=row.get("audio_url"),
+                sort_order=row.get("sort_order", 0),
             )
         )
 
@@ -231,6 +299,8 @@ def _reset_sequences(db: Session) -> None:
         ("activity_completions", "id"),
         ("school_day_years", "id"),
         ("approved_school_days", "id"),
+        ("app_settings", "id"),
+        ("weekly_schedule_items", "id"),
     ):
         db.execute(
             text(

@@ -1546,3 +1546,277 @@ button.school-day-cell:hover {
         display: none;
     }
 }
+
+/* App settings */
+.settings-form .toggle-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 1rem;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    margin-bottom: 1rem;
+    cursor: pointer;
+}
+
+.settings-form .toggle-row input {
+    margin-top: 0.25rem;
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.settings-form .toggle-row p,
+.settings-help {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+.student-meta {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-style: normal;
+}
+
+/* Lesson planning enhancements */
+.lesson-planning-grid {
+    align-items: start;
+}
+
+.lesson-planning-left {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.panel-inner,
+.sample-plans-section,
+.weekly-schedule-section,
+.student-responses-section {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
+}
+
+.section-hint,
+.field-hint {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    margin-bottom: 0.75rem;
+}
+
+.sample-plan-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+}
+
+.sample-plan-card {
+    text-align: left;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+}
+
+.sample-plan-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.sample-plan-card strong {
+    display: block;
+    margin-bottom: 0.35rem;
+}
+
+.sample-plan-card span {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+.schedule-item-row {
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem;
+    margin-bottom: 0.75rem;
+    position: relative;
+}
+
+.schedule-item-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.weekday-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.weekday-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.schedule-item-row input[type="text"],
+.schedule-item-row input[type="url"] {
+    width: 100%;
+    margin-bottom: 0.35rem;
+    padding: 0.5rem 0.65rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+}
+
+.schedule-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.activities-header-actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.activity-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dashed var(--border);
+}
+
+.activity-type-select,
+.activity-audio-field,
+.activity-link-field {
+    padding: 0.5rem 0.65rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 0.9rem;
+}
+
+.activity-type-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    margin-left: 0.35rem;
+    vertical-align: middle;
+}
+
+.activity-type-tag.special {
+    background: #ede9fe;
+    color: #5b21b6;
+}
+
+.activity-type-tag.subject {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.activity-type-tag.history {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.checklist-item-wrap {
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.75rem;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.checklist-item-wrap .checklist-item {
+    box-shadow: none;
+    margin: 0;
+}
+
+.history-response-form {
+    padding: 0.75rem 1rem 1rem 3.5rem;
+    border-top: 1px solid var(--border);
+    background: #fffbeb;
+}
+
+.history-response-form label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.35rem;
+}
+
+.history-response-form textarea {
+    width: 100%;
+    padding: 0.65rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    margin-bottom: 0.5rem;
+    resize: vertical;
+}
+
+.sent-message {
+    background: #ecfdf5;
+    border-radius: var(--radius-sm);
+    padding: 0.65rem;
+    margin-bottom: 0.65rem;
+    font-size: 0.9rem;
+}
+
+.activity-audio-link a,
+.activity-external-link a {
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.response-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.response-card {
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem;
+    border-left: 4px solid #f59e0b;
+}
+
+.response-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.35rem;
+}
+
+.response-meta {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+}
+
+.response-message {
+    font-size: 0.95rem;
+}
+
+@media (max-width: 960px) {
+    .schedule-item-header {
+        grid-template-columns: 1fr;
+    }
+}

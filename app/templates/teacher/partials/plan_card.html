@@ -3,13 +3,17 @@
         <h3>{{ plan.title }}</h3>
         <span class="date-badge">{{ plan.plan_date.strftime('%a, %b %d') }}</span>
     </div>
-    <p class="plan-meta">Student: <strong>{{ plan.student.full_name }}</strong></p>
+    <p class="plan-meta">Student: <strong>{{ plan.student.full_name }}</strong>{% if plan.student.grade_age_label %} <span class="student-meta">({{ plan.student.grade_age_label }})</span>{% endif %}</p>
     {% if plan.description %}
     <p class="plan-desc">{{ plan.description }}</p>
     {% endif %}
     <ul class="activity-preview">
         {% for act in plan.activities | sort(attribute='sort_order') %}
-        <li>{{ act.title }}</li>
+        <li>
+            {{ act.title }}
+            {% if act.activity_type.value == 'special' %}<span class="activity-type-tag special">Special</span>{% endif %}
+            {% if act.activity_type.value == 'history' %}<span class="activity-type-tag history">History</span>{% endif %}
+        </li>
         {% endfor %}
     </ul>
 </article>

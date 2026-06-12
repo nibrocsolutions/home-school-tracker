@@ -130,10 +130,19 @@ def _safe_text(text: str) -> str:
     return str(text).encode("latin-1", errors="replace").decode("latin-1")
 
 
-def _status_label(activity_id: int, completions: dict[int, bool] | None) -> str:
+def _activity_completed(completions: dict[int, bool | dict] | None, activity_id: int) -> bool:
+    if completions is None:
+        return False
+    value = completions.get(activity_id)
+    if isinstance(value, dict):
+        return bool(value.get("completed"))
+    return bool(value)
+
+
+def _status_label(activity_id: int, completions: dict[int, bool | dict] | None) -> str:
     if completions is None:
         return "Required" if True else ""
-    return "Done" if completions.get(activity_id) else "Pending"
+    return "Done" if _activity_completed(completions, activity_id) else "Pending"
 
 
 def _activities_summary(activities: list) -> str:
@@ -148,7 +157,7 @@ def _activities_summary(activities: list) -> str:
 def _render_activity_table(
     pdf: LessonPlanPDF,
     plan: LessonPlan,
-    completions: dict[int, bool] | None,
+    completions: dict[int, bool | dict] | None,
 ) -> None:
     width = pdf._usable_width()
     show_status = completions is not None
@@ -166,7 +175,7 @@ def _render_activity_table(
             desc = f"{desc} (optional)" if desc != "-" else "(optional)"
         cells = [str(idx), act.title, desc]
         if show_status:
-            status = "Done" if completions.get(act.id) else "Pending"
+            status = "Done" if _activity_completed(completions, act.id) else "Pending"
             cells.append(status)
         pdf._multi_line_table_row(cells, widths, alt=idx % 2 == 0)
     pdf.ln(4)
@@ -175,7 +184,7 @@ def _render_activity_table(
 def _render_plan_block(
     pdf: LessonPlanPDF,
     plan: LessonPlan,
-    completions: dict[int, bool] | None,
+    completions: dict[int, bool | dict] | None,
     *,
     show_date: bool = True,
 ) -> None:

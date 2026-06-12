@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime
 from typing import Annotated
 
@@ -6,11 +7,11 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
+from app.app_settings import get_app_settings, sample_lesson_plans_enabled
 from app.auth import (
     ROLE_HOME_PAGES,
     authenticate_user,
     create_access_token,
-    get_current_user,
     hash_password,
     require_roles,
 )
@@ -20,14 +21,25 @@ from app.database import get_db
 from app.models import (
     Activity,
     ActivityCompletion,
+    ActivityType,
     ApprovedSchoolDay,
     LessonPlan,
+    ScheduleItemKind,
     SchoolDayYear,
+    SpecialActivityKind,
     User,
     UserRole,
+    WeeklyScheduleItem,
 )
+from app.sample_plans import SAMPLE_LESSON_PLANS
 from app.school_day_context import approved_dates_in_range, build_school_day_context
 from app.pdf_export import build_lesson_plan_pdf, pdf_filename, pdf_response_headers
+from app.weekly_schedule import (
+    WEEKDAY_LABELS,
+    format_weekdays,
+    schedule_item_to_activity,
+    schedule_items_for_date,
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -41,10 +53,10 @@ def render(request: Request, name: str, context: dict, status_code: int = 200):
 
 def load_completions_for_plans(
     db: Session, student_id: int, plans: list[LessonPlan]
-) -> dict[int, dict[int, bool]]:
-    result: dict[int, dict[int, bool]] = {}
+) -> dict[int, dict[int, dict]]:
+    result: dict[int, dict[int, dict]] = {}
     for plan in plans:
-        activity_map: dict[int, bool] = {}
+        activity_map: dict[int, dict] = {}
         for activity in plan.activities:
             completion = (
                 db.query(ActivityCompletion)
@@ -54,9 +66,40 @@ def load_completions_for_plans(
                 )
                 .first()
             )
-            activity_map[activity.id] = completion.completed if completion else False
+            activity_map[activity.id] = {
+                "completed": completion.completed if completion else False,
+                "student_message": completion.student_message if completion else None,
+            }
         result[plan.id] = activity_map
     return result
+
+
+def _fetch_student_responses(db: Session, teacher_id: int) -> list[dict]:
+    rows = (
+        db.query(ActivityCompletion, Activity, LessonPlan, User)
+        .join(Activity, ActivityCompletion.activity_id == Activity.id)
+        .join(LessonPlan, Activity.lesson_plan_id == LessonPlan.id)
+        .join(User, ActivityCompletion.student_id == User.id)
+        .filter(
+            LessonPlan.teacher_id == teacher_id,
+            ActivityCompletion.student_message.isnot(None),
+            ActivityCompletion.student_message != "",
+        )
+        .order_by(ActivityCompletion.completed_at.desc())
+        .limit(20)
+        .all()
+    )
+    return [
+        {
+            "student_name": student.full_name,
+            "activity_title": activity.title,
+            "plan_title": plan.title,
+            "plan_date": plan.plan_date,
+            "message": completion.student_message,
+            "completed_at": completion.completed_at,
+        }
+        for completion, activity, plan, student in rows
+    ]
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -138,6 +181,36 @@ async def admin_users(
     )
 
 
+@router.get("/admin/settings", response_class=HTMLResponse)
+async def admin_settings_page(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.admin))],
+):
+    settings = get_app_settings(db)
+    return render(
+        request,
+        "admin/settings.html",
+        {"user": current_user, "settings": settings},
+    )
+
+
+@router.post("/admin/settings")
+async def save_admin_settings(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.admin))],
+    sample_lesson_plans_enabled: str | None = Form(None),
+):
+    settings = get_app_settings(db)
+    settings.sample_lesson_plans_enabled = sample_lesson_plans_enabled == "on"
+    settings.updated_at = datetime.utcnow()
+    db.commit()
+    return RedirectResponse(
+        url="/admin/settings?success=saved",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
 @router.post("/admin/users")
 async def create_user(
     db: Annotated[Session, Depends(get_db)],
@@ -148,6 +221,8 @@ async def create_user(
     first_name: str = Form(...),
     last_name: str = Form(...),
     role: str = Form(...),
+    age: str = Form(""),
+    grade: str = Form(""),
 ):
     if db.query(User).filter((User.username == username) | (User.email == email)).first():
         return RedirectResponse(
@@ -162,6 +237,10 @@ async def create_user(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
+    parsed_age = None
+    if age.strip().isdigit():
+        parsed_age = int(age.strip())
+
     new_user = User(
         username=username,
         email=email,
@@ -169,6 +248,8 @@ async def create_user(
         role=user_role,
         first_name=first_name,
         last_name=last_name,
+        age=parsed_age if user_role == UserRole.student else None,
+        grade=grade.strip() or None if user_role == UserRole.student else None,
     )
     db.add(new_user)
     db.commit()
@@ -293,6 +374,14 @@ async def teacher_dashboard(
     calendar = build_calendar_context(all_plans, view, ref_date)
     school_year = _fetch_school_day_year(db, current_user.id)
     school_days = build_school_day_context(school_year, cal_month)
+    weekly_schedule = (
+        db.query(WeeklyScheduleItem)
+        .filter(WeeklyScheduleItem.teacher_id == current_user.id)
+        .order_by(WeeklyScheduleItem.sort_order, WeeklyScheduleItem.id)
+        .all()
+    )
+    show_samples = sample_lesson_plans_enabled(db)
+    student_responses = _fetch_student_responses(db, current_user.id)
 
     return render(
         request,
@@ -306,6 +395,23 @@ async def teacher_dashboard(
             "pdf_path": "/teacher/lesson-plans.pdf",
             "plan_card_partial": "teacher/partials/plan_card.html",
             "empty_hint": "Create one to get started!",
+            "show_sample_plans": show_samples,
+            "sample_lesson_plans": SAMPLE_LESSON_PLANS if show_samples else [],
+            "weekly_schedule": weekly_schedule,
+            "weekday_labels": WEEKDAY_LABELS,
+            "format_weekdays": format_weekdays,
+            "weekly_schedule_meta_json": json.dumps(
+                [
+                    {
+                        "id": item.id,
+                        "name": item.name,
+                        "weekdays": item.weekdays,
+                        "item_kind": item.item_kind.value,
+                    }
+                    for item in weekly_schedule
+                ]
+            ),
+            "student_responses": student_responses,
             **calendar,
             **school_days,
         },
@@ -336,6 +442,91 @@ async def teacher_lesson_plans_pdf(
     )
 
 
+@router.get("/teacher/schedule-suggestions")
+async def teacher_schedule_suggestions(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    plan_date: str = Query(...),
+):
+    try:
+        parsed_date = date.fromisoformat(plan_date)
+    except ValueError:
+        return JSONResponse({"error": "invalid_date"}, status_code=400)
+
+    items = (
+        db.query(WeeklyScheduleItem)
+        .filter(WeeklyScheduleItem.teacher_id == current_user.id)
+        .order_by(WeeklyScheduleItem.sort_order, WeeklyScheduleItem.id)
+        .all()
+    )
+    matched = schedule_items_for_date(items, parsed_date)
+    return JSONResponse(
+        {
+            "activities": [schedule_item_to_activity(item) for item in matched],
+            "weekday": parsed_date.strftime("%A"),
+        }
+    )
+
+
+@router.post("/teacher/weekly-schedule")
+async def save_weekly_schedule(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    item_names: list[str] = Form(default=[]),
+    item_kinds: list[str] = Form(default=[]),
+    special_types: list[str] = Form(default=[]),
+    weekdays_list: list[str] = Form(default=[]),
+    item_descriptions: list[str] = Form(default=[]),
+    external_links: list[str] = Form(default=[]),
+    audio_urls: list[str] = Form(default=[]),
+):
+    db.query(WeeklyScheduleItem).filter(
+        WeeklyScheduleItem.teacher_id == current_user.id
+    ).delete()
+
+    for idx, name in enumerate(item_names):
+        if not name.strip():
+            continue
+        kind_raw = item_kinds[idx] if idx < len(item_kinds) else "subject"
+        special_raw = special_types[idx] if idx < len(special_types) else ""
+        weekdays = weekdays_list[idx] if idx < len(weekdays_list) else ""
+        desc = item_descriptions[idx] if idx < len(item_descriptions) else ""
+        link = external_links[idx] if idx < len(external_links) else ""
+        audio = audio_urls[idx] if idx < len(audio_urls) else ""
+
+        try:
+            item_kind = ScheduleItemKind(kind_raw)
+        except ValueError:
+            item_kind = ScheduleItemKind.subject
+
+        special_type = None
+        if special_raw:
+            try:
+                special_type = SpecialActivityKind(special_raw)
+            except ValueError:
+                special_type = None
+
+        db.add(
+            WeeklyScheduleItem(
+                teacher_id=current_user.id,
+                name=name.strip(),
+                item_kind=item_kind,
+                special_type=special_type,
+                weekdays=weekdays.strip(),
+                description=desc.strip() or None,
+                external_link=link.strip() or None,
+                audio_url=audio.strip() or None,
+                sort_order=idx + 1,
+            )
+        )
+
+    db.commit()
+    return RedirectResponse(
+        url="/teacher?success=schedule",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
 @router.post("/teacher/lesson-plans")
 async def create_lesson_plan(
     db: Annotated[Session, Depends(get_db)],
@@ -346,6 +537,9 @@ async def create_lesson_plan(
     student_ids: list[int] = Form(...),
     activity_titles: list[str] = Form(...),
     activity_descriptions: list[str] = Form(default=[]),
+    activity_types: list[str] = Form(default=[]),
+    activity_audio_urls: list[str] = Form(default=[]),
+    activity_external_links: list[str] = Form(default=[]),
 ):
     if not student_ids:
         return RedirectResponse(
@@ -358,7 +552,23 @@ async def create_lesson_plan(
         if not act_title.strip():
             continue
         desc = activity_descriptions[idx] if idx < len(activity_descriptions) else ""
-        activities_data.append((act_title.strip(), desc.strip() or None, idx + 1))
+        type_raw = activity_types[idx] if idx < len(activity_types) else "regular"
+        audio = activity_audio_urls[idx] if idx < len(activity_audio_urls) else ""
+        link = activity_external_links[idx] if idx < len(activity_external_links) else ""
+        try:
+            act_type = ActivityType(type_raw)
+        except ValueError:
+            act_type = ActivityType.regular
+        activities_data.append(
+            (
+                act_title.strip(),
+                desc.strip() or None,
+                act_type,
+                audio.strip() or None,
+                link.strip() or None,
+                idx + 1,
+            )
+        )
 
     parsed_date = date.fromisoformat(plan_date)
     for student_id in student_ids:
@@ -371,13 +581,16 @@ async def create_lesson_plan(
         )
         db.add(plan)
         db.flush()
-        for act_title, act_desc, sort_order in activities_data:
+        for act_title, act_desc, act_type, audio, link, sort_order in activities_data:
             db.add(
                 Activity(
                     lesson_plan_id=plan.id,
                     title=act_title,
                     description=act_desc,
                     sort_order=sort_order,
+                    activity_type=act_type,
+                    audio_url=audio,
+                    external_link=link,
                 )
             )
     db.commit()
@@ -517,7 +730,7 @@ async def student_dashboard(
     today = date.today()
 
     lesson_plan = None
-    completions: dict[int, bool] = {}
+    completions: dict[int, dict] = {}
     progress = 0
     done_count = 0
     total_count = 0
@@ -528,7 +741,7 @@ async def student_dashboard(
         plan_completions = load_completions_for_plans(db, current_user.id, [lesson_plan])
         completions = plan_completions.get(lesson_plan.id, {})
         total_count = len(lesson_plan.activities)
-        done_count = sum(1 for v in completions.values() if v)
+        done_count = sum(1 for v in completions.values() if v.get("completed"))
         progress = int((done_count / total_count) * 100) if total_count else 0
 
     all_completions = load_completions_for_plans(db, current_user.id, calendar["lesson_plans"])
@@ -587,8 +800,6 @@ async def toggle_activity(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.student))],
 ):
-    from datetime import datetime
-
     activity = db.query(Activity).filter(Activity.id == activity_id).first()
     if not activity:
         raise HTTPException(status_code=404, detail="Activity not found")
@@ -618,3 +829,46 @@ async def toggle_activity(
         db.add(completion)
     db.commit()
     return RedirectResponse(url="/student", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/student/activities/{activity_id}/message")
+async def submit_activity_message(
+    activity_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.student))],
+    student_message: str = Form(...),
+):
+    activity = db.query(Activity).filter(Activity.id == activity_id).first()
+    if not activity:
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    plan = db.query(LessonPlan).filter(LessonPlan.id == activity.lesson_plan_id).first()
+    if not plan or plan.student_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your activity")
+
+    message = student_message.strip()
+    if not message:
+        return RedirectResponse(url="/student?error=message", status_code=status.HTTP_303_SEE_OTHER)
+
+    completion = (
+        db.query(ActivityCompletion)
+        .filter(
+            ActivityCompletion.activity_id == activity_id,
+            ActivityCompletion.student_id == current_user.id,
+        )
+        .first()
+    )
+    if completion:
+        completion.student_message = message
+        completion.completed_at = datetime.utcnow()
+    else:
+        completion = ActivityCompletion(
+            activity_id=activity_id,
+            student_id=current_user.id,
+            completed=False,
+            student_message=message,
+            completed_at=datetime.utcnow(),
+        )
+        db.add(completion)
+    db.commit()
+    return RedirectResponse(url="/student?success=message", status_code=status.HTTP_303_SEE_OTHER)

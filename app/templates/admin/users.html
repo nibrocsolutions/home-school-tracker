@@ -52,11 +52,19 @@
                 </div>
                 <div class="form-row">
                     <label>Role</label>
-                    <select name="role" required>
+                    <select name="role" id="create-user-role" required>
                         <option value="admin">Admin</option>
                         <option value="teacher">Teacher</option>
                         <option value="student">Student</option>
                     </select>
+                </div>
+                <div class="form-row student-only-field" id="grade-field">
+                    <label>Grade</label>
+                    <input type="text" name="grade" placeholder="e.g. 4th Grade">
+                </div>
+                <div class="form-row student-only-field" id="age-field">
+                    <label>Age</label>
+                    <input type="number" name="age" min="1" max="25" placeholder="e.g. 10">
                 </div>
                 <div class="form-row full-width">
                     <button type="submit" class="btn btn-primary">Create User</button>
@@ -93,6 +101,9 @@
                     <div class="user-card-info">
                         <strong>{{ u.full_name }}</strong>
                         <span>@{{ u.username }}</span>
+                        {% if u.role.value == 'student' and u.grade_age_label %}
+                        <span class="student-meta">{{ u.grade_age_label }}</span>
+                        {% endif %}
                         <span class="role-badge {{ u.role.value }}">{{ u.role.value | title }}</span>
                     </div>
                     <form method="post" action="/admin/users/{{ u.id }}/toggle">
@@ -110,4 +121,17 @@
         {% endfor %}
     </section>
 </main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const roleSelect = document.getElementById('create-user-role');
+const studentFields = document.querySelectorAll('.student-only-field');
+function toggleStudentFields() {
+    const show = roleSelect?.value === 'student';
+    studentFields.forEach(el => el.style.display = show ? '' : 'none');
+}
+roleSelect?.addEventListener('change', toggleStudentFields);
+toggleStudentFields();
+</script>
 {% endblock %}

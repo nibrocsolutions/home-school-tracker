@@ -9,9 +9,12 @@
     {% endif %}
     <ul class="activity-checklist-preview">
         {% for act in plan.activities | sort(attribute='sort_order') %}
-        <li class="{% if plan_completions is defined and plan_completions.get(act.id) %}done{% endif %}">
-            <span class="preview-check">{% if plan_completions is defined and plan_completions.get(act.id) %}✓{% else %}○{% endif %}</span>
+        {% set act_data = plan_completions.get(act.id, {}) if plan_completions is defined else {} %}
+        {% set is_done = act_data.get('completed') if act_data is mapping else act_data %}
+        <li class="{% if is_done %}done{% endif %}">
+            <span class="preview-check">{% if is_done %}✓{% else %}○{% endif %}</span>
             {{ act.title }}
+            {% if act.activity_type.value == 'history' %}<span class="activity-type-tag history">History</span>{% endif %}
             {% if not act.is_required %}<span class="optional-tag">Optional</span>{% endif %}
         </li>
         {% endfor %}

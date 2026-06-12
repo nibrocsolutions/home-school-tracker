@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}App Settings — {{ app_name }}{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block body %}
+{% set home_url = '/admin' %}
+{% include "partials/nav.html" %}
+
+<main class="main-content">
+    <section class="page-hero admin-hero">
+        <div>
+            <h1>App Settings</h1>
+            <p>Control platform features available to teachers and students.</p>
+        </div>
+        <div class="hero-emoji" aria-hidden="true">🎛️</div>
+    </section>
+
+    {% if request.query_params.get('success') == 'saved' %}
+    <div class="alert alert-success">Settings saved successfully.</div>
+    {% endif %}
+
+    <section class="panel-grid">
+        <div class="panel">
+            <h2>Lesson Planning Features</h2>
+            <form method="post" action="/admin/settings" class="settings-form">
+                <label class="toggle-row">
+                    <input type="checkbox" name="sample_lesson_plans_enabled"
+                           {% if settings.sample_lesson_plans_enabled %}checked{% endif %}>
+                    <div>
+                        <strong>Sample Lesson Plans</strong>
+                        <p>When enabled, teachers see sample lesson plan templates they can use as starting points. When disabled, sample plans are hidden from the teacher lesson planning page.</p>
+                    </div>
+                </label>
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>About Sample Lesson Plans</h2>
+            <p class="settings-help">Sample plans include examples for math &amp; science days, history audio lessons, co-op days, and Wild and Free outings. Teachers can apply a sample to pre-fill the lesson plan form.</p>
+            <p style="margin-top: 1rem;">
+                <a href="/admin" class="btn btn-ghost btn-sm">← Back to Admin Dashboard</a>
+            </p>
+        </div>
+    </section>
+</main>
+{% endblock %}

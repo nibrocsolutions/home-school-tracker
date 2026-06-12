@@ -4,7 +4,19 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.auth import hash_password
-from app.models import Activity, LessonPlan, User, UserRole
+from app.migrations import run_schema_migrations
+from app.models import (
+    Activity,
+    ActivityType,
+    AppSetting,
+    LessonPlan,
+    ScheduleItemKind,
+    SpecialActivityKind,
+    User,
+    UserRole,
+    WeeklyScheduleItem,
+)
+from app.sample_plans import HISTORY_AUDIO_URL
 
 WEEKDAYS = [
     "Monday",
@@ -20,6 +32,11 @@ DEMO_PROFILES = {
     "admin": ("Robert", "Corbin"),
     "teacher": ("Jenny", "Corbin"),
     "student": ("Ella", "Corbin"),
+}
+
+STUDENT_PROFILES = {
+    "student": (10, "4th Grade"),
+    "student2": (12, "6th Grade"),
 }
 
 
@@ -50,16 +67,95 @@ def update_demo_profiles(db: Session) -> None:
             user.first_name = first_name
             user.last_name = last_name
             changed = True
+    for username, (age, grade) in STUDENT_PROFILES.items():
+        user = db.query(User).filter(User.username == username).first()
+        if user and user.role == UserRole.student:
+            if user.age != age or user.grade != grade:
+                user.age = age
+                user.grade = grade
+                changed = True
     if changed:
         db.commit()
     fix_lesson_plan_weekday_titles(db)
 
 
+def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
+    if db.query(WeeklyScheduleItem).filter(WeeklyScheduleItem.teacher_id == teacher_id).first():
+        return
+
+    defaults = [
+        WeeklyScheduleItem(
+            teacher_id=teacher_id,
+            name="Co-Op",
+            item_kind=ScheduleItemKind.special_activity,
+            special_type=SpecialActivityKind.co_op,
+            weekdays="0,2",
+            description="Community co-op classes with other homeschool families.",
+            sort_order=1,
+        ),
+        WeeklyScheduleItem(
+            teacher_id=teacher_id,
+            name="Wild and Free Outing",
+            item_kind=ScheduleItemKind.special_activity,
+            special_type=SpecialActivityKind.wild_and_free,
+            weekdays="4",
+            description="Outdoor nature exploration and adventure learning.",
+            sort_order=2,
+        ),
+        WeeklyScheduleItem(
+            teacher_id=teacher_id,
+            name="Classical Conversations Essentials",
+            item_kind=ScheduleItemKind.special_activity,
+            special_type=SpecialActivityKind.classical_conversations,
+            weekdays="0,2",
+            description="Essentials program — grammar, writing, and presentations.",
+            external_link="https://classicalconversations.com/programs/essentials/",
+            sort_order=3,
+        ),
+        WeeklyScheduleItem(
+            teacher_id=teacher_id,
+            name="History",
+            item_kind=ScheduleItemKind.subject,
+            weekdays="0,2",
+            description="Listen to the history audio lesson and share what you learned.",
+            audio_url=HISTORY_AUDIO_URL,
+            sort_order=4,
+        ),
+        WeeklyScheduleItem(
+            teacher_id=teacher_id,
+            name="Math",
+            item_kind=ScheduleItemKind.subject,
+            weekdays="1,3",
+            description="Complete math workbook pages and practice problems.",
+            sort_order=5,
+        ),
+        WeeklyScheduleItem(
+            teacher_id=teacher_id,
+            name="Language Arts",
+            item_kind=ScheduleItemKind.subject,
+            weekdays="1,3,4",
+            description="Grammar, spelling, and creative writing.",
+            sort_order=6,
+        ),
+    ]
+    db.add_all(defaults)
+    db.commit()
+
+
 def seed_database(db: Session) -> None:
     migrate_legacy_roles(db)
+    run_schema_migrations(db)
+
+    settings = db.query(AppSetting).first()
+    if not settings:
+        db.add(AppSetting(sample_lesson_plans_enabled=False))
+        db.commit()
 
     if db.query(User).first():
         update_demo_profiles(db)
+        teacher = db.query(User).filter(User.role == UserRole.teacher).first()
+        if teacher:
+            seed_default_weekly_schedule(db, teacher.id)
         return
 
     users = [
@@ -86,6 +182,8 @@ def seed_database(db: Session) -> None:
             role=UserRole.student,
             first_name="Ella",
             last_name="Corbin",
+            age=10,
+            grade="4th Grade",
         ),
         User(
             username="student2",
@@ -94,6 +192,8 @@ def seed_database(db: Session) -> None:
             role=UserRole.student,
             first_name="Morgan",
             last_name="Patel",
+            age=12,
+            grade="6th Grade",
         ),
     ]
     db.add_all(users)
@@ -105,6 +205,8 @@ def seed_database(db: Session) -> None:
     today = date.today()
     tomorrow = today + timedelta(days=1)
     yesterday = today - timedelta(days=1)
+
+    seed_default_weekly_schedule(db, teacher.id)
 
     plans = [
         LessonPlan(
@@ -118,22 +220,26 @@ def seed_database(db: Session) -> None:
                     title="Morning Math Warm-up",
                     description="Complete 15 multiplication problems in your workbook (pages 42–43).",
                     sort_order=1,
+                    activity_type=ActivityType.regular,
                 ),
                 Activity(
                     title="Science Experiment: Volcano Eruption",
                     description="Build a baking soda volcano and record your observations in your lab notebook.",
                     sort_order=2,
+                    activity_type=ActivityType.regular,
                 ),
                 Activity(
                     title="Reading Break",
                     description="Read Chapter 4 of 'The Wild Robot' for 20 minutes.",
                     sort_order=3,
+                    activity_type=ActivityType.subject,
                 ),
                 Activity(
                     title="Journal Reflection",
                     description="Write 3 sentences about what you learned today.",
                     sort_order=4,
                     is_required=False,
+                    activity_type=ActivityType.regular,
                 ),
             ],
         ),
@@ -148,16 +254,20 @@ def seed_database(db: Session) -> None:
                     title="Grammar Practice",
                     description="Complete the adjective and adverb worksheet.",
                     sort_order=1,
+                    activity_type=ActivityType.subject,
                 ),
                 Activity(
-                    title="History Timeline",
-                    description="Add 5 events to your American Revolution timeline.",
+                    title="History Audio Lesson",
+                    description="Listen to the history lesson audio, then tell your teacher what you learned.",
                     sort_order=2,
+                    activity_type=ActivityType.history,
+                    audio_url=HISTORY_AUDIO_URL,
                 ),
                 Activity(
                     title="Creative Writing",
                     description="Write a short story from the perspective of a historical figure.",
                     sort_order=3,
+                    activity_type=ActivityType.regular,
                 ),
             ],
         ),
@@ -169,14 +279,16 @@ def seed_database(db: Session) -> None:
             student_id=ella.id,
             activities=[
                 Activity(
-                    title="Nature Walk",
+                    title="Wild and Free Outing",
                     description="Identify 10 plants or insects in your backyard or local park.",
                     sort_order=1,
+                    activity_type=ActivityType.special,
                 ),
                 Activity(
                     title="Map Skills",
                     description="Label continents and oceans on a blank world map.",
                     sort_order=2,
+                    activity_type=ActivityType.subject,
                 ),
             ],
         ),
@@ -191,11 +303,13 @@ def seed_database(db: Session) -> None:
                     title="Spelling Review",
                     description="Practice this week's vocabulary words.",
                     sort_order=1,
+                    activity_type=ActivityType.subject,
                 ),
                 Activity(
                     title="Math Quiz",
                     description="Complete the 10-question review worksheet.",
                     sort_order=2,
+                    activity_type=ActivityType.regular,
                 ),
             ],
         ),

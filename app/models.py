@@ -23,6 +23,25 @@ class UserRole(str, enum.Enum):
     student = "student"
 
 
+class ActivityType(str, enum.Enum):
+    regular = "regular"
+    special = "special"
+    subject = "subject"
+    history = "history"
+
+
+class SpecialActivityKind(str, enum.Enum):
+    co_op = "co_op"
+    wild_and_free = "wild_and_free"
+    classical_conversations = "classical_conversations"
+    other = "other"
+
+
+class ScheduleItemKind(str, enum.Enum):
+    special_activity = "special_activity"
+    subject = "subject"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -33,6 +52,8 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), index=True)
     first_name: Mapped[str] = mapped_column(String(80))
     last_name: Mapped[str] = mapped_column(String(80))
+    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    grade: Mapped[str | None] = mapped_column(String(30), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -48,10 +69,51 @@ class User(Base):
     school_day_years: Mapped[list["SchoolDayYear"]] = relationship(
         "SchoolDayYear", back_populates="teacher"
     )
+    weekly_schedule_items: Mapped[list["WeeklyScheduleItem"]] = relationship(
+        "WeeklyScheduleItem", back_populates="teacher"
+    )
 
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
+
+    @property
+    def grade_age_label(self) -> str | None:
+        parts = []
+        if self.grade:
+            parts.append(self.grade)
+        if self.age is not None:
+            parts.append(f"Age {self.age}")
+        return " · ".join(parts) if parts else None
+
+
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    sample_lesson_plans_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
+class WeeklyScheduleItem(Base):
+    __tablename__ = "weekly_schedule_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    name: Mapped[str] = mapped_column(String(120))
+    item_kind: Mapped[ScheduleItemKind] = mapped_column(Enum(ScheduleItemKind))
+    special_type: Mapped[SpecialActivityKind | None] = mapped_column(
+        Enum(SpecialActivityKind), nullable=True
+    )
+    weekdays: Mapped[str] = mapped_column(String(20))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    external_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    audio_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+    teacher: Mapped["User"] = relationship("User", back_populates="weekly_schedule_items")
 
 
 class LessonPlan(Base):
@@ -85,6 +147,11 @@ class Activity(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_required: Mapped[bool] = mapped_column(Boolean, default=True)
+    activity_type: Mapped[ActivityType] = mapped_column(
+        Enum(ActivityType), default=ActivityType.regular
+    )
+    audio_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    external_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     lesson_plan: Mapped["LessonPlan"] = relationship("LessonPlan", back_populates="activities")
     completions: Mapped[list["ActivityCompletion"]] = relationship(
@@ -101,6 +168,7 @@ class ActivityCompletion(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    student_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     activity: Mapped["Activity"] = relationship("Activity", back_populates="completions")
     student: Mapped["User"] = relationship("User", back_populates="activity_completions")

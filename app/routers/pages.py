@@ -421,14 +421,21 @@ async def administrator_redirect():
     return RedirectResponse(url="/admin/users", status_code=status.HTTP_301_MOVED_PERMANENTLY)
 
 
+def _visible_lesson_plans(db: Session, plans: list[LessonPlan]) -> list[LessonPlan]:
+    if sample_data_enabled(db):
+        return plans
+    return [plan for plan in plans if not plan.is_sample_data]
+
+
 def _fetch_teacher_plans(db: Session, teacher_id: int) -> list[LessonPlan]:
-    return (
+    plans = (
         db.query(LessonPlan)
         .options(joinedload(LessonPlan.activities), joinedload(LessonPlan.student))
         .filter(LessonPlan.teacher_id == teacher_id)
         .order_by(LessonPlan.plan_date.desc())
         .all()
     )
+    return _visible_lesson_plans(db, plans)
 
 
 def _fetch_school_day_year(db: Session, teacher_id: int) -> SchoolDayYear | None:
@@ -493,7 +500,7 @@ def _weekly_schedule_context(db: Session, teacher_id: int) -> dict:
 
 
 def _sample_plans_context(db: Session) -> dict:
-    show_samples = sample_lesson_plans_enabled(db)
+    show_samples = sample_lesson_plans_enabled(db) and sample_data_enabled(db)
     return {
         "show_sample_plans": show_samples,
         "sample_lesson_plans": SAMPLE_LESSON_PLANS if show_samples else [],
@@ -968,13 +975,14 @@ async def toggle_school_day(
 
 
 def _fetch_student_plans(db: Session, student_id: int) -> list[LessonPlan]:
-    return (
+    plans = (
         db.query(LessonPlan)
         .options(joinedload(LessonPlan.activities), joinedload(LessonPlan.teacher))
         .filter(LessonPlan.student_id == student_id)
         .order_by(LessonPlan.plan_date.desc())
         .all()
     )
+    return _visible_lesson_plans(db, plans)
 
 
 @router.get("/student", response_class=HTMLResponse)

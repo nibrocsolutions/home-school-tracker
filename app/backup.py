@@ -18,7 +18,7 @@ from app.models import (
     WeeklyScheduleItem,
 )
 
-BACKUP_VERSION = 2
+BACKUP_VERSION = 1
 
 
 def _serialize_datetime(value: datetime | None) -> str | None:
@@ -59,6 +59,7 @@ def export_database(db: Session) -> bytes:
                 "plan_date": _serialize_date(plan.plan_date),
                 "teacher_id": plan.teacher_id,
                 "student_id": plan.student_id,
+                "is_sample_data": plan.is_sample_data,
                 "created_at": _serialize_datetime(plan.created_at),
             }
             for plan in db.query(LessonPlan).order_by(LessonPlan.id).all()
@@ -148,7 +149,7 @@ def _parse_date(value: str) -> date:
 
 
 def _validate_backup(data: dict[str, Any]) -> None:
-    if data.get("version") not in (1, BACKUP_VERSION):
+    if data.get("version") != BACKUP_VERSION:
         raise ValueError("Unsupported backup file version.")
     for key in ("users", "lesson_plans", "activities", "activity_completions"):
         if key not in data or not isinstance(data[key], list):
@@ -205,6 +206,7 @@ def import_database(db: Session, raw: bytes) -> None:
                 plan_date=_parse_date(row["plan_date"]),
                 teacher_id=row["teacher_id"],
                 student_id=row["student_id"],
+                is_sample_data=row.get("is_sample_data", False),
                 created_at=_parse_datetime(row["created_at"]),
             )
         )

@@ -148,7 +148,7 @@ def seed_database(db: Session) -> None:
 
     settings = db.query(AppSetting).first()
     if not settings:
-        db.add(AppSetting(sample_lesson_plans_enabled=False, sample_data_enabled=True))
+        db.add(AppSetting(sample_lesson_plans_enabled=False, sample_data_enabled=False))
         db.commit()
 
     if db.query(User).first():
@@ -215,6 +215,7 @@ def seed_database(db: Session) -> None:
             plan_date=today,
             teacher_id=teacher.id,
             student_id=ella.id,
+            is_sample_data=True,
             activities=[
                 Activity(
                     title="Morning Math Warm-up",
@@ -249,6 +250,7 @@ def seed_database(db: Session) -> None:
             plan_date=today,
             teacher_id=teacher.id,
             student_id=morgan.id,
+            is_sample_data=True,
             activities=[
                 Activity(
                     title="Grammar Practice",
@@ -277,6 +279,7 @@ def seed_database(db: Session) -> None:
             plan_date=tomorrow,
             teacher_id=teacher.id,
             student_id=ella.id,
+            is_sample_data=True,
             activities=[
                 Activity(
                     title="Wild and Free Outing",
@@ -298,6 +301,7 @@ def seed_database(db: Session) -> None:
             plan_date=yesterday,
             teacher_id=teacher.id,
             student_id=ella.id,
+            is_sample_data=True,
             activities=[
                 Activity(
                     title="Spelling Review",

@@ -1,7 +1,7 @@
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
-from app.models import AppSetting
+from app.models import AppSetting, LessonPlan, User
 
 
 def _column_exists(inspector, table: str, column: str) -> bool:
@@ -10,6 +10,23 @@ def _column_exists(inspector, table: str, column: str) -> bool:
 
 def _table_exists(inspector, table: str) -> bool:
     return table in inspector.get_table_names()
+
+
+def _mark_existing_sample_lesson_plans(db: Session) -> None:
+    demo_teacher = db.query(User).filter(User.username == "teacher").first()
+    if not demo_teacher:
+        return
+    demo_student_ids = [
+        user.id
+        for user in db.query(User).filter(User.username.in_(["student", "student2"])).all()
+    ]
+    if not demo_student_ids:
+        return
+    db.query(LessonPlan).filter(
+        LessonPlan.teacher_id == demo_teacher.id,
+        LessonPlan.student_id.in_(demo_student_ids),
+    ).update({LessonPlan.is_sample_data: True}, synchronize_session=False)
+    db.commit()
 
 
 def run_schema_migrations(db: Session) -> None:
@@ -53,3 +70,14 @@ def run_schema_migrations(db: Session) -> None:
                 )
             )
             db.commit()
+
+    if _table_exists(inspector, "lesson_plans"):
+        if not _column_exists(inspector, "lesson_plans", "is_sample_data"):
+            db.execute(
+                text(
+                    "ALTER TABLE lesson_plans ADD COLUMN is_sample_data BOOLEAN "
+                    "NOT NULL DEFAULT FALSE"
+                )
+            )
+            db.commit()
+            _mark_existing_sample_lesson_plans(db)

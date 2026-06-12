@@ -5,6 +5,7 @@ from app.calendar_utils import shift_ref_date
 from app.models import SchoolDayType, SchoolDayYear
 from app.school_year_utils import (
     default_day_type,
+    holiday_names_in_range,
     holidays_in_range,
     planned_day_counts,
 )
@@ -48,6 +49,11 @@ def build_school_day_month_grid(
         if school_year
         else set()
     )
+    holiday_names = (
+        holiday_names_in_range(school_year.start_date, school_year.end_date)
+        if school_year
+        else {}
+    )
     weeks = monthcalendar(cal_month.year, cal_month.month)
     grid = []
     for week in weeks:
@@ -61,6 +67,7 @@ def build_school_day_month_grid(
                         "in_range": False,
                         "day_type": None,
                         "is_completed": False,
+                        "holiday_name": None,
                         "is_today": False,
                     }
                 )
@@ -69,6 +76,7 @@ def build_school_day_month_grid(
                 in_range = False
                 day_type = None
                 is_completed = False
+                holiday_name = None
                 if school_year is not None:
                     in_range = school_year.start_date <= d <= school_year.end_date
                     if in_range:
@@ -77,6 +85,8 @@ def build_school_day_month_grid(
                             is_completed = planned[d]["is_completed"]
                         else:
                             day_type = default_day_type(d, holidays)
+                        if day_type == SchoolDayType.holiday:
+                            holiday_name = holiday_names.get(d)
                 row.append(
                     {
                         "day": day_num,
@@ -84,6 +94,7 @@ def build_school_day_month_grid(
                         "in_range": in_range,
                         "day_type": day_type,
                         "is_completed": is_completed,
+                        "holiday_name": holiday_name,
                         "is_today": d == date.today(),
                     }
                 )

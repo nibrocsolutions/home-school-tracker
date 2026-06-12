@@ -47,12 +47,32 @@ const DAY_TYPE_CLASSES = [
     'day-type-weekend',
 ];
 
+const DAY_TYPE_LABELS = {
+    actual_school: 'planned actual school day',
+    school_off: 'planned school day off',
+    holiday: 'holiday',
+    weekend: 'weekend',
+};
+
+function formatSchoolDayDate(isoDate) {
+    const parts = isoDate.split('-');
+    const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    return dateObj.toLocaleDateString(undefined, {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    });
+}
+
 function updateSchoolDayButton(button, dayType, isCompleted) {
     DAY_TYPE_CLASSES.forEach(function (className) {
         button.classList.remove(className);
     });
     button.classList.add('day-type-' + dayType);
     button.classList.toggle('completed', dayType === 'actual_school' && isCompleted);
+    button.dataset.dayType = dayType;
+    button.dataset.isCompleted = isCompleted ? 'true' : 'false';
 
     let check = button.querySelector('.school-day-check');
     if (dayType === 'actual_school' && isCompleted) {
@@ -67,7 +87,7 @@ function updateSchoolDayButton(button, dayType, isCompleted) {
         check.remove();
     }
 
-    const typeLabel = dayType.replace(/_/g, ' ');
+    const typeLabel = DAY_TYPE_LABELS[dayType] || dayType.replace(/_/g, ' ');
     const labelBase = button.title;
     let ariaLabel = labelBase + ', ' + typeLabel;
     if (dayType === 'actual_school' && isCompleted) {
@@ -78,6 +98,7 @@ function updateSchoolDayButton(button, dayType, isCompleted) {
 
 function updateSchoolDayCounters(data) {
     const plannedActualEl = document.querySelector('.counter-planned-actual');
+    const plannedOffEl = document.querySelector('.counter-planned-off');
     const completedEl = document.querySelector('.counter-completed');
     const remainingEl = document.querySelector('.counter-remaining');
     const requiredEl = document.querySelector('.counter-required');
@@ -85,6 +106,9 @@ function updateSchoolDayCounters(data) {
 
     if (plannedActualEl) {
         plannedActualEl.textContent = data.planned_actual_count;
+    }
+    if (plannedOffEl) {
+        plannedOffEl.textContent = data.planned_school_off_count;
     }
     if (completedEl) {
         completedEl.textContent = data.completed_count;
@@ -100,32 +124,119 @@ function updateSchoolDayCounters(data) {
     }
 }
 
-function initSchoolDayUpdates() {
-    document.querySelectorAll('.school-day-update-form').forEach(function (form) {
-        form.addEventListener('submit', async function (event) {
-            event.preventDefault();
-            const button = form.querySelector('button.school-day-cell');
-            if (!button || button.disabled) {
+function initSchoolDayEditor() {
+    const dialog = document.getElementById('school-day-editor');
+    const form = document.getElementById('school-day-editor-form');
+    const calendar = document.querySelector('.school-day-calendar');
+    if (!dialog || !form || !calendar) {
+        return;
+    }
+
+    const dateLabel = document.getElementById('school-day-editor-date');
+    const completedWrap = document.getElementById('school-day-completed-wrap');
+    const completedInput = document.getElementById('school-day-completed');
+    const closeBtn = dialog.querySelector('.school-day-editor-close');
+    const cancelBtn = dialog.querySelector('.school-day-editor-cancel');
+    const saveBtn = dialog.querySelector('.school-day-editor-save');
+    const typeInputs = form.querySelectorAll('input[name="day_type"]');
+    let activeButton = null;
+
+    function syncCompletedVisibility() {
+        const selected = form.querySelector('input[name="day_type"]:checked');
+        const isActualSchool = selected && selected.value === 'actual_school';
+        if (completedWrap) {
+            completedWrap.hidden = !isActualSchool;
+        }
+        if (!isActualSchool && completedInput) {
+            completedInput.checked = false;
+        }
+    }
+
+    typeInputs.forEach(function (input) {
+        input.addEventListener('change', syncCompletedVisibility);
+    });
+
+    function closeEditor() {
+        activeButton = null;
+        dialog.close();
+    }
+
+    function openEditor(button) {
+        activeButton = button;
+        const dayDate = button.dataset.dayDate;
+        const dayType = button.dataset.dayType;
+        const isCompleted = button.dataset.isCompleted === 'true';
+
+        if (dateLabel) {
+            dateLabel.textContent = formatSchoolDayDate(dayDate);
+        }
+
+        typeInputs.forEach(function (input) {
+            input.checked = input.value === dayType;
+        });
+        if (completedInput) {
+            completedInput.checked = isCompleted;
+        }
+        syncCompletedVisibility();
+        dialog.showModal();
+    }
+
+    calendar.querySelectorAll('.school-day-edit-btn').forEach(function (button) {
+        button.addEventListener('click', function () {
+            openEditor(button);
+        });
+    });
+
+    closeBtn?.addEventListener('click', closeEditor);
+    cancelBtn?.addEventListener('click', closeEditor);
+    dialog.addEventListener('cancel', function () {
+        activeButton = null;
+    });
+    dialog.addEventListener('click', function (event) {
+        if (event.target === dialog) {
+            closeEditor();
+        }
+    });
+
+    form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        if (!activeButton) {
+            return;
+        }
+
+        const selectedType = form.querySelector('input[name="day_type"]:checked');
+        if (!selectedType) {
+            return;
+        }
+
+        const dayType = selectedType.value;
+        const isCompleted = dayType === 'actual_school' && completedInput?.checked;
+        const calMonth = calendar.dataset.calMonth || '';
+        const formData = new FormData();
+        formData.append('day_date', activeButton.dataset.dayDate);
+        formData.append('day_type', dayType);
+        formData.append('is_completed', isCompleted ? 'true' : 'false');
+        if (calMonth) {
+            formData.append('cal_month', calMonth);
+        }
+
+        saveBtn.disabled = true;
+        try {
+            const response = await fetch('/teacher/school-days/update-day', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (!response.ok) {
                 return;
             }
-
-            button.disabled = true;
-            try {
-                const response = await fetch(form.action, {
-                    method: 'POST',
-                    body: new FormData(form),
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                });
-                if (!response.ok) {
-                    return;
-                }
-                const data = await response.json();
-                updateSchoolDayButton(button, data.day_type, data.is_completed);
-                updateSchoolDayCounters(data);
-            } finally {
-                button.disabled = false;
-            }
-        });
+            const data = await response.json();
+            updateSchoolDayButton(activeButton, data.day_type, data.is_completed);
+            updateSchoolDayCounters(data);
+            closeEditor();
+        } finally {
+            saveBtn.disabled = false;
+        }
     });
 }
 
@@ -190,7 +301,7 @@ function initPossibleSchoolDaysPreview() {
 document.addEventListener('DOMContentLoaded', function () {
     restoreScrollPosition();
     initPreserveScroll();
-    initSchoolDayUpdates();
+    initSchoolDayEditor();
     initPossibleSchoolDaysPreview();
 
     document.querySelectorAll('.alert-success').forEach(function (alert) {

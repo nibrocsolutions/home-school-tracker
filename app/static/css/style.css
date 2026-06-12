@@ -1677,6 +1677,112 @@ button.school-day-cell:hover {
     border-color: #d1d5db;
 }
 
+.counter-planned-off {
+    color: #dc2626;
+}
+
+.school-day-editor-dialog {
+    border: none;
+    border-radius: var(--radius);
+    padding: 0;
+    width: min(420px, calc(100vw - 2rem));
+    box-shadow: 0 20px 60px rgba(45, 49, 66, 0.2);
+}
+
+.school-day-editor-dialog::backdrop {
+    background: rgba(45, 49, 66, 0.45);
+}
+
+.school-day-editor-form {
+    padding: 1.5rem;
+}
+
+.school-day-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.school-day-editor-header h3 {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+}
+
+.school-day-editor-close {
+    border: none;
+    background: transparent;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0.25rem;
+}
+
+.school-day-editor-close:hover {
+    color: var(--text);
+}
+
+.school-day-editor-date {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 1.25rem;
+}
+
+.school-day-type-options {
+    border: none;
+    padding: 0;
+    margin: 0 0 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.school-day-type-options legend {
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.school-day-type-option {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 0.75rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.school-day-type-option:hover {
+    border-color: var(--primary);
+    background: #f8faff;
+}
+
+.school-day-type-option:has(input:checked) {
+    border-color: var(--primary);
+    background: #eef2ff;
+}
+
+.school-day-type-option input {
+    margin: 0;
+}
+
+.school-day-completed-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    font-weight: 600;
+}
+
+.school-day-editor-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
 @media (max-width: 960px) {
     .school-day-tracking.panel-grid {
         grid-template-columns: 1fr;

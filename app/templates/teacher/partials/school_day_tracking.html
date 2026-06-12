@@ -47,6 +47,10 @@
                         <td><strong class="counter-planned-actual">{{ planned_actual_count }}</strong></td>
                     </tr>
                     <tr>
+                        <td>Planned School Days Off</td>
+                        <td><strong class="counter-planned-off">{{ planned_school_off_count }}</strong></td>
+                    </tr>
+                    <tr>
                         <td>Completed Actual School Days</td>
                         <td><strong class="counter-completed">{{ completed_count }}</strong></td>
                     </tr>
@@ -73,8 +77,8 @@
 
     <div class="panel school-day-calendar-panel" data-preserve-scroll>
         <div class="calendar-header">
-            <h2>Approved Full School Days</h2>
-            <p class="section-hint">Click a day to change its type. Click a green day to mark it completed with a check mark.</p>
+            <h2>School Days Calendar</h2>
+            <p class="section-hint">Click a day to open the editor and set its kind or mark it completed.</p>
         </div>
 
         {% if not school_year %}
@@ -93,7 +97,7 @@
                class="cal-nav-btn" aria-label="Next month">›</a>
         </div>
 
-        <div class="month-calendar school-day-calendar">
+        <div class="month-calendar school-day-calendar" data-cal-month="{{ cal_month_param }}">
             <div class="month-weekdays">
                 <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span>
                 <span>Fri</span><span>Sat</span><span>Sun</span>
@@ -103,19 +107,18 @@
                 {% for cell in week %}
                 {% if cell.day %}
                     {% if cell.in_range %}
-                    <form method="post" action="/teacher/school-days/update-day" class="school-day-cell-form school-day-update-form">
-                        <input type="hidden" name="day_date" value="{{ cell.date.isoformat() }}">
-                        <input type="hidden" name="cal_month" value="{{ cal_month_param }}">
-                        <button type="submit"
-                                class="school-day-cell day-type-{{ cell.day_type.value }}{% if cell.is_completed %} completed{% endif %}{% if cell.is_today %} today{% endif %}"
-                                aria-label="{{ cell.date.strftime('%B %d, %Y') }}, {{ cell.day_type.value | replace('_', ' ') }}{% if cell.is_completed %}, completed{% endif %}"
-                                title="{{ cell.date.strftime('%B %d, %Y') }}">
-                            <span class="school-day-num">{{ cell.day }}</span>
-                            {% if cell.day_type.value == 'actual_school' and cell.is_completed %}
-                            <span class="school-day-check" aria-hidden="true">✓</span>
-                            {% endif %}
-                        </button>
-                    </form>
+                    <button type="button"
+                            class="school-day-cell school-day-edit-btn day-type-{{ cell.day_type.value }}{% if cell.is_completed %} completed{% endif %}{% if cell.is_today %} today{% endif %}"
+                            data-day-date="{{ cell.date.isoformat() }}"
+                            data-day-type="{{ cell.day_type.value }}"
+                            data-is-completed="{{ 'true' if cell.is_completed else 'false' }}"
+                            aria-label="{{ cell.date.strftime('%B %d, %Y') }}, {{ cell.day_type.value | replace('_', ' ') }}{% if cell.is_completed %}, completed{% endif %}"
+                            title="{{ cell.date.strftime('%B %d, %Y') }}">
+                        <span class="school-day-num">{{ cell.day }}</span>
+                        {% if cell.day_type.value == 'actual_school' and cell.is_completed %}
+                        <span class="school-day-check" aria-hidden="true">✓</span>
+                        {% endif %}
+                    </button>
                     {% else %}
                     <span class="school-day-cell out-of-range {% if cell.is_today %}today{% endif %}"
                           aria-hidden="true">
@@ -136,6 +139,47 @@
             <span class="legend-item"><span class="legend-swatch day-type-holiday"></span> Holidays</span>
             <span class="legend-item"><span class="legend-swatch day-type-weekend"></span> Weekends</span>
         </div>
+
+        <dialog id="school-day-editor" class="school-day-editor-dialog" aria-labelledby="school-day-editor-title">
+            <form method="dialog" class="school-day-editor-form" id="school-day-editor-form">
+                <div class="school-day-editor-header">
+                    <h3 id="school-day-editor-title">Edit School Day</h3>
+                    <button type="button" class="school-day-editor-close" aria-label="Close editor">&times;</button>
+                </div>
+                <p class="school-day-editor-date" id="school-day-editor-date"></p>
+                <fieldset class="school-day-type-options">
+                    <legend>Day kind</legend>
+                    <label class="school-day-type-option">
+                        <input type="radio" name="day_type" value="actual_school">
+                        <span class="legend-swatch day-type-actual_school"></span>
+                        Planned actual school day
+                    </label>
+                    <label class="school-day-type-option">
+                        <input type="radio" name="day_type" value="school_off">
+                        <span class="legend-swatch day-type-school_off"></span>
+                        Planned school day off
+                    </label>
+                    <label class="school-day-type-option">
+                        <input type="radio" name="day_type" value="holiday">
+                        <span class="legend-swatch day-type-holiday"></span>
+                        Holiday
+                    </label>
+                    <label class="school-day-type-option">
+                        <input type="radio" name="day_type" value="weekend">
+                        <span class="legend-swatch day-type-weekend"></span>
+                        Weekend
+                    </label>
+                </fieldset>
+                <label class="school-day-completed-option" id="school-day-completed-wrap" hidden>
+                    <input type="checkbox" name="is_completed" id="school-day-completed">
+                    Mark as completed (check mark on calendar)
+                </label>
+                <div class="school-day-editor-actions">
+                    <button type="button" class="btn btn-secondary school-day-editor-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary school-day-editor-save">Save</button>
+                </div>
+            </form>
+        </dialog>
         {% endif %}
     </div>
 </section>

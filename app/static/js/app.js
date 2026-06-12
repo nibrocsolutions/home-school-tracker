@@ -88,16 +88,23 @@ function updateSchoolDayButton(button, dayType, isCompleted, holidayName) {
     }
 
     let holidayLabel = button.querySelector('.school-day-holiday-name');
-    if (dayType === 'holiday' && holidayName) {
+    if (holidayName) {
         if (!holidayLabel) {
             holidayLabel = document.createElement('span');
             holidayLabel.className = 'school-day-holiday-name';
             holidayLabel.setAttribute('aria-hidden', 'true');
-            button.appendChild(holidayLabel);
+            const dayNum = button.querySelector('.school-day-num');
+            if (dayNum) {
+                dayNum.insertAdjacentElement('afterend', holidayLabel);
+            } else {
+                button.appendChild(holidayLabel);
+            }
         }
         holidayLabel.textContent = holidayName;
+        button.dataset.holidayName = holidayName;
     } else if (holidayLabel) {
         holidayLabel.remove();
+        delete button.dataset.holidayName;
     }
 
     const typeLabel = DAY_TYPE_LABELS[dayType] || dayType.replace(/_/g, ' ');
@@ -248,7 +255,12 @@ function initSchoolDayEditor() {
                 return;
             }
             const data = await response.json();
-            updateSchoolDayButton(activeButton, data.day_type, data.is_completed, data.holiday_name);
+            updateSchoolDayButton(
+                activeButton,
+                data.day_type,
+                data.is_completed,
+                data.holiday_name
+            );
             updateSchoolDayCounters(data);
             closeEditor();
         } finally {

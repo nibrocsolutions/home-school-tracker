@@ -1481,7 +1481,8 @@ body {
     color: var(--success);
 }
 
-.possible-days-hint {
+.possible-days-hint,
+.progress-footnote {
     margin-top: 0.75rem;
     font-size: 0.85rem;
 }
@@ -1636,6 +1637,10 @@ button.school-day-cell:hover {
 
 .school-day-cell.day-type-holiday {
     padding: 0.15rem 0;
+}
+
+.school-day-cell:not(.day-type-holiday) .school-day-holiday-name {
+    opacity: 0.85;
 }
 
 .school-day-legend {

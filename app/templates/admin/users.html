@@ -19,6 +19,9 @@
     {% if request.query_params.get('success') == 'created' %}
     <div class="alert alert-success">New user created successfully!</div>
     {% endif %}
+    {% if request.query_params.get('success') == 'updated' %}
+    <div class="alert alert-success">User updated successfully.</div>
+    {% endif %}
     {% if request.query_params.get('error') == 'exists' %}
     <div class="alert alert-error">Username or email already exists.</div>
     {% endif %}
@@ -106,11 +109,14 @@
                         {% endif %}
                         <span class="role-badge {{ u.role.value }}">{{ u.role.value | title }}</span>
                     </div>
-                    <form method="post" action="/admin/users/{{ u.id }}/toggle">
-                        <button type="submit" class="btn btn-sm {% if u.is_active %}btn-ghost{% else %}btn-primary{% endif %}">
-                            {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
-                        </button>
-                    </form>
+                    <div class="user-card-actions">
+                        <a href="/admin/users/{{ u.id }}/edit" class="btn btn-sm btn-ghost">Edit</a>
+                        <form method="post" action="/admin/users/{{ u.id }}/toggle">
+                            <button type="submit" class="btn btn-sm {% if u.is_active %}btn-ghost{% else %}btn-primary{% endif %}">
+                                {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
+                            </button>
+                        </form>
+                    </div>
                 </div>
                 {% endfor %}
             </div>

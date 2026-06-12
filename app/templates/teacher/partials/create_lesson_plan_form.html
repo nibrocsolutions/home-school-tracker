@@ -1,0 +1,79 @@
+{% if show_sample_plans and sample_lesson_plans %}
+<div class="sample-plans-section">
+    <h2>Sample Lesson Plans</h2>
+    <p class="section-hint">Click a sample to pre-fill the form below. Samples are provided by your administrator.</p>
+    <div class="sample-plan-cards">
+        {% for sample in sample_lesson_plans %}
+        <button type="button" class="sample-plan-card" data-sample-id="{{ sample.id }}">
+            <strong>{{ sample.title }}</strong>
+            <span>{{ sample.description }}</span>
+        </button>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="panel-inner">
+    <h2>Create Lesson Plan</h2>
+    <form method="post" action="/teacher/lesson-plans" class="lesson-form" id="lesson-form">
+        <div class="form-row">
+            <label>Title</label>
+            <input type="text" name="title" id="plan-title" required placeholder="e.g. Math & Science Wednesday">
+        </div>
+        <div class="form-row">
+            <label>Description</label>
+            <textarea name="description" id="plan-description" rows="2" placeholder="Brief overview of the day's learning"></textarea>
+        </div>
+        <div class="form-row">
+            <label>Date</label>
+            <input type="date" name="plan_date" id="plan-date" required value="{{ today if today else '' }}">
+            <p class="field-hint" id="schedule-day-hint"></p>
+        </div>
+        <div class="form-row">
+            <label>Students</label>
+            <div class="student-picker">
+                <div class="student-picker-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" id="select-all-students">Select All</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="clear-all-students">Clear All</button>
+                </div>
+                <div class="student-checkboxes">
+                    {% for s in students %}
+                    <label class="student-check">
+                        <input type="checkbox" name="student_ids" value="{{ s.id }}">
+                        <span>{{ s.full_name }}{% if s.grade_age_label %} <em class="student-meta">({{ s.grade_age_label }})</em>{% endif %}</span>
+                    </label>
+                    {% endfor %}
+                    {% if not students %}
+                    <p class="empty-state">No students available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="activities-builder">
+            <div class="activities-header">
+                <h3>Activities</h3>
+                <div class="activities-header-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" id="apply-schedule-suggestions">Apply Day's Schedule</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="add-activity">+ Add Activity</button>
+                </div>
+            </div>
+            <div id="activities-list">
+                <div class="activity-row" data-activity-row>
+                    <input type="text" name="activity_titles" placeholder="Activity title" required>
+                    <input type="text" name="activity_descriptions" placeholder="Description (optional)">
+                    <select name="activity_types" class="activity-type-select">
+                        <option value="regular">Regular</option>
+                        <option value="special">Special Activity</option>
+                        <option value="subject">Subject</option>
+                        <option value="history">History (with audio)</option>
+                    </select>
+                    <input type="url" name="activity_audio_urls" placeholder="Audio URL (history)" class="activity-audio-field">
+                    <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field">
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Lesson Plan</button>
+    </form>
+</div>

@@ -10,359 +10,104 @@
 {% include "partials/nav.html" %}
 
 <main class="main-content">
-    <nav class="page-tabs" role="tablist" aria-label="Teacher dashboard sections">
-        <a href="/teacher?tab=lessons"
-           class="btn page-tab-btn {% if tab == 'lessons' %}btn-primary{% else %}btn-tab-inactive{% endif %}"
-           role="tab" aria-selected="{{ 'true' if tab == 'lessons' else 'false' }}">
-            Lesson Planning
-        </a>
-        <a href="/teacher?tab=school-days"
-           class="btn page-tab-btn {% if tab == 'school-days' %}btn-primary{% else %}btn-tab-inactive{% endif %}"
-           role="tab" aria-selected="{{ 'true' if tab == 'school-days' else 'false' }}">
-            School Day Tracking
-        </a>
-    </nav>
+    {% include "teacher/partials/nav_tabs.html" %}
 
-    {% if request.query_params.get('success') == 'plan' %}
-    <div class="alert alert-success">
-        Lesson plan{{ 's' if request.query_params.get('count', '1') != '1' else '' }} created successfully
-        {% if request.query_params.get('count') %}for {{ request.query_params.get('count') }} student{{ 's' if request.query_params.get('count') != '1' else '' }}{% endif %}!
-    </div>
-    {% endif %}
-    {% if request.query_params.get('success') == 'schedule' %}
-    <div class="alert alert-success">Weekly schedule saved.</div>
-    {% endif %}
-    {% if request.query_params.get('error') == 'students' %}
-    <div class="alert alert-error">Please select at least one student.</div>
-    {% endif %}
-    {% if request.query_params.get('success') == 'config' %}
-    <div class="alert alert-success">School year settings saved.</div>
-    {% endif %}
-    {% if request.query_params.get('error') == 'dates' %}
-    <div class="alert alert-error">Please enter valid start and end dates.</div>
-    {% endif %}
-    {% if request.query_params.get('error') == 'range' %}
-    <div class="alert alert-error">The start date must be on or before the end date, and days must fall within your school year.</div>
-    {% endif %}
-    {% if request.query_params.get('error') == 'required' %}
-    <div class="alert alert-error">Required full days must be at least 1.</div>
-    {% endif %}
-    {% if request.query_params.get('error') == 'config' %}
-    <div class="alert alert-error">Save your school year settings before approving days.</div>
-    {% endif %}
-    {% if request.query_params.get('error') == 'date' %}
-    <div class="alert alert-error">That date could not be updated. Please try again.</div>
-    {% endif %}
+    <section class="page-hero teacher-hero">
+        <div>
+            <h1>Teacher Overview</h1>
+            <p>Jump into lesson planning, schedules, and school day tracking.</p>
+        </div>
+        <div class="hero-emoji" aria-hidden="true">📚</div>
+    </section>
 
-    {% if tab == 'school-days' %}
-        {% include "teacher/partials/school_day_tracking.html" %}
-    {% else %}
-    <section class="panel-grid lesson-planning-grid">
-        <div class="panel lesson-planning-left">
-            {% if show_sample_plans and sample_lesson_plans %}
-            <div class="sample-plans-section">
-                <h2>Sample Lesson Plans</h2>
-                <p class="section-hint">Click a sample to pre-fill the form below. Samples are provided by your administrator.</p>
-                <div class="sample-plan-cards">
-                    {% for sample in sample_lesson_plans %}
-                    <button type="button" class="sample-plan-card" data-sample-id="{{ sample.id }}">
-                        <strong>{{ sample.title }}</strong>
-                        <span>{{ sample.description }}</span>
-                    </button>
-                    {% endfor %}
-                </div>
+    <section class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-icon">📋</span>
+            <div>
+                <div class="stat-value">{{ stats.total_plans }}</div>
+                <div class="stat-label">Lesson Plans</div>
             </div>
-            {% endif %}
-
-            <div class="weekly-schedule-section">
-                <h2>Weekly Schedule</h2>
-                <p class="section-hint">Set special activities and subjects for specific days. When you pick a date, matching items are suggested automatically.</p>
-                <form method="post" action="/teacher/weekly-schedule" id="weekly-schedule-form">
-                    <div id="schedule-items-list">
-                        {% for item in weekly_schedule %}
-                        <div class="schedule-item-row" data-schedule-row>
-                            <div class="schedule-item-header">
-                                <input type="text" name="item_names" value="{{ item.name }}" placeholder="Name" required>
-                                <select name="item_kinds">
-                                    <option value="special_activity" {% if item.item_kind.value == 'special_activity' %}selected{% endif %}>Special Activity</option>
-                                    <option value="subject" {% if item.item_kind.value == 'subject' %}selected{% endif %}>Subject</option>
-                                </select>
-                                <select name="special_types">
-                                    <option value="">— Type —</option>
-                                    <option value="co_op" {% if item.special_type and item.special_type.value == 'co_op' %}selected{% endif %}>Co-Op</option>
-                                    <option value="wild_and_free" {% if item.special_type and item.special_type.value == 'wild_and_free' %}selected{% endif %}>Wild and Free Outing</option>
-                                    <option value="classical_conversations" {% if item.special_type and item.special_type.value == 'classical_conversations' %}selected{% endif %}>Classical Conversations</option>
-                                    <option value="other" {% if item.special_type and item.special_type.value == 'other' %}selected{% endif %}>Other</option>
-                                </select>
-                            </div>
-                            <div class="weekday-picker">
-                                {% for label in weekday_labels %}
-                                <label class="weekday-check">
-                                    <input type="checkbox" class="weekday-cb" value="{{ loop.index0 }}"
-                                           {% if loop.index0|string in item.weekdays.replace(' ', '').split(',') %}checked{% endif %}>
-                                    {{ label }}
-                                </label>
-                                {% endfor %}
-                                <input type="hidden" name="weekdays_list" value="{{ item.weekdays }}">
-                            </div>
-                            <input type="text" name="item_descriptions" value="{{ item.description or '' }}" placeholder="Description">
-                            <input type="url" name="external_links" value="{{ item.external_link or '' }}" placeholder="External link (optional)">
-                            <input type="url" name="audio_urls" value="{{ item.audio_url or '' }}" placeholder="Audio link for history (optional)">
-                            <button type="button" class="btn-remove" aria-label="Remove schedule item">&times;</button>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <div class="schedule-actions">
-                        <button type="button" class="btn btn-ghost btn-sm" id="add-schedule-item">+ Add Schedule Item</button>
-                        <button type="submit" class="btn btn-primary btn-sm">Save Weekly Schedule</button>
-                    </div>
-                </form>
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon">📅</span>
+            <div>
+                <div class="stat-value">{{ stats.plans_today }}</div>
+                <div class="stat-label">Plans Today</div>
             </div>
-
-            <div class="panel-inner">
-                <h2>Create Lesson Plan</h2>
-                <form method="post" action="/teacher/lesson-plans" class="lesson-form" id="lesson-form">
-                    <div class="form-row">
-                        <label>Title</label>
-                        <input type="text" name="title" id="plan-title" required placeholder="e.g. Math & Science Wednesday">
-                    </div>
-                    <div class="form-row">
-                        <label>Description</label>
-                        <textarea name="description" id="plan-description" rows="2" placeholder="Brief overview of the day's learning"></textarea>
-                    </div>
-                    <div class="form-row">
-                        <label>Date</label>
-                        <input type="date" name="plan_date" id="plan-date" required value="{{ today if today else '' }}">
-                        <p class="field-hint" id="schedule-day-hint"></p>
-                    </div>
-                    <div class="form-row">
-                        <label>Students</label>
-                        <div class="student-picker">
-                            <div class="student-picker-actions">
-                                <button type="button" class="btn btn-ghost btn-sm" id="select-all-students">Select All</button>
-                                <button type="button" class="btn btn-ghost btn-sm" id="clear-all-students">Clear All</button>
-                            </div>
-                            <div class="student-checkboxes">
-                                {% for s in students %}
-                                <label class="student-check">
-                                    <input type="checkbox" name="student_ids" value="{{ s.id }}">
-                                    <span>{{ s.full_name }}{% if s.grade_age_label %} <em class="student-meta">({{ s.grade_age_label }})</em>{% endif %}</span>
-                                </label>
-                                {% endfor %}
-                                {% if not students %}
-                                <p class="empty-state">No students available.</p>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="activities-builder">
-                        <div class="activities-header">
-                            <h3>Activities</h3>
-                            <div class="activities-header-actions">
-                                <button type="button" class="btn btn-ghost btn-sm" id="apply-schedule-suggestions">Apply Day's Schedule</button>
-                                <button type="button" class="btn btn-ghost btn-sm" id="add-activity">+ Add Activity</button>
-                            </div>
-                        </div>
-                        <div id="activities-list">
-                            <div class="activity-row" data-activity-row>
-                                <input type="text" name="activity_titles" placeholder="Activity title" required>
-                                <input type="text" name="activity_descriptions" placeholder="Description (optional)">
-                                <select name="activity_types" class="activity-type-select">
-                                    <option value="regular">Regular</option>
-                                    <option value="special">Special Activity</option>
-                                    <option value="subject">Subject</option>
-                                    <option value="history">History (with audio)</option>
-                                </select>
-                                <input type="url" name="activity_audio_urls" placeholder="Audio URL (history)" class="activity-audio-field">
-                                <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field">
-                            </div>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">Save Lesson Plan</button>
-                </form>
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon">🗓️</span>
+            <div>
+                <div class="stat-value">{{ stats.schedule_items }}</div>
+                <div class="stat-label">Schedule Items</div>
             </div>
-
-            {% if student_responses %}
-            <div class="student-responses-section panel-inner">
-                <h2>Student History Responses</h2>
-                <p class="section-hint">Messages from students about what they learned from history audio lessons.</p>
-                <div class="response-list">
-                    {% for resp in student_responses %}
-                    <article class="response-card">
-                        <div class="response-card-header">
-                            <strong>{{ resp.student_name }}</strong>
-                            <span class="date-badge">{{ resp.plan_date.strftime('%a, %b %d') }}</span>
-                        </div>
-                        <p class="response-meta">{{ resp.activity_title }} · {{ resp.plan_title }}</p>
-                        <p class="response-message">{{ resp.message }}</p>
-                    </article>
-                    {% endfor %}
-                </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon">💬</span>
+            <div>
+                <div class="stat-value">{{ stats.response_count }}</div>
+                <div class="stat-label">Student Responses</div>
             </div>
-            {% endif %}
+        </div>
+    </section>
+
+    <section class="panel-grid">
+        <div class="panel">
+            <h2>Quick Actions</h2>
+            <div class="action-list">
+                <a href="/teacher/lesson-plans" class="action-item">
+                    <span>📅</span>
+                    <div>
+                        <strong>Browse Lesson Plans</strong>
+                        <p>View your calendar and existing lesson plans</p>
+                    </div>
+                </a>
+                <a href="/teacher/lesson-plans/new" class="action-item">
+                    <span>➕</span>
+                    <div>
+                        <strong>Create Lesson Plan</strong>
+                        <p>Build a new plan with activities for your students</p>
+                    </div>
+                </a>
+                <a href="/teacher/weekly-schedule" class="action-item">
+                    <span>🗓️</span>
+                    <div>
+                        <strong>Weekly Schedule</strong>
+                        <p>Set recurring subjects and special activities by day</p>
+                    </div>
+                </a>
+                <a href="/teacher/student-responses" class="action-item">
+                    <span>💬</span>
+                    <div>
+                        <strong>Student Responses</strong>
+                        <p>Read history lesson reflections from students</p>
+                    </div>
+                </a>
+                <a href="/teacher/school-days" class="action-item">
+                    <span>✅</span>
+                    <div>
+                        <strong>School Day Tracking</strong>
+                        <p>Configure your school year and approve full days</p>
+                    </div>
+                </a>
+            </div>
         </div>
 
         <div class="panel">
-            {% include "partials/lesson_calendar.html" %}
-            {% include "partials/plan_list.html" %}
+            <h2>Today's Plans</h2>
+            {% if today_plans %}
+            <div class="plan-cards">
+                {% for plan in today_plans %}
+                {% include "teacher/partials/plan_card.html" %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty-state">No lesson plans scheduled for today.</p>
+            <p style="margin-top: 0.75rem;">
+                <a href="/teacher/lesson-plans/new" class="btn btn-primary btn-sm">Create a Plan</a>
+            </p>
+            {% endif %}
         </div>
     </section>
-    {% endif %}
 </main>
-
-<script type="application/json" id="sample-plans-data">{{ sample_lesson_plans | tojson }}</script>
-<script type="application/json" id="weekly-schedule-meta">{{ weekly_schedule_meta_json | safe }}</script>
-{% endblock %}
-
-{% block scripts %}
-<script>
-const samplePlans = JSON.parse(document.getElementById('sample-plans-data')?.textContent || '[]');
-const scheduleMeta = JSON.parse(document.getElementById('weekly-schedule-meta')?.textContent || '[]');
-const weekdayLabels = {{ weekday_labels | tojson }};
-
-function syncWeekdayHidden(row) {
-    const checked = [...row.querySelectorAll('.weekday-cb:checked')].map(cb => cb.value);
-    const hidden = row.querySelector('input[name="weekdays_list"]');
-    if (hidden) hidden.value = checked.join(',');
-}
-
-document.querySelectorAll('[data-schedule-row]').forEach(row => {
-    row.querySelectorAll('.weekday-cb').forEach(cb => {
-        cb.addEventListener('change', () => syncWeekdayHidden(row));
-    });
-    row.querySelector('.btn-remove')?.addEventListener('click', () => row.remove());
-});
-
-document.getElementById('weekly-schedule-form')?.addEventListener('submit', () => {
-    document.querySelectorAll('[data-schedule-row]').forEach(syncWeekdayHidden);
-});
-
-document.getElementById('add-schedule-item')?.addEventListener('click', () => {
-    const list = document.getElementById('schedule-items-list');
-    const row = document.createElement('div');
-    row.className = 'schedule-item-row';
-    row.setAttribute('data-schedule-row', '');
-    row.innerHTML = `
-        <div class="schedule-item-header">
-            <input type="text" name="item_names" placeholder="Name" required>
-            <select name="item_kinds">
-                <option value="special_activity">Special Activity</option>
-                <option value="subject">Subject</option>
-            </select>
-            <select name="special_types">
-                <option value="">— Type —</option>
-                <option value="co_op">Co-Op</option>
-                <option value="wild_and_free">Wild and Free Outing</option>
-                <option value="classical_conversations">Classical Conversations</option>
-                <option value="other">Other</option>
-            </select>
-        </div>
-        <div class="weekday-picker">
-            ${weekdayLabels.map((label, i) => `
-                <label class="weekday-check">
-                    <input type="checkbox" class="weekday-cb" value="${i}"> ${label}
-                </label>
-            `).join('')}
-            <input type="hidden" name="weekdays_list" value="">
-        </div>
-        <input type="text" name="item_descriptions" placeholder="Description">
-        <input type="url" name="external_links" placeholder="External link (optional)">
-        <input type="url" name="audio_urls" placeholder="Audio link for history (optional)">
-        <button type="button" class="btn-remove" aria-label="Remove schedule item">&times;</button>
-    `;
-    list.appendChild(row);
-    row.querySelectorAll('.weekday-cb').forEach(cb => {
-        cb.addEventListener('change', () => syncWeekdayHidden(row));
-    });
-    row.querySelector('.btn-remove').addEventListener('click', () => row.remove());
-});
-
-function createActivityRow(activity = {}) {
-    const row = document.createElement('div');
-    row.className = 'activity-row';
-    row.setAttribute('data-activity-row', '');
-    row.innerHTML = `
-        <input type="text" name="activity_titles" placeholder="Activity title" value="${activity.title || ''}">
-        <input type="text" name="activity_descriptions" placeholder="Description (optional)" value="${activity.description || ''}">
-        <select name="activity_types" class="activity-type-select">
-            <option value="regular" ${activity.activity_type === 'regular' ? 'selected' : ''}>Regular</option>
-            <option value="special" ${activity.activity_type === 'special' ? 'selected' : ''}>Special Activity</option>
-            <option value="subject" ${activity.activity_type === 'subject' ? 'selected' : ''}>Subject</option>
-            <option value="history" ${activity.activity_type === 'history' ? 'selected' : ''}>History (with audio)</option>
-        </select>
-        <input type="url" name="activity_audio_urls" placeholder="Audio URL (history)" class="activity-audio-field" value="${activity.audio_url || ''}">
-        <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field" value="${activity.external_link || ''}">
-        <button type="button" class="btn-remove" aria-label="Remove activity">&times;</button>
-    `;
-    row.querySelector('.btn-remove').addEventListener('click', () => row.remove());
-    return row;
-}
-
-function setActivities(activities) {
-    const list = document.getElementById('activities-list');
-    list.innerHTML = '';
-    if (!activities.length) {
-        list.appendChild(createActivityRow());
-        return;
-    }
-    activities.forEach(act => list.appendChild(createActivityRow(act)));
-}
-
-document.querySelectorAll('.sample-plan-card').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const sample = samplePlans.find(s => s.id === btn.dataset.sampleId);
-        if (!sample) return;
-        document.getElementById('plan-title').value = sample.title;
-        document.getElementById('plan-description').value = sample.description || '';
-        setActivities(sample.activities || []);
-    });
-});
-
-async function loadScheduleSuggestions() {
-    const planDate = document.getElementById('plan-date')?.value;
-    const hint = document.getElementById('schedule-day-hint');
-    if (!planDate) return [];
-    try {
-        const res = await fetch(`/teacher/schedule-suggestions?plan_date=${planDate}`);
-        const data = await res.json();
-        if (hint) {
-            const count = (data.activities || []).length;
-            hint.textContent = count
-                ? `${data.weekday}: ${count} scheduled item${count !== 1 ? 's' : ''} for this day`
-                : `${data.weekday}: no scheduled items for this day`;
-        }
-        return data.activities || [];
-    } catch {
-        return [];
-    }
-}
-
-document.getElementById('plan-date')?.addEventListener('change', loadScheduleSuggestions);
-
-document.getElementById('apply-schedule-suggestions')?.addEventListener('click', async () => {
-    const activities = await loadScheduleSuggestions();
-    if (activities.length) setActivities(activities);
-});
-
-document.getElementById('select-all-students')?.addEventListener('click', function() {
-    document.querySelectorAll('.student-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = true);
-});
-document.getElementById('clear-all-students')?.addEventListener('click', function() {
-    document.querySelectorAll('.student-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
-});
-document.getElementById('lesson-form')?.addEventListener('submit', function(e) {
-    const checked = document.querySelectorAll('.student-checkboxes input[type="checkbox"]:checked');
-    if (checked.length === 0) {
-        e.preventDefault();
-        alert('Please select at least one student.');
-    }
-});
-document.getElementById('add-activity')?.addEventListener('click', function() {
-    document.getElementById('activities-list').appendChild(createActivityRow());
-});
-
-loadScheduleSuggestions();
-</script>
 {% endblock %}

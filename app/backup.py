@@ -92,6 +92,7 @@ def export_database(db: Session) -> bytes:
             {
                 "id": setting.id,
                 "sample_lesson_plans_enabled": setting.sample_lesson_plans_enabled,
+                "sample_data_enabled": setting.sample_data_enabled,
                 "updated_at": _serialize_datetime(setting.updated_at),
             }
             for setting in db.query(AppSetting).order_by(AppSetting.id).all()
@@ -240,6 +241,7 @@ def import_database(db: Session, raw: bytes) -> None:
             AppSetting(
                 id=row["id"],
                 sample_lesson_plans_enabled=row.get("sample_lesson_plans_enabled", False),
+                sample_data_enabled=row.get("sample_data_enabled", False),
                 updated_at=_parse_datetime(row.get("updated_at")),
             )
         )

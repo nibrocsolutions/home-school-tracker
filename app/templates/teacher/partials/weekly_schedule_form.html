@@ -1,0 +1,44 @@
+<div class="weekly-schedule-section">
+    <h2>Weekly Schedule</h2>
+    <p class="section-hint">Set special activities and subjects for specific days. When you pick a date on the Create Plan page, matching items are suggested automatically.</p>
+    <form method="post" action="/teacher/weekly-schedule" id="weekly-schedule-form">
+        <div id="schedule-items-list">
+            {% for item in weekly_schedule %}
+            <div class="schedule-item-row" data-schedule-row>
+                <div class="schedule-item-header">
+                    <input type="text" name="item_names" value="{{ item.name }}" placeholder="Name" required>
+                    <select name="item_kinds">
+                        <option value="special_activity" {% if item.item_kind.value == 'special_activity' %}selected{% endif %}>Special Activity</option>
+                        <option value="subject" {% if item.item_kind.value == 'subject' %}selected{% endif %}>Subject</option>
+                    </select>
+                    <select name="special_types">
+                        <option value="">— Type —</option>
+                        <option value="co_op" {% if item.special_type and item.special_type.value == 'co_op' %}selected{% endif %}>Co-Op</option>
+                        <option value="wild_and_free" {% if item.special_type and item.special_type.value == 'wild_and_free' %}selected{% endif %}>Wild and Free Outing</option>
+                        <option value="classical_conversations" {% if item.special_type and item.special_type.value == 'classical_conversations' %}selected{% endif %}>Classical Conversations</option>
+                        <option value="other" {% if item.special_type and item.special_type.value == 'other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div class="weekday-picker">
+                    {% for label in weekday_labels %}
+                    <label class="weekday-check">
+                        <input type="checkbox" class="weekday-cb" value="{{ loop.index0 }}"
+                               {% if loop.index0|string in item.weekdays.replace(' ', '').split(',') %}checked{% endif %}>
+                        {{ label }}
+                    </label>
+                    {% endfor %}
+                    <input type="hidden" name="weekdays_list" value="{{ item.weekdays }}">
+                </div>
+                <input type="text" name="item_descriptions" value="{{ item.description or '' }}" placeholder="Description">
+                <input type="url" name="external_links" value="{{ item.external_link or '' }}" placeholder="External link (optional)">
+                <input type="url" name="audio_urls" value="{{ item.audio_url or '' }}" placeholder="Audio link for history (optional)">
+                <button type="button" class="btn-remove" aria-label="Remove schedule item">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="schedule-actions">
+            <button type="button" class="btn btn-ghost btn-sm" id="add-schedule-item">+ Add Schedule Item</button>
+            <button type="submit" class="btn btn-primary btn-sm">Save Weekly Schedule</button>
+        </div>
+    </form>
+</div>

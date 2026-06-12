@@ -1,0 +1,32 @@
+<nav class="page-tabs" role="tablist" aria-label="Teacher sections">
+    <a href="/teacher"
+       class="btn page-tab-btn {% if active_page == 'overview' %}btn-primary{% else %}btn-tab-inactive{% endif %}"
+       role="tab" aria-selected="{{ 'true' if active_page == 'overview' else 'false' }}">
+        Overview
+    </a>
+    <a href="/teacher/lesson-plans"
+       class="btn page-tab-btn {% if active_page == 'lesson-plans' %}btn-primary{% else %}btn-tab-inactive{% endif %}"
+       role="tab" aria-selected="{{ 'true' if active_page == 'lesson-plans' else 'false' }}">
+        Lesson Plans
+    </a>
+    <a href="/teacher/lesson-plans/new"
+       class="btn page-tab-btn {% if active_page == 'create-plan' %}btn-primary{% else %}btn-tab-inactive{% endif %}"
+       role="tab" aria-selected="{{ 'true' if active_page == 'create-plan' else 'false' }}">
+        Create Plan
+    </a>
+    <a href="/teacher/weekly-schedule"
+       class="btn page-tab-btn {% if active_page == 'weekly-schedule' %}btn-primary{% else %}btn-tab-inactive{% endif %}"
+       role="tab" aria-selected="{{ 'true' if active_page == 'weekly-schedule' else 'false' }}">
+        Weekly Schedule
+    </a>
+    <a href="/teacher/student-responses"
+       class="btn page-tab-btn {% if active_page == 'student-responses' %}btn-primary{% else %}btn-tab-inactive{% endif %}"
+       role="tab" aria-selected="{{ 'true' if active_page == 'student-responses' else 'false' }}">
+        Student Responses
+    </a>
+    <a href="/teacher/school-days"
+       class="btn page-tab-btn {% if active_page == 'school-days' %}btn-primary{% else %}btn-tab-inactive{% endif %}"
+       role="tab" aria-selected="{{ 'true' if active_page == 'school-days' else 'false' }}">
+        School Days
+    </a>
+</nav>

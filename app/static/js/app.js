@@ -65,7 +65,7 @@ function formatSchoolDayDate(isoDate) {
     });
 }
 
-function updateSchoolDayButton(button, dayType, isCompleted) {
+function updateSchoolDayButton(button, dayType, isCompleted, holidayName) {
     DAY_TYPE_CLASSES.forEach(function (className) {
         button.classList.remove(className);
     });
@@ -87,9 +87,26 @@ function updateSchoolDayButton(button, dayType, isCompleted) {
         check.remove();
     }
 
+    let holidayLabel = button.querySelector('.school-day-holiday-name');
+    if (dayType === 'holiday' && holidayName) {
+        if (!holidayLabel) {
+            holidayLabel = document.createElement('span');
+            holidayLabel.className = 'school-day-holiday-name';
+            holidayLabel.setAttribute('aria-hidden', 'true');
+            button.appendChild(holidayLabel);
+        }
+        holidayLabel.textContent = holidayName;
+    } else if (holidayLabel) {
+        holidayLabel.remove();
+    }
+
     const typeLabel = DAY_TYPE_LABELS[dayType] || dayType.replace(/_/g, ' ');
-    const labelBase = button.title;
-    let ariaLabel = labelBase + ', ' + typeLabel;
+    const datePart = button.title.split(' — ')[0];
+    button.title = holidayName ? datePart + ' — ' + holidayName : datePart;
+    let ariaLabel = datePart + ', ' + typeLabel;
+    if (holidayName) {
+        ariaLabel += ', ' + holidayName;
+    }
     if (dayType === 'actual_school' && isCompleted) {
         ariaLabel += ', completed';
     }
@@ -231,7 +248,7 @@ function initSchoolDayEditor() {
                 return;
             }
             const data = await response.json();
-            updateSchoolDayButton(activeButton, data.day_type, data.is_completed);
+            updateSchoolDayButton(activeButton, data.day_type, data.is_completed, data.holiday_name);
             updateSchoolDayCounters(data);
             closeEditor();
         } finally {

@@ -112,9 +112,12 @@
                             data-day-date="{{ cell.date.isoformat() }}"
                             data-day-type="{{ cell.day_type.value }}"
                             data-is-completed="{{ 'true' if cell.is_completed else 'false' }}"
-                            aria-label="{{ cell.date.strftime('%B %d, %Y') }}, {{ cell.day_type.value | replace('_', ' ') }}{% if cell.is_completed %}, completed{% endif %}"
-                            title="{{ cell.date.strftime('%B %d, %Y') }}">
+                            aria-label="{{ cell.date.strftime('%B %d, %Y') }}, {{ cell.day_type.value | replace('_', ' ') }}{% if cell.holiday_name %}, {{ cell.holiday_name }}{% endif %}{% if cell.is_completed %}, completed{% endif %}"
+                            title="{{ cell.date.strftime('%B %d, %Y') }}{% if cell.holiday_name %} — {{ cell.holiday_name }}{% endif %}">
                         <span class="school-day-num">{{ cell.day }}</span>
+                        {% if cell.day_type.value == 'holiday' and cell.holiday_name %}
+                        <span class="school-day-holiday-name" aria-hidden="true">{{ cell.holiday_name }}</span>
+                        {% endif %}
                         {% if cell.day_type.value == 'actual_school' and cell.is_completed %}
                         <span class="school-day-check" aria-hidden="true">✓</span>
                         {% endif %}

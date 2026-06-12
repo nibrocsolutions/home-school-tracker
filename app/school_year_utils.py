@@ -41,23 +41,41 @@ def _last_weekday(year: int, month: int, weekday: int) -> date:
     return d
 
 
+def federal_holiday_names_for_year(year: int) -> dict[date, str]:
+    entries = [
+        (date(year, 1, 1), "New Year's Day"),
+        (_nth_weekday(year, 1, 0, 3), "MLK Day"),
+        (_nth_weekday(year, 2, 0, 3), "Presidents' Day"),
+        (_last_weekday(year, 5, 0), "Memorial Day"),
+        (date(year, 6, 19), "Juneteenth"),
+        (date(year, 7, 4), "Independence Day"),
+        (_nth_weekday(year, 9, 0, 1), "Labor Day"),
+        (_nth_weekday(year, 10, 0, 2), "Columbus Day"),
+        (date(year, 11, 11), "Veterans Day"),
+        (_nth_weekday(year, 11, 3, 4), "Thanksgiving"),
+        (date(year, 12, 25), "Christmas"),
+    ]
+    names: dict[date, str] = {}
+    for holiday_date, label in entries:
+        names[_observe_holiday(holiday_date)] = label
+    return names
+
+
 def federal_holidays_for_year(year: int) -> set[date]:
-    fixed = [
-        date(year, 1, 1),
-        date(year, 6, 19),
-        date(year, 7, 4),
-        date(year, 11, 11),
-        date(year, 12, 25),
-    ]
-    floating = [
-        _nth_weekday(year, 1, 0, 3),
-        _nth_weekday(year, 2, 0, 3),
-        _last_weekday(year, 5, 0),
-        _nth_weekday(year, 9, 0, 1),
-        _nth_weekday(year, 10, 0, 2),
-        _nth_weekday(year, 11, 3, 4),
-    ]
-    return {_observe_holiday(d) for d in fixed + floating}
+    return set(federal_holiday_names_for_year(year).keys())
+
+
+def holiday_names_in_range(start: date, end: date) -> dict[date, str]:
+    names: dict[date, str] = {}
+    for year in range(start.year, end.year + 1):
+        names.update(federal_holiday_names_for_year(year))
+    return {day: label for day, label in names.items() if start <= day <= end}
+
+
+def holiday_name_for_date(day: date, start: date, end: date) -> str | None:
+    if not (start <= day <= end):
+        return None
+    return holiday_names_in_range(start, end).get(day)
 
 
 def holidays_in_range(start: date, end: date) -> set[date]:

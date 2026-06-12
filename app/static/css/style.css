@@ -1620,6 +1620,24 @@ button.school-day-cell:hover {
     margin-top: 0.1rem;
 }
 
+.school-day-holiday-name {
+    font-size: 0.58rem;
+    font-weight: 700;
+    line-height: 1.05;
+    text-align: center;
+    max-width: 100%;
+    padding: 0 0.15rem;
+    margin-top: 0.1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.school-day-cell.day-type-holiday {
+    padding: 0.15rem 0;
+}
+
 .school-day-legend {
     display: flex;
     flex-wrap: wrap;

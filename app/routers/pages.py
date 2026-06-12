@@ -37,6 +37,7 @@ from app.school_day_context import build_school_day_context
 from app.school_year_utils import (
     count_possible_school_days,
     ensure_planned_days,
+    holiday_name_for_date,
     planned_day_counts,
 )
 from app.pdf_export import build_lesson_plan_pdf, pdf_filename, pdf_response_headers
@@ -1013,10 +1014,16 @@ async def update_school_day(
         counts = planned_day_counts(school_year)
         required_days = school_year.required_days
         completed_count = counts["completed_count"]
+        holiday_name = None
+        if parsed_type == SchoolDayType.holiday:
+            holiday_name = holiday_name_for_date(
+                parsed_day, school_year.start_date, school_year.end_date
+            )
         return JSONResponse(
             {
                 "day_type": parsed_type.value,
                 "is_completed": completed,
+                "holiday_name": holiday_name,
                 "planned_actual_count": counts["planned_actual_count"],
                 "planned_school_off_count": counts["planned_school_off_count"],
                 "completed_count": completed_count,

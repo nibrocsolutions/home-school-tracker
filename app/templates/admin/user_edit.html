@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Edit User — {{ app_name }}{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block body %}
+{% set home_url = '/admin' %}
+{% include "partials/nav.html" %}
+
+<main class="main-content">
+    <section class="page-hero admin-hero">
+        <div>
+            <h1>Edit User</h1>
+            <p>Update account details for {{ edit_user.full_name }}.</p>
+        </div>
+        <div class="hero-emoji" aria-hidden="true">✏️</div>
+    </section>
+
+    {% if request.query_params.get('success') == 'updated' %}
+    <div class="alert alert-success">User updated successfully.</div>
+    {% endif %}
+    {% if request.query_params.get('error') == 'exists' %}
+    <div class="alert alert-error">Username or email is already in use by another account.</div>
+    {% endif %}
+    {% if request.query_params.get('error') == 'role' %}
+    <div class="alert alert-error">Invalid role selected.</div>
+    {% endif %}
+    {% if request.query_params.get('error') == 'password' %}
+    <div class="alert alert-error">Password must be at least 6 characters.</div>
+    {% endif %}
+
+    <section class="panel-grid">
+        <div class="panel">
+            <h2>Account Details</h2>
+            <form method="post" action="/admin/users/{{ edit_user.id }}/edit" class="form-grid form-grid-single">
+                <div class="form-row">
+                    <label>First Name</label>
+                    <input type="text" name="first_name" value="{{ edit_user.first_name }}" required>
+                </div>
+                <div class="form-row">
+                    <label>Last Name</label>
+                    <input type="text" name="last_name" value="{{ edit_user.last_name }}" required>
+                </div>
+                <div class="form-row">
+                    <label>Username</label>
+                    <input type="text" name="username" value="{{ edit_user.username }}" required>
+                </div>
+                <div class="form-row">
+                    <label>Email</label>
+                    <input type="email" name="email" value="{{ edit_user.email }}" required>
+                </div>
+                <div class="form-row">
+                    <label>New Password</label>
+                    <input type="password" name="password" minlength="6" placeholder="Leave blank to keep current password">
+                </div>
+                <div class="form-row">
+                    <label>Role</label>
+                    <select name="role" id="edit-user-role" required {% if edit_user.id == user.id %}disabled{% endif %}>
+                        <option value="admin" {% if edit_user.role.value == 'admin' %}selected{% endif %}>Admin</option>
+                        <option value="teacher" {% if edit_user.role.value == 'teacher' %}selected{% endif %}>Teacher</option>
+                        <option value="student" {% if edit_user.role.value == 'student' %}selected{% endif %}>Student</option>
+                    </select>
+                    {% if edit_user.id == user.id %}
+                    <input type="hidden" name="role" value="{{ edit_user.role.value }}">
+                    <p class="field-hint">You cannot change your own role.</p>
+                    {% endif %}
+                </div>
+                <div class="form-row student-only-field" id="grade-field">
+                    <label>Grade</label>
+                    <input type="text" name="grade" value="{{ edit_user.grade or '' }}" placeholder="e.g. 4th Grade">
+                </div>
+                <div class="form-row student-only-field" id="age-field">
+                    <label>Age</label>
+                    <input type="number" name="age" min="1" max="25" value="{{ edit_user.age or '' }}" placeholder="e.g. 10">
+                </div>
+                <div class="form-row full-width">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <a href="/admin/users" class="btn btn-ghost">Cancel</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>Current Status</h2>
+            <div class="user-card" style="margin-bottom: 1rem;">
+                <div class="user-card-avatar">{{ edit_user.first_name[0] }}{{ edit_user.last_name[0] }}</div>
+                <div class="user-card-info">
+                    <strong>{{ edit_user.full_name }}</strong>
+                    <span>@{{ edit_user.username }}</span>
+                    <span class="role-badge {{ edit_user.role.value }}">{{ edit_user.role.value | title }}</span>
+                    {% if edit_user.is_active %}
+                    <span class="status-active">Active</span>
+                    {% else %}
+                    <span class="status-inactive">Inactive</span>
+                    {% endif %}
+                </div>
+            </div>
+            <p>
+                <a href="/admin/users" class="btn btn-ghost btn-sm">← Back to User Management</a>
+            </p>
+        </div>
+    </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const roleSelect = document.getElementById('edit-user-role');
+const studentFields = document.querySelectorAll('.student-only-field');
+function toggleStudentFields() {
+    const show = (roleSelect?.value || '{{ edit_user.role.value }}') === 'student';
+    studentFields.forEach(el => el.style.display = show ? '' : 'none');
+}
+roleSelect?.addEventListener('change', toggleStudentFields);
+toggleStudentFields();
+</script>
+{% endblock %}

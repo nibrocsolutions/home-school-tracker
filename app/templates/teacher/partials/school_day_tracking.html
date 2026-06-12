@@ -66,7 +66,7 @@
         <p class="empty-state">Save your school year dates to start tracking full school days.</p>
         {% else %}
         <div class="calendar-nav">
-            <a href="/teacher?tab=school-days&cal_month={{ prev_cal_month }}"
+            <a href="/teacher/school-days?cal_month={{ prev_cal_month }}"
                class="cal-nav-btn" aria-label="Previous month">‹</a>
             <div class="cal-period">
                 <strong>{{ cal_month_label }}</strong>
@@ -74,7 +74,7 @@
                     {{ school_year.start_date.strftime('%b %d, %Y') }} – {{ school_year.end_date.strftime('%b %d, %Y') }}
                 </span>
             </div>
-            <a href="/teacher?tab=school-days&cal_month={{ next_cal_month }}"
+            <a href="/teacher/school-days?cal_month={{ next_cal_month }}"
                class="cal-nav-btn" aria-label="Next month">›</a>
         </div>
 

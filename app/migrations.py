@@ -42,5 +42,14 @@ def run_schema_migrations(db: Session) -> None:
     db.commit()
 
     if not _table_exists(inspector, "app_settings"):
-        db.add(AppSetting(sample_lesson_plans_enabled=False))
+        db.add(AppSetting(sample_lesson_plans_enabled=False, sample_data_enabled=False))
         db.commit()
+    elif _table_exists(inspector, "app_settings"):
+        if not _column_exists(inspector, "app_settings", "sample_data_enabled"):
+            db.execute(
+                text(
+                    "ALTER TABLE app_settings ADD COLUMN sample_data_enabled BOOLEAN "
+                    "NOT NULL DEFAULT FALSE"
+                )
+            )
+            db.commit()

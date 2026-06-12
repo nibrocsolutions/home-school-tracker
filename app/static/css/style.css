@@ -608,6 +608,13 @@ body {
     color: var(--text-muted);
 }
 
+.user-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
 .count-badge {
     background: var(--primary);
     color: white;

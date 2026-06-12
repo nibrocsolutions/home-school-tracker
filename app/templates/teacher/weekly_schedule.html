@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Weekly Schedule — {{ app_name }}{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block body %}
+{% set home_url = '/teacher' %}
+{% set page_title = 'Teacher Dashboard' %}
+{% set page_subtitle = 'Plan lessons and track school days.' %}
+{% include "partials/nav.html" %}
+
+<main class="main-content">
+    {% include "teacher/partials/nav_tabs.html" %}
+    {% include "teacher/partials/flash_alerts.html" %}
+
+    <section class="panel lesson-planning-left">
+        {% include "teacher/partials/weekly_schedule_form.html" %}
+    </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+{% include "teacher/partials/weekly_schedule_scripts.html" %}
+{% endblock %}

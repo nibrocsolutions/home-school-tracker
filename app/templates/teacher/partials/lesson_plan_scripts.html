@@ -1,0 +1,90 @@
+<script type="application/json" id="sample-plans-data">{{ sample_lesson_plans | tojson }}</script>
+<script>
+const samplePlans = JSON.parse(document.getElementById('sample-plans-data')?.textContent || '[]');
+
+function createActivityRow(activity = {}) {
+    const row = document.createElement('div');
+    row.className = 'activity-row';
+    row.setAttribute('data-activity-row', '');
+    row.innerHTML = `
+        <input type="text" name="activity_titles" placeholder="Activity title" value="${activity.title || ''}">
+        <input type="text" name="activity_descriptions" placeholder="Description (optional)" value="${activity.description || ''}">
+        <select name="activity_types" class="activity-type-select">
+            <option value="regular" ${activity.activity_type === 'regular' ? 'selected' : ''}>Regular</option>
+            <option value="special" ${activity.activity_type === 'special' ? 'selected' : ''}>Special Activity</option>
+            <option value="subject" ${activity.activity_type === 'subject' ? 'selected' : ''}>Subject</option>
+            <option value="history" ${activity.activity_type === 'history' ? 'selected' : ''}>History (with audio)</option>
+        </select>
+        <input type="url" name="activity_audio_urls" placeholder="Audio URL (history)" class="activity-audio-field" value="${activity.audio_url || ''}">
+        <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field" value="${activity.external_link || ''}">
+        <button type="button" class="btn-remove" aria-label="Remove activity">&times;</button>
+    `;
+    row.querySelector('.btn-remove').addEventListener('click', () => row.remove());
+    return row;
+}
+
+function setActivities(activities) {
+    const list = document.getElementById('activities-list');
+    list.innerHTML = '';
+    if (!activities.length) {
+        list.appendChild(createActivityRow());
+        return;
+    }
+    activities.forEach(act => list.appendChild(createActivityRow(act)));
+}
+
+document.querySelectorAll('.sample-plan-card').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const sample = samplePlans.find(s => s.id === btn.dataset.sampleId);
+        if (!sample) return;
+        document.getElementById('plan-title').value = sample.title;
+        document.getElementById('plan-description').value = sample.description || '';
+        setActivities(sample.activities || []);
+    });
+});
+
+async function loadScheduleSuggestions() {
+    const planDate = document.getElementById('plan-date')?.value;
+    const hint = document.getElementById('schedule-day-hint');
+    if (!planDate) return [];
+    try {
+        const res = await fetch(`/teacher/schedule-suggestions?plan_date=${planDate}`);
+        const data = await res.json();
+        if (hint) {
+            const count = (data.activities || []).length;
+            hint.textContent = count
+                ? `${data.weekday}: ${count} scheduled item${count !== 1 ? 's' : ''} for this day`
+                : `${data.weekday}: no scheduled items for this day`;
+        }
+        return data.activities || [];
+    } catch {
+        return [];
+    }
+}
+
+document.getElementById('plan-date')?.addEventListener('change', loadScheduleSuggestions);
+
+document.getElementById('apply-schedule-suggestions')?.addEventListener('click', async () => {
+    const activities = await loadScheduleSuggestions();
+    if (activities.length) setActivities(activities);
+});
+
+document.getElementById('select-all-students')?.addEventListener('click', function() {
+    document.querySelectorAll('.student-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = true);
+});
+document.getElementById('clear-all-students')?.addEventListener('click', function() {
+    document.querySelectorAll('.student-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
+});
+document.getElementById('lesson-form')?.addEventListener('submit', function(e) {
+    const checked = document.querySelectorAll('.student-checkboxes input[type="checkbox"]:checked');
+    if (checked.length === 0) {
+        e.preventDefault();
+        alert('Please select at least one student.');
+    }
+});
+document.getElementById('add-activity')?.addEventListener('click', function() {
+    document.getElementById('activities-list').appendChild(createActivityRow());
+});
+
+loadScheduleSuggestions();
+</script>

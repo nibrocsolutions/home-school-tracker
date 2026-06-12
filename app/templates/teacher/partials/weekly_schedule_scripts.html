@@ -1,0 +1,60 @@
+<script>
+const weekdayLabels = {{ weekday_labels | tojson }};
+
+function syncWeekdayHidden(row) {
+    const checked = [...row.querySelectorAll('.weekday-cb:checked')].map(cb => cb.value);
+    const hidden = row.querySelector('input[name="weekdays_list"]');
+    if (hidden) hidden.value = checked.join(',');
+}
+
+document.querySelectorAll('[data-schedule-row]').forEach(row => {
+    row.querySelectorAll('.weekday-cb').forEach(cb => {
+        cb.addEventListener('change', () => syncWeekdayHidden(row));
+    });
+    row.querySelector('.btn-remove')?.addEventListener('click', () => row.remove());
+});
+
+document.getElementById('weekly-schedule-form')?.addEventListener('submit', () => {
+    document.querySelectorAll('[data-schedule-row]').forEach(syncWeekdayHidden);
+});
+
+document.getElementById('add-schedule-item')?.addEventListener('click', () => {
+    const list = document.getElementById('schedule-items-list');
+    const row = document.createElement('div');
+    row.className = 'schedule-item-row';
+    row.setAttribute('data-schedule-row', '');
+    row.innerHTML = `
+        <div class="schedule-item-header">
+            <input type="text" name="item_names" placeholder="Name" required>
+            <select name="item_kinds">
+                <option value="special_activity">Special Activity</option>
+                <option value="subject">Subject</option>
+            </select>
+            <select name="special_types">
+                <option value="">— Type —</option>
+                <option value="co_op">Co-Op</option>
+                <option value="wild_and_free">Wild and Free Outing</option>
+                <option value="classical_conversations">Classical Conversations</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        <div class="weekday-picker">
+            ${weekdayLabels.map((label, i) => `
+                <label class="weekday-check">
+                    <input type="checkbox" class="weekday-cb" value="${i}"> ${label}
+                </label>
+            `).join('')}
+            <input type="hidden" name="weekdays_list" value="">
+        </div>
+        <input type="text" name="item_descriptions" placeholder="Description">
+        <input type="url" name="external_links" placeholder="External link (optional)">
+        <input type="url" name="audio_urls" placeholder="Audio link for history (optional)">
+        <button type="button" class="btn-remove" aria-label="Remove schedule item">&times;</button>
+    `;
+    list.appendChild(row);
+    row.querySelectorAll('.weekday-cb').forEach(cb => {
+        cb.addEventListener('change', () => syncWeekdayHidden(row));
+    });
+    row.querySelector('.btn-remove').addEventListener('click', () => row.remove());
+});
+</script>

@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
-from app.app_settings import get_app_settings, sample_lesson_plans_enabled
+from app.app_settings import get_app_settings, sample_data_enabled, sample_lesson_plans_enabled
 from app.auth import (
     ROLE_HOME_PAGES,
     authenticate_user,
@@ -103,8 +103,15 @@ def _fetch_student_responses(db: Session, teacher_id: int) -> list[dict]:
 
 
 @router.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    return render(request, "login.html", {})
+async def home(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+):
+    return render(
+        request,
+        "login.html",
+        {"show_sample_data": sample_data_enabled(db)},
+    )
 
 
 @router.post("/login")
@@ -200,9 +207,11 @@ async def save_admin_settings(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.admin))],
     sample_lesson_plans_enabled: str | None = Form(None),
+    sample_data_enabled: str | None = Form(None),
 ):
     settings = get_app_settings(db)
     settings.sample_lesson_plans_enabled = sample_lesson_plans_enabled == "on"
+    settings.sample_data_enabled = sample_data_enabled == "on"
     settings.updated_at = datetime.utcnow()
     db.commit()
     return RedirectResponse(
@@ -254,6 +263,96 @@ async def create_user(
     db.add(new_user)
     db.commit()
     return RedirectResponse(url="/admin/users?success=created", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/admin/users/{user_id}/edit", response_class=HTMLResponse)
+async def edit_user_page(
+    user_id: int,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.admin))],
+):
+    edit_user = db.query(User).filter(User.id == user_id).first()
+    if not edit_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return render(
+        request,
+        "admin/user_edit.html",
+        {"user": current_user, "edit_user": edit_user},
+    )
+
+
+@router.post("/admin/users/{user_id}/edit")
+async def update_user(
+    user_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.admin))],
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(""),
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    role: str = Form(...),
+    age: str = Form(""),
+    grade: str = Form(""),
+):
+    edit_user = db.query(User).filter(User.id == user_id).first()
+    if not edit_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if password and len(password) < 6:
+        return RedirectResponse(
+            url=f"/admin/users/{user_id}/edit?error=password",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    duplicate = (
+        db.query(User)
+        .filter(
+            User.id != user_id,
+            (User.username == username) | (User.email == email),
+        )
+        .first()
+    )
+    if duplicate:
+        return RedirectResponse(
+            url=f"/admin/users/{user_id}/edit?error=exists",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    try:
+        user_role = UserRole(role)
+    except ValueError:
+        return RedirectResponse(
+            url=f"/admin/users/{user_id}/edit?error=role",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    if edit_user.id != current_user.id:
+        edit_user.role = user_role
+
+    parsed_age = None
+    if age.strip().isdigit():
+        parsed_age = int(age.strip())
+
+    edit_user.username = username
+    edit_user.email = email
+    edit_user.first_name = first_name
+    edit_user.last_name = last_name
+    if password:
+        edit_user.password_hash = hash_password(password)
+    if user_role == UserRole.student:
+        edit_user.age = parsed_age
+        edit_user.grade = grade.strip() or None
+    else:
+        edit_user.age = None
+        edit_user.grade = None
+
+    db.commit()
+    return RedirectResponse(
+        url=f"/admin/users/{user_id}/edit?success=updated",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @router.post("/admin/users/{user_id}/toggle")
@@ -346,41 +445,119 @@ def _school_days_redirect(
     success: str | None = None,
     error: str | None = None,
 ) -> RedirectResponse:
-    params = ["tab=school-days"]
+    params: list[str] = []
     if cal_month:
         params.append(f"cal_month={cal_month}")
     if success:
         params.append(f"success={success}")
     if error:
         params.append(f"error={error}")
+    query = f"?{'&'.join(params)}" if params else ""
     return RedirectResponse(
-        url=f"/teacher?{'&'.join(params)}",
+        url=f"/teacher/school-days{query}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
 
-@router.get("/teacher", response_class=HTMLResponse)
-async def teacher_dashboard(
-    request: Request,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
-    tab: str = Query("lessons", pattern="^(lessons|school-days)$"),
-    view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
-    ref_date: str | None = Query(None),
-    cal_month: str | None = Query(None),
-):
-    students = db.query(User).filter(User.role == UserRole.student, User.is_active == True).all()
-    all_plans = _fetch_teacher_plans(db, current_user.id)
-    calendar = build_calendar_context(all_plans, view, ref_date)
-    school_year = _fetch_school_day_year(db, current_user.id)
-    school_days = build_school_day_context(school_year, cal_month)
-    weekly_schedule = (
+def _fetch_active_students(db: Session) -> list[User]:
+    return db.query(User).filter(User.role == UserRole.student, User.is_active == True).all()
+
+
+def _fetch_weekly_schedule(db: Session, teacher_id: int) -> list[WeeklyScheduleItem]:
+    return (
         db.query(WeeklyScheduleItem)
-        .filter(WeeklyScheduleItem.teacher_id == current_user.id)
+        .filter(WeeklyScheduleItem.teacher_id == teacher_id)
         .order_by(WeeklyScheduleItem.sort_order, WeeklyScheduleItem.id)
         .all()
     )
+
+
+def _weekly_schedule_context(db: Session, teacher_id: int) -> dict:
+    weekly_schedule = _fetch_weekly_schedule(db, teacher_id)
+    return {
+        "weekly_schedule": weekly_schedule,
+        "weekday_labels": WEEKDAY_LABELS,
+        "format_weekdays": format_weekdays,
+        "weekly_schedule_meta_json": json.dumps(
+            [
+                {
+                    "id": item.id,
+                    "name": item.name,
+                    "weekdays": item.weekdays,
+                    "item_kind": item.item_kind.value,
+                }
+                for item in weekly_schedule
+            ]
+        ),
+    }
+
+
+def _sample_plans_context(db: Session) -> dict:
     show_samples = sample_lesson_plans_enabled(db)
+    return {
+        "show_sample_plans": show_samples,
+        "sample_lesson_plans": SAMPLE_LESSON_PLANS if show_samples else [],
+    }
+
+
+def _legacy_teacher_redirect(
+    tab: str | None,
+    cal_month: str | None = None,
+    view: str | None = None,
+    ref_date: str | None = None,
+) -> RedirectResponse | None:
+    if tab == "school-days":
+        params: list[str] = []
+        if cal_month:
+            params.append(f"cal_month={cal_month}")
+        query = f"?{'&'.join(params)}" if params else ""
+        return RedirectResponse(url=f"/teacher/school-days{query}", status_code=status.HTTP_303_SEE_OTHER)
+    if tab == "lessons":
+        params = []
+        if view and view != "daily":
+            params.append(f"view={view}")
+        if ref_date:
+            params.append(f"ref_date={ref_date}")
+        query = f"?{'&'.join(params)}" if params else ""
+        return RedirectResponse(url=f"/teacher/lesson-plans{query}", status_code=status.HTTP_303_SEE_OTHER)
+    return None
+
+
+@router.get("/teacher", response_class=HTMLResponse)
+async def teacher_hub(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    tab: str | None = Query(None),
+    cal_month: str | None = Query(None),
+    view: str | None = Query(None),
+    ref_date: str | None = Query(None),
+    success: str | None = Query(None),
+    error: str | None = Query(None),
+    count: str | None = Query(None),
+):
+    if redirect := _legacy_teacher_redirect(tab, cal_month, view, ref_date):
+        return redirect
+
+    if view or ref_date or success or error:
+        params: list[str] = []
+        if view:
+            params.append(f"view={view}")
+        if ref_date:
+            params.append(f"ref_date={ref_date}")
+        if success:
+            params.append(f"success={success}")
+        if error:
+            params.append(f"error={error}")
+        if count:
+            params.append(f"count={count}")
+        query = f"?{'&'.join(params)}"
+        return RedirectResponse(url=f"/teacher/lesson-plans{query}", status_code=status.HTTP_303_SEE_OTHER)
+
+    all_plans = _fetch_teacher_plans(db, current_user.id)
+    today = date.today()
+    today_plans = [p for p in all_plans if p.plan_date == today]
+    weekly_schedule = _fetch_weekly_schedule(db, current_user.id)
     student_responses = _fetch_student_responses(db, current_user.id)
 
     return render(
@@ -388,31 +565,115 @@ async def teacher_dashboard(
         "teacher/dashboard.html",
         {
             "user": current_user,
-            "students": students,
-            "today": date.today().isoformat(),
-            "tab": tab,
-            "base_path": "/teacher",
+            "active_page": "overview",
+            "today_plans": today_plans,
+            "stats": {
+                "total_plans": len(all_plans),
+                "plans_today": len(today_plans),
+                "schedule_items": len(weekly_schedule),
+                "response_count": len(student_responses),
+            },
+        },
+    )
+
+
+@router.get("/teacher/lesson-plans", response_class=HTMLResponse)
+async def teacher_lesson_plans(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    ref_date: str | None = Query(None),
+):
+    all_plans = _fetch_teacher_plans(db, current_user.id)
+    calendar = build_calendar_context(all_plans, view, ref_date)
+
+    return render(
+        request,
+        "teacher/lesson_plans.html",
+        {
+            "user": current_user,
+            "active_page": "lesson-plans",
+            "base_path": "/teacher/lesson-plans",
             "pdf_path": "/teacher/lesson-plans.pdf",
             "plan_card_partial": "teacher/partials/plan_card.html",
             "empty_hint": "Create one to get started!",
-            "show_sample_plans": show_samples,
-            "sample_lesson_plans": SAMPLE_LESSON_PLANS if show_samples else [],
-            "weekly_schedule": weekly_schedule,
-            "weekday_labels": WEEKDAY_LABELS,
-            "format_weekdays": format_weekdays,
-            "weekly_schedule_meta_json": json.dumps(
-                [
-                    {
-                        "id": item.id,
-                        "name": item.name,
-                        "weekdays": item.weekdays,
-                        "item_kind": item.item_kind.value,
-                    }
-                    for item in weekly_schedule
-                ]
-            ),
-            "student_responses": student_responses,
             **calendar,
+        },
+    )
+
+
+@router.get("/teacher/lesson-plans/new", response_class=HTMLResponse)
+async def teacher_lesson_plan_new(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+):
+    students = _fetch_active_students(db)
+
+    return render(
+        request,
+        "teacher/lesson_plan_new.html",
+        {
+            "user": current_user,
+            "active_page": "create-plan",
+            "students": students,
+            "today": date.today().isoformat(),
+            **_sample_plans_context(db),
+        },
+    )
+
+
+@router.get("/teacher/weekly-schedule", response_class=HTMLResponse)
+async def teacher_weekly_schedule_page(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+):
+    return render(
+        request,
+        "teacher/weekly_schedule.html",
+        {
+            "user": current_user,
+            "active_page": "weekly-schedule",
+            **_weekly_schedule_context(db, current_user.id),
+        },
+    )
+
+
+@router.get("/teacher/student-responses", response_class=HTMLResponse)
+async def teacher_student_responses_page(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+):
+    return render(
+        request,
+        "teacher/student_responses.html",
+        {
+            "user": current_user,
+            "active_page": "student-responses",
+            "student_responses": _fetch_student_responses(db, current_user.id),
+        },
+    )
+
+
+@router.get("/teacher/school-days", response_class=HTMLResponse)
+async def teacher_school_days_page(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    cal_month: str | None = Query(None),
+):
+    school_year = _fetch_school_day_year(db, current_user.id)
+    school_days = build_school_day_context(school_year, cal_month)
+
+    return render(
+        request,
+        "teacher/school_days.html",
+        {
+            "user": current_user,
+            "active_page": "school-days",
             **school_days,
         },
     )
@@ -522,7 +783,7 @@ async def save_weekly_schedule(
 
     db.commit()
     return RedirectResponse(
-        url="/teacher?success=schedule",
+        url="/teacher/weekly-schedule?success=schedule",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -543,7 +804,7 @@ async def create_lesson_plan(
 ):
     if not student_ids:
         return RedirectResponse(
-            url="/teacher?error=students",
+            url="/teacher/lesson-plans/new?error=students",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -596,7 +857,7 @@ async def create_lesson_plan(
     db.commit()
     count = len(student_ids)
     return RedirectResponse(
-        url=f"/teacher?success=plan&count={count}",
+        url=f"/teacher/lesson-plans?success=plan&count={count}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 

@@ -26,6 +26,7 @@
             <button type="submit" class="btn btn-primary btn-block">Sign In</button>
         </form>
 
+        {% if show_sample_data %}
         <div class="demo-accounts">
             <h3>Demo Accounts</h3>
             <div class="demo-grid">
@@ -34,6 +35,7 @@
                 <div class="demo-item"><span class="role-badge student">Student</span> student / student123</div>
             </div>
         </div>
+        {% endif %}
     </div>
 
     <div class="login-decoration">

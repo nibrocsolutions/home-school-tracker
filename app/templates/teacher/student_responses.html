@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Student Responses — {{ app_name }}{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block body %}
+{% set home_url = '/teacher' %}
+{% set page_title = 'Teacher Dashboard' %}
+{% set page_subtitle = 'Plan lessons and track school days.' %}
+{% include "partials/nav.html" %}
+
+<main class="main-content">
+    {% include "teacher/partials/nav_tabs.html" %}
+
+    <section class="panel">
+        <h2>Student History Responses</h2>
+        <p class="section-hint">Messages from students about what they learned from history audio lessons.</p>
+        {% if student_responses %}
+        <div class="response-list">
+            {% for resp in student_responses %}
+            <article class="response-card">
+                <div class="response-card-header">
+                    <strong>{{ resp.student_name }}</strong>
+                    <span class="date-badge">{{ resp.plan_date.strftime('%a, %b %d') }}</span>
+                </div>
+                <p class="response-meta">{{ resp.activity_title }} · {{ resp.plan_title }}</p>
+                <p class="response-message">{{ resp.message }}</p>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-state">No student responses yet. Responses appear here when students share what they learned from history lessons.</p>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}

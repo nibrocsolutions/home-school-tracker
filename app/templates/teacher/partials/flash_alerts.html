@@ -1,0 +1,30 @@
+{% if request.query_params.get('success') == 'plan' %}
+<div class="alert alert-success">
+    Lesson plan{{ 's' if request.query_params.get('count', '1') != '1' else '' }} created successfully
+    {% if request.query_params.get('count') %}for {{ request.query_params.get('count') }} student{{ 's' if request.query_params.get('count') != '1' else '' }}{% endif %}!
+</div>
+{% endif %}
+{% if request.query_params.get('success') == 'schedule' %}
+<div class="alert alert-success">Weekly schedule saved.</div>
+{% endif %}
+{% if request.query_params.get('error') == 'students' %}
+<div class="alert alert-error">Please select at least one student.</div>
+{% endif %}
+{% if request.query_params.get('success') == 'config' %}
+<div class="alert alert-success">School year settings saved.</div>
+{% endif %}
+{% if request.query_params.get('error') == 'dates' %}
+<div class="alert alert-error">Please enter valid start and end dates.</div>
+{% endif %}
+{% if request.query_params.get('error') == 'range' %}
+<div class="alert alert-error">The start date must be on or before the end date, and days must fall within your school year.</div>
+{% endif %}
+{% if request.query_params.get('error') == 'required' %}
+<div class="alert alert-error">Required full days must be at least 1.</div>
+{% endif %}
+{% if request.query_params.get('error') == 'config' %}
+<div class="alert alert-error">Save your school year settings before approving days.</div>
+{% endif %}
+{% if request.query_params.get('error') == 'date' %}
+<div class="alert alert-error">That date could not be updated. Please try again.</div>
+{% endif %}

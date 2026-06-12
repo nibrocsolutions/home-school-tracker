@@ -148,7 +148,7 @@ def seed_database(db: Session) -> None:
 
     settings = db.query(AppSetting).first()
     if not settings:
-        db.add(AppSetting(sample_lesson_plans_enabled=False))
+        db.add(AppSetting(sample_lesson_plans_enabled=False, sample_data_enabled=True))
         db.commit()
 
     if db.query(User).first():

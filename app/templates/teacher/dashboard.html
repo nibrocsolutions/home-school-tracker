@@ -6,18 +6,11 @@
 {% block body %}
 {% set home_url = '/teacher' %}
 {% set page_title = 'Teacher Overview' %}
+{% set page_subtitle = 'Jump into lesson planning, schedules, and school day tracking.' %}
 {% include "partials/nav.html" %}
 
 <main class="main-content">
     {% include "teacher/partials/nav_tabs.html" %}
-
-    <section class="page-hero teacher-hero">
-        <div>
-            <h1>Teacher Overview</h1>
-            <p>Jump into lesson planning, schedules, and school day tracking.</p>
-        </div>
-        <div class="hero-emoji" aria-hidden="true">📚</div>
-    </section>
 
     <section class="stats-grid">
         <div class="stat-card">
@@ -79,7 +72,7 @@
                     <span>💬</span>
                     <div>
                         <strong>Student Responses</strong>
-                        <p>Read history lesson reflections from students</p>
+                        <p>Read messages and reflections from students</p>
                     </div>
                 </a>
                 <a href="/teacher/school-days" class="action-item">

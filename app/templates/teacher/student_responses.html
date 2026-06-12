@@ -6,15 +6,15 @@
 {% block body %}
 {% set home_url = '/teacher' %}
 {% set page_title = 'Student Responses' %}
-{% set page_subtitle = 'History lesson reflections from students.' %}
+{% set page_subtitle = 'Messages and reflections from students on any lesson or activity.' %}
 {% include "partials/nav.html" %}
 
 <main class="main-content">
     {% include "teacher/partials/nav_tabs.html" %}
 
     <section class="panel">
-        <h2>Student History Responses</h2>
-        <p class="section-hint">Messages from students about what they learned from history audio lessons.</p>
+        <h2>Recent Responses</h2>
+        <p class="section-hint">Messages students submit about lessons and activities — reflections, notes, and what they learned.</p>
         {% if student_responses %}
         <div class="response-list">
             {% for resp in student_responses %}
@@ -29,7 +29,7 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="empty-state">No student responses yet. Responses appear here when students share what they learned from history lessons.</p>
+        <p class="empty-state">No student responses yet. Responses appear here when students share messages about their lessons or activities.</p>
         {% endif %}
     </section>
 </main>

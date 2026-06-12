@@ -1283,43 +1283,76 @@ body {
     border: 1px solid #bbf7d0;
 }
 
-/* Teacher page tabs */
-.page-tabs {
+/* Teacher browser-style tabs */
+.browser-tabs {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
+    align-items: flex-end;
+    flex-wrap: nowrap;
+    gap: 0;
+    margin: 0 0 1.25rem;
+    padding: 0.35rem 0.35rem 0;
+    overflow-x: auto;
+    background: #dfe1e6;
+    border: 1px solid #c4c7cc;
+    border-radius: 10px 10px 0 0;
+    scrollbar-width: thin;
 }
 
-.page-tabs .page-tab-btn {
-    min-width: 210px;
-    padding: 0.8rem 1.75rem;
-    font-size: 0.95rem;
+.browser-tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    max-width: 200px;
+    padding: 0.5rem 1.1rem;
+    margin-right: -1px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    line-height: 1.3;
+    color: #5f6368;
     text-decoration: none;
-    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    background: #e8eaed;
+    border: 1px solid #c4c7cc;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
-.page-tabs .btn-tab-inactive {
+.browser-tab:first-child {
+    margin-left: 0;
+}
+
+.browser-tab:hover {
+    background: #f1f3f4;
+    color: #202124;
+}
+
+.browser-tab.active {
+    z-index: 2;
+    color: #202124;
     background: var(--surface);
-    color: var(--text);
-    border: 2px solid var(--border);
-    box-shadow: 0 2px 8px rgba(45, 49, 66, 0.08);
+    border-color: #c4c7cc;
+    border-bottom: 1px solid var(--surface);
+    margin-bottom: -1px;
+    padding-bottom: calc(0.5rem + 1px);
+    box-shadow: 0 -1px 0 var(--surface);
 }
 
-.page-tabs .btn-tab-inactive:hover {
-    color: var(--primary);
-    border-color: var(--primary);
-    background: #f5f7ff;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(79, 110, 247, 0.18);
+.browser-tab.active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--surface);
 }
 
-.page-tabs .btn-primary.page-tab-btn {
-    box-shadow: 0 4px 14px rgba(79, 110, 247, 0.35);
-}
-
-.page-tabs .btn-primary.page-tab-btn:hover {
-    color: white;
+.browser-tab:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+    z-index: 3;
 }
 
 .section-hint {

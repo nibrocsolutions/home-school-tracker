@@ -1303,10 +1303,11 @@ body {
     padding: 6px 8px 0;
     overflow-x: auto;
     overflow-y: hidden;
-    background: #dee1e6;
-    border: 1px solid #b8bcc2;
+    background: linear-gradient(180deg, #eef6f0 0%, #e4efe8 100%);
+    border: 1px solid var(--border);
     border-bottom: none;
-    border-radius: 10px 10px 0 0;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    box-shadow: inset 0 -1px 0 rgba(34, 197, 94, 0.12);
     scrollbar-width: thin;
     -webkit-overflow-scrolling: touch;
 }
@@ -1322,17 +1323,17 @@ body {
     height: 32px;
     padding: 0 14px;
     margin: 0 1px;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    font-size: 12px;
-    font-weight: 500;
+    font-family: var(--font);
+    font-size: 0.8rem;
+    font-weight: 600;
     line-height: 1;
-    color: #5f6368;
+    color: var(--text-muted);
     text-decoration: none;
-    background: #c8ccd1;
-    border: 1px solid #9aa0a6;
+    background: #f3f7f4;
+    border: 1px solid var(--border);
     border-bottom: none;
     border-radius: 8px 8px 0 0;
-    transition: background 0.12s ease, height 0.12s ease;
+    transition: background 0.12s ease, height 0.12s ease, color 0.12s ease;
 }
 
 .chrome-tab-label {
@@ -1342,19 +1343,20 @@ body {
 }
 
 .chrome-tab:hover:not(.active) {
-    background: #d5d9de;
-    color: #3c4043;
+    background: #f8faf9;
+    color: var(--text);
+    border-color: #c8e6d0;
 }
 
 .chrome-tab.active {
     top: 0;
     z-index: 2;
     height: 36px;
-    color: #202124;
-    background: #ffffff;
-    border-color: #b8bcc2;
-    border-bottom: 1px solid #ffffff;
-    box-shadow: 0 1px 0 #ffffff;
+    color: var(--text);
+    background: var(--surface);
+    border-color: var(--border);
+    border-bottom: 1px solid var(--surface);
+    box-shadow: 0 1px 0 var(--surface);
 }
 
 .chrome-tab.active::before,
@@ -1370,13 +1372,13 @@ body {
 .chrome-tab.active::before {
     left: -10px;
     border-bottom-right-radius: 10px;
-    box-shadow: 2px 2px 0 #ffffff;
+    box-shadow: 2px 2px 0 var(--surface);
 }
 
 .chrome-tab.active::after {
     right: -10px;
     border-bottom-left-radius: 10px;
-    box-shadow: -2px 2px 0 #ffffff;
+    box-shadow: -2px 2px 0 var(--surface);
 }
 
 .chrome-tab:focus-visible {
@@ -1386,12 +1388,12 @@ body {
 }
 
 .chrome-tab-content {
-    background: #ffffff;
-    border: 1px solid #b8bcc2;
-    border-radius: 0 0 10px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
     padding: 1.25rem;
     min-height: 280px;
-    box-shadow: 0 2px 8px rgba(60, 64, 67, 0.08);
+    box-shadow: var(--shadow);
 }
 
 .teacher-page .chrome-tab-inner-panel {
@@ -1842,20 +1844,25 @@ button.school-day-cell:hover {
     margin: 0;
 }
 
-.history-response-form {
+.activity-message-form {
     padding: 0.75rem 1rem 1rem 3.5rem;
     border-top: 1px solid var(--border);
-    background: #fffbeb;
+    background: var(--accent-soft);
 }
 
-.history-response-form label {
+.activity-message-form label {
     display: block;
     font-weight: 600;
     font-size: 0.9rem;
     margin-bottom: 0.35rem;
 }
 
-.history-response-form textarea {
+.activity-message-form .message-optional {
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+.activity-message-form textarea {
     width: 100%;
     padding: 0.65rem;
     border: 2px solid var(--border);

@@ -1105,7 +1105,7 @@ async def submit_activity_message(
     activity_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.student))],
-    student_message: str = Form(...),
+    student_message: str = Form(""),
 ):
     activity = db.query(Activity).filter(Activity.id == activity_id).first()
     if not activity:
@@ -1117,7 +1117,7 @@ async def submit_activity_message(
 
     message = student_message.strip()
     if not message:
-        return RedirectResponse(url="/student?error=message", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/student", status_code=status.HTTP_303_SEE_OTHER)
 
     completion = (
         db.query(ActivityCompletion)

@@ -126,6 +126,7 @@ class LessonPlan(Base):
     plan_date: Mapped[date] = mapped_column(Date, index=True)
     teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     student_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    is_sample_data: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     teacher: Mapped["User"] = relationship(

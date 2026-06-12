@@ -37,7 +37,7 @@
                            {% if settings.sample_data_enabled %}checked{% endif %}>
                     <div>
                         <strong>Sample Data</strong>
-                        <p>When enabled, demo account credentials are shown on the sign-in page. When disabled, the demo accounts section is hidden from the login screen.</p>
+                        <p>When enabled, demo account credentials are shown on the sign-in page and seeded demo lesson plans appear for teachers and students. When disabled, demo logins are hidden and sample lesson plans are filtered from teacher and student views.</p>
                     </div>
                 </label>
                 <button type="submit" class="btn btn-primary">Save Settings</button>
@@ -47,7 +47,7 @@
         <div class="panel">
             <h2>About These Settings</h2>
             <p class="settings-help">Sample lesson plans include examples for math &amp; science days, history audio lessons, co-op days, and Wild and Free outings. Teachers can apply a sample to pre-fill the lesson plan form on the Create Plan page.</p>
-            <p class="settings-help" style="margin-top: 0.75rem;">Sample data controls whether demo login credentials (admin, teacher, and student accounts) are visible on the sign-in page. This is useful for fresh installs but can be turned off in production.</p>
+            <p class="settings-help" style="margin-top: 0.75rem;">Sample data controls demo login credentials and whether pre-seeded demo lesson plans are visible on teacher and student pages. Both sample features default to off.</p>
             <p style="margin-top: 1rem;">
                 <a href="/admin" class="btn btn-ghost btn-sm">← Back to Admin Dashboard</a>
             </p>

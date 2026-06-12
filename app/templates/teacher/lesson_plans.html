@@ -1,21 +1,16 @@
-{% extends "base.html" %}
+{% extends "teacher/base.html" %}
 
 {% block title %}Lesson Plans — {{ app_name }}{% endblock %}
-{% block body_class %}dashboard-page{% endblock %}
+{% block body_class %}dashboard-page teacher-page{% endblock %}
 
-{% block body %}
-{% set home_url = '/teacher' %}
 {% set page_title = 'Lesson Plans' %}
 {% set page_subtitle = 'Browse your calendar and existing plans.' %}
-{% include "partials/nav.html" %}
 
-<main class="main-content">
-    {% include "teacher/partials/nav_tabs.html" %}
-    {% include "teacher/partials/flash_alerts.html" %}
+{% block teacher_content %}
+{% include "teacher/partials/flash_alerts.html" %}
 
-    <section class="panel">
-        {% include "partials/lesson_calendar.html" %}
-        {% include "partials/plan_list.html" %}
-    </section>
-</main>
+<section class="panel chrome-tab-inner-panel">
+    {% include "partials/lesson_calendar.html" %}
+    {% include "partials/plan_list.html" %}
+</section>
 {% endblock %}

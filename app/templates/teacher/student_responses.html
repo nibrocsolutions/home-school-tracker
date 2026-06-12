@@ -1,36 +1,30 @@
-{% extends "base.html" %}
+{% extends "teacher/base.html" %}
 
 {% block title %}Student Responses — {{ app_name }}{% endblock %}
-{% block body_class %}dashboard-page{% endblock %}
+{% block body_class %}dashboard-page teacher-page{% endblock %}
 
-{% block body %}
-{% set home_url = '/teacher' %}
 {% set page_title = 'Student Responses' %}
 {% set page_subtitle = 'Messages and reflections from students on any lesson or activity.' %}
-{% include "partials/nav.html" %}
 
-<main class="main-content">
-    {% include "teacher/partials/nav_tabs.html" %}
-
-    <section class="panel">
-        <h2>Recent Responses</h2>
-        <p class="section-hint">Messages students submit about lessons and activities — reflections, notes, and what they learned.</p>
-        {% if student_responses %}
-        <div class="response-list">
-            {% for resp in student_responses %}
-            <article class="response-card">
-                <div class="response-card-header">
-                    <strong>{{ resp.student_name }}</strong>
-                    <span class="date-badge">{{ resp.plan_date.strftime('%a, %b %d') }}</span>
-                </div>
-                <p class="response-meta">{{ resp.activity_title }} · {{ resp.plan_title }}</p>
-                <p class="response-message">{{ resp.message }}</p>
-            </article>
-            {% endfor %}
-        </div>
-        {% else %}
-        <p class="empty-state">No student responses yet. Responses appear here when students share messages about their lessons or activities.</p>
-        {% endif %}
-    </section>
-</main>
+{% block teacher_content %}
+<section class="panel chrome-tab-inner-panel">
+    <h2>Recent Responses</h2>
+    <p class="section-hint">Messages students submit about lessons and activities — reflections, notes, and what they learned.</p>
+    {% if student_responses %}
+    <div class="response-list">
+        {% for resp in student_responses %}
+        <article class="response-card">
+            <div class="response-card-header">
+                <strong>{{ resp.student_name }}</strong>
+                <span class="date-badge">{{ resp.plan_date.strftime('%a, %b %d') }}</span>
+            </div>
+            <p class="response-meta">{{ resp.activity_title }} · {{ resp.plan_title }}</p>
+            <p class="response-message">{{ resp.message }}</p>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty-state">No student responses yet. Responses appear here when students share messages about their lessons or activities.</p>
+    {% endif %}
+</section>
 {% endblock %}

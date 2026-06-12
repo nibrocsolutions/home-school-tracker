@@ -176,6 +176,13 @@ class ActivityCompletion(Base):
     student: Mapped["User"] = relationship("User", back_populates="activity_completions")
 
 
+class SchoolDayType(str, enum.Enum):
+    actual_school = "actual_school"
+    school_off = "school_off"
+    holiday = "holiday"
+    weekend = "weekend"
+
+
 class SchoolDayYear(Base):
     __tablename__ = "school_day_years"
 
@@ -190,13 +197,13 @@ class SchoolDayYear(Base):
     )
 
     teacher: Mapped["User"] = relationship("User", back_populates="school_day_years")
-    approved_days: Mapped[list["ApprovedSchoolDay"]] = relationship(
-        "ApprovedSchoolDay", back_populates="school_day_year", cascade="all, delete-orphan"
+    planned_days: Mapped[list["PlannedSchoolDay"]] = relationship(
+        "PlannedSchoolDay", back_populates="school_day_year", cascade="all, delete-orphan"
     )
 
 
-class ApprovedSchoolDay(Base):
-    __tablename__ = "approved_school_days"
+class PlannedSchoolDay(Base):
+    __tablename__ = "planned_school_days"
     __table_args__ = (
         UniqueConstraint("school_day_year_id", "day_date", name="uq_school_day_year_date"),
     )
@@ -204,8 +211,14 @@ class ApprovedSchoolDay(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     school_day_year_id: Mapped[int] = mapped_column(ForeignKey("school_day_years.id"))
     day_date: Mapped[date] = mapped_column(Date, index=True)
-    approved_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    day_type: Mapped[SchoolDayType] = mapped_column(
+        Enum(SchoolDayType), default=SchoolDayType.actual_school
+    )
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     school_day_year: Mapped["SchoolDayYear"] = relationship(
-        "SchoolDayYear", back_populates="approved_days"
+        "SchoolDayYear", back_populates="planned_days"
     )

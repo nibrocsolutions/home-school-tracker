@@ -40,27 +40,68 @@ function initPreserveScroll() {
     });
 }
 
-function updateSchoolDayButton(button, approved) {
-    button.classList.toggle('approved', approved);
+const DAY_TYPE_CLASSES = [
+    'day-type-actual_school',
+    'day-type-school_off',
+    'day-type-holiday',
+    'day-type-weekend',
+];
+
+function updateSchoolDayButton(button, dayType, isCompleted) {
+    DAY_TYPE_CLASSES.forEach(function (className) {
+        button.classList.remove(className);
+    });
+    button.classList.add('day-type-' + dayType);
+    button.classList.toggle('completed', dayType === 'actual_school' && isCompleted);
+
     let check = button.querySelector('.school-day-check');
-    if (approved && !check) {
-        check = document.createElement('span');
-        check.className = 'school-day-check';
-        check.setAttribute('aria-hidden', 'true');
-        check.textContent = '✓';
-        button.appendChild(check);
-    } else if (!approved && check) {
+    if (dayType === 'actual_school' && isCompleted) {
+        if (!check) {
+            check = document.createElement('span');
+            check.className = 'school-day-check';
+            check.setAttribute('aria-hidden', 'true');
+            check.textContent = '✓';
+            button.appendChild(check);
+        }
+    } else if (check) {
         check.remove();
     }
+
+    const typeLabel = dayType.replace(/_/g, ' ');
     const labelBase = button.title;
-    button.setAttribute(
-        'aria-label',
-        labelBase + (approved ? ', approved full school day' : ', not yet approved')
-    );
+    let ariaLabel = labelBase + ', ' + typeLabel;
+    if (dayType === 'actual_school' && isCompleted) {
+        ariaLabel += ', completed';
+    }
+    button.setAttribute('aria-label', ariaLabel);
 }
 
-function initSchoolDayToggles() {
-    document.querySelectorAll('.school-day-toggle-form').forEach(function (form) {
+function updateSchoolDayCounters(data) {
+    const plannedActualEl = document.querySelector('.counter-planned-actual');
+    const completedEl = document.querySelector('.counter-completed');
+    const remainingEl = document.querySelector('.counter-remaining');
+    const requiredEl = document.querySelector('.counter-required');
+    const completeBanner = document.getElementById('school-day-complete-banner');
+
+    if (plannedActualEl) {
+        plannedActualEl.textContent = data.planned_actual_count;
+    }
+    if (completedEl) {
+        completedEl.textContent = data.completed_count;
+    }
+    if (remainingEl) {
+        remainingEl.textContent = data.remaining_days;
+    }
+    if (requiredEl) {
+        requiredEl.textContent = data.required_days;
+    }
+    if (completeBanner) {
+        completeBanner.hidden = !data.complete;
+    }
+}
+
+function initSchoolDayUpdates() {
+    document.querySelectorAll('.school-day-update-form').forEach(function (form) {
         form.addEventListener('submit', async function (event) {
             event.preventDefault();
             const button = form.querySelector('button.school-day-cell');
@@ -79,25 +120,8 @@ function initSchoolDayToggles() {
                     return;
                 }
                 const data = await response.json();
-                updateSchoolDayButton(button, data.approved);
-
-                const approvedEl = document.querySelector('.counter-approved');
-                const remainingEl = document.querySelector('.counter-remaining');
-                const requiredEl = document.querySelector('.counter-required');
-                const completeBanner = document.getElementById('school-day-complete-banner');
-
-                if (approvedEl) {
-                    approvedEl.textContent = data.approved_count;
-                }
-                if (remainingEl) {
-                    remainingEl.textContent = data.remaining_days;
-                }
-                if (requiredEl) {
-                    requiredEl.textContent = data.required_days;
-                }
-                if (completeBanner) {
-                    completeBanner.hidden = !data.complete;
-                }
+                updateSchoolDayButton(button, data.day_type, data.is_completed);
+                updateSchoolDayCounters(data);
             } finally {
                 button.disabled = false;
             }
@@ -105,10 +129,69 @@ function initSchoolDayToggles() {
     });
 }
 
+function initPossibleSchoolDaysPreview() {
+    const startInput = document.getElementById('start_date');
+    const endInput = document.getElementById('end_date');
+    if (!startInput || !endInput) {
+        return;
+    }
+
+    const possibleEl = document.querySelector('.counter-possible');
+    const previewRow = document.querySelector('.counter-possible-preview-row');
+    const previewValue = document.querySelector('.counter-possible-preview');
+    const hint = document.querySelector('.possible-days-hint');
+    let requestId = 0;
+
+    async function refreshPossibleDays() {
+        const start = startInput.value;
+        const end = endInput.value;
+        if (!start || !end) {
+            if (previewRow) {
+                previewRow.hidden = true;
+            }
+            if (hint) {
+                hint.hidden = false;
+            }
+            return;
+        }
+
+        const currentRequest = ++requestId;
+        try {
+            const params = new URLSearchParams({ start_date: start, end_date: end });
+            const response = await fetch('/teacher/school-days/possible-count?' + params.toString());
+            if (!response.ok || currentRequest !== requestId) {
+                return;
+            }
+            const data = await response.json();
+            if (possibleEl) {
+                possibleEl.textContent = data.possible_days;
+            }
+            if (previewRow) {
+                previewRow.hidden = !!possibleEl;
+            }
+            if (previewValue) {
+                previewValue.textContent = data.possible_days;
+            }
+            if (hint) {
+                hint.hidden = true;
+            }
+        } catch (error) {
+            if (previewRow) {
+                previewRow.hidden = true;
+            }
+        }
+    }
+
+    startInput.addEventListener('change', refreshPossibleDays);
+    endInput.addEventListener('change', refreshPossibleDays);
+    refreshPossibleDays();
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     restoreScrollPosition();
     initPreserveScroll();
-    initSchoolDayToggles();
+    initSchoolDayUpdates();
+    initPossibleSchoolDaysPreview();
 
     document.querySelectorAll('.alert-success').forEach(function (alert) {
         setTimeout(function () {

@@ -22,9 +22,10 @@ from app.models import (
     Activity,
     ActivityCompletion,
     ActivityType,
-    ApprovedSchoolDay,
     LessonPlan,
+    PlannedSchoolDay,
     ScheduleItemKind,
+    SchoolDayType,
     SchoolDayYear,
     SpecialActivityKind,
     User,
@@ -32,7 +33,12 @@ from app.models import (
     WeeklyScheduleItem,
 )
 from app.sample_plans import SAMPLE_LESSON_PLANS
-from app.school_day_context import approved_dates_in_range, build_school_day_context
+from app.school_day_context import build_school_day_context
+from app.school_year_utils import (
+    count_possible_school_days,
+    ensure_planned_days,
+    next_day_type_after_click,
+)
 from app.pdf_export import build_lesson_plan_pdf, pdf_filename, pdf_response_headers
 from app.weekly_schedule import (
     WEEKDAY_LABELS,
@@ -441,7 +447,7 @@ def _fetch_teacher_plans(db: Session, teacher_id: int) -> list[LessonPlan]:
 def _fetch_school_day_year(db: Session, teacher_id: int) -> SchoolDayYear | None:
     return (
         db.query(SchoolDayYear)
-        .options(joinedload(SchoolDayYear.approved_days))
+        .options(joinedload(SchoolDayYear.planned_days))
         .filter(SchoolDayYear.teacher_id == teacher_id)
         .first()
     )
@@ -673,6 +679,10 @@ async def teacher_school_days_page(
     cal_month: str | None = Query(None),
 ):
     school_year = _fetch_school_day_year(db, current_user.id)
+    if school_year:
+        ensure_planned_days(db, school_year)
+        db.commit()
+        school_year = _fetch_school_day_year(db, current_user.id)
     school_days = build_school_day_context(school_year, cal_month)
 
     return render(
@@ -869,6 +879,26 @@ async def create_lesson_plan(
     )
 
 
+@router.get("/teacher/school-days/possible-count")
+async def school_days_possible_count(
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    start_date: str = Query(...),
+    end_date: str = Query(...),
+):
+    try:
+        parsed_start = date.fromisoformat(start_date)
+        parsed_end = date.fromisoformat(end_date)
+    except ValueError:
+        return JSONResponse({"error": "dates"}, status_code=400)
+
+    if parsed_start > parsed_end:
+        return JSONResponse({"error": "range"}, status_code=400)
+
+    return JSONResponse(
+        {"possible_days": count_possible_school_days(parsed_start, parsed_end)}
+    )
+
+
 @router.post("/teacher/school-days/config")
 async def save_school_day_config(
     db: Annotated[Session, Depends(get_db)],
@@ -904,13 +934,17 @@ async def save_school_day_config(
             required_days=required_days,
         )
         db.add(school_year)
+        db.flush()
 
+    ensure_planned_days(db, school_year)
     db.commit()
-    return _school_days_redirect(cal_month=cal_month, success="config")
+
+    start_month = parsed_start.strftime("%Y-%m")
+    return _school_days_redirect(cal_month=start_month, success="config")
 
 
-@router.post("/teacher/school-days/toggle")
-async def toggle_school_day(
+@router.post("/teacher/school-days/update-day")
+async def update_school_day(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
@@ -936,38 +970,57 @@ async def toggle_school_day(
             return JSONResponse({"error": "range"}, status_code=400)
         return _school_days_redirect(cal_month=cal_month, error="range")
 
-    existing = (
-        db.query(ApprovedSchoolDay)
+    planned = (
+        db.query(PlannedSchoolDay)
         .filter(
-            ApprovedSchoolDay.school_day_year_id == school_year.id,
-            ApprovedSchoolDay.day_date == parsed_day,
+            PlannedSchoolDay.school_day_year_id == school_year.id,
+            PlannedSchoolDay.day_date == parsed_day,
         )
         .first()
     )
-    if existing:
-        db.delete(existing)
-        is_approved = False
-    else:
-        db.add(
-            ApprovedSchoolDay(
-                school_day_year_id=school_year.id,
-                day_date=parsed_day,
+    if not planned:
+        ensure_planned_days(db, school_year)
+        db.flush()
+        planned = (
+            db.query(PlannedSchoolDay)
+            .filter(
+                PlannedSchoolDay.school_day_year_id == school_year.id,
+                PlannedSchoolDay.day_date == parsed_day,
             )
+            .first()
         )
-        is_approved = True
+
+    next_type, is_completed = next_day_type_after_click(
+        planned.day_type, planned.is_completed
+    )
+    planned.day_type = next_type
+    planned.is_completed = is_completed
+    planned.updated_at = datetime.utcnow()
     db.commit()
 
     if ajax:
         school_year = _fetch_school_day_year(db, current_user.id)
-        approved_count = len(approved_dates_in_range(school_year))
+        planned_map = {
+            day.day_date: day
+            for day in school_year.planned_days
+            if school_year.start_date <= day.day_date <= school_year.end_date
+        }
+        actual_school = [
+            day
+            for day in planned_map.values()
+            if day.day_type == SchoolDayType.actual_school
+        ]
+        completed_count = sum(1 for day in actual_school if day.is_completed)
         required_days = school_year.required_days
         return JSONResponse(
             {
-                "approved": is_approved,
-                "approved_count": approved_count,
+                "day_type": next_type.value,
+                "is_completed": is_completed,
+                "planned_actual_count": len(actual_school),
+                "completed_count": completed_count,
                 "required_days": required_days,
-                "remaining_days": max(required_days - approved_count, 0),
-                "complete": approved_count >= required_days,
+                "remaining_days": max(required_days - completed_count, 0),
+                "complete": completed_count >= required_days,
             }
         )
 

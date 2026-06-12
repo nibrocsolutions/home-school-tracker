@@ -1477,8 +1477,13 @@ body {
     text-align: right;
 }
 
-.counter-approved {
+.counter-completed {
     color: var(--success);
+}
+
+.possible-days-hint {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
 }
 
 .counter-remaining {
@@ -1539,6 +1544,51 @@ button.school-day-cell:hover {
     border-color: var(--accent);
 }
 
+.school-day-cell.day-type-actual_school {
+    background: #dcfce7;
+    border-color: #16a34a;
+    color: #166534;
+}
+
+.school-day-cell.day-type-actual_school:hover {
+    background: #bbf7d0;
+}
+
+.school-day-cell.day-type-actual_school.completed {
+    background: #86efac;
+    border-color: #15803d;
+}
+
+.school-day-cell.day-type-school_off {
+    background: #fee2e2;
+    border-color: #dc2626;
+    color: #991b1b;
+}
+
+.school-day-cell.day-type-school_off:hover {
+    background: #fecaca;
+}
+
+.school-day-cell.day-type-holiday {
+    background: #ede9fe;
+    border-color: #7c3aed;
+    color: #5b21b6;
+}
+
+.school-day-cell.day-type-holiday:hover {
+    background: #ddd6fe;
+}
+
+.school-day-cell.day-type-weekend {
+    background: #fef9c3;
+    border-color: #ca8a04;
+    color: #854d0e;
+}
+
+.school-day-cell.day-type-weekend:hover {
+    background: #fef08a;
+}
+
 .school-day-cell.approved {
     background: #dcfce7;
     border-color: var(--success);
@@ -1595,6 +1645,26 @@ button.school-day-cell:hover {
 .legend-swatch.in-range {
     background: var(--bg);
     border-color: var(--border);
+}
+
+.legend-swatch.day-type-actual_school {
+    background: #dcfce7;
+    border-color: #16a34a;
+}
+
+.legend-swatch.day-type-school_off {
+    background: #fee2e2;
+    border-color: #dc2626;
+}
+
+.legend-swatch.day-type-holiday {
+    background: #ede9fe;
+    border-color: #7c3aed;
+}
+
+.legend-swatch.day-type-weekend {
+    background: #fef9c3;
+    border-color: #ca8a04;
 }
 
 .legend-swatch.approved {

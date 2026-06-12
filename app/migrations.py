@@ -81,3 +81,37 @@ def run_schema_migrations(db: Session) -> None:
             )
             db.commit()
             _mark_existing_sample_lesson_plans(db)
+
+    _migrate_planned_school_days(db, inspector)
+
+
+def _migrate_planned_school_days(db: Session, inspector) -> None:
+    if not _table_exists(inspector, "planned_school_days"):
+        db.execute(
+            text(
+                "CREATE TABLE planned_school_days ("
+                "id INTEGER NOT NULL PRIMARY KEY, "
+                "school_day_year_id INTEGER NOT NULL, "
+                "day_date DATE NOT NULL, "
+                "day_type VARCHAR(20) NOT NULL DEFAULT 'actual_school', "
+                "is_completed BOOLEAN NOT NULL DEFAULT 0, "
+                "updated_at DATETIME, "
+                "FOREIGN KEY(school_day_year_id) REFERENCES school_day_years (id), "
+                "CONSTRAINT uq_school_day_year_date UNIQUE (school_day_year_id, day_date)"
+                ")"
+            )
+        )
+        db.commit()
+        inspector = inspect(db.get_bind())
+
+    if _table_exists(inspector, "approved_school_days"):
+        db.execute(
+            text(
+                "INSERT OR IGNORE INTO planned_school_days "
+                "(school_day_year_id, day_date, day_type, is_completed, updated_at) "
+                "SELECT school_day_year_id, day_date, 'actual_school', 1, approved_at "
+                "FROM approved_school_days"
+            )
+        )
+        db.execute(text("DROP TABLE approved_school_days"))
+        db.commit()

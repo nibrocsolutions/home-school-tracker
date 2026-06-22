@@ -4,14 +4,14 @@
        role="tab" aria-selected="{{ 'true' if active_page == 'lesson-planning' else 'false' }}">
         <span class="chrome-tab-label">Lesson Planning</span>
     </a>
-    <a href="/teacher/student-responses"
-       class="chrome-tab {% if active_page == 'student-responses' %}active{% endif %}"
-       role="tab" aria-selected="{{ 'true' if active_page == 'student-responses' else 'false' }}">
-        <span class="chrome-tab-label">Student Responses</span>
-    </a>
     <a href="/teacher/school-days"
        class="chrome-tab {% if active_page == 'school-days' %}active{% endif %}"
        role="tab" aria-selected="{{ 'true' if active_page == 'school-days' else 'false' }}">
         <span class="chrome-tab-label">School Year Planning</span>
+    </a>
+    <a href="/teacher/student-responses"
+       class="chrome-tab {% if active_page == 'student-responses' %}active{% endif %}"
+       role="tab" aria-selected="{{ 'true' if active_page == 'student-responses' else 'false' }}">
+        <span class="chrome-tab-label">Student Responses</span>
     </a>
 </nav>

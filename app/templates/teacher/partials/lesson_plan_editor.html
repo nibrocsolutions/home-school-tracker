@@ -1,0 +1,120 @@
+<section class="lesson-plan-editor-section" id="lesson-plan-editor">
+    <div class="lesson-plan-editor-header">
+        <h2>{% if editor_context.is_edit %}Edit Lesson Plan{% else %}Create Lesson Plan{% endif %}</h2>
+        <p class="section-hint">
+            {{ plan_date.strftime('%A, %B %d, %Y') }}
+            {% if editor_context.is_edit %}— update the plan for this day.{% else %}— add a new plan for this day.{% endif %}
+        </p>
+    </div>
+
+    {% if show_sample_plans and sample_lesson_plans %}
+    <div class="sample-plans-section sample-plans-inline">
+        <p class="section-hint">Click a sample to pre-fill the form below.</p>
+        <div class="sample-plan-cards">
+            {% for sample in sample_lesson_plans %}
+            <button type="button" class="sample-plan-card" data-sample-id="{{ sample.id }}">
+                <strong>{{ sample.title }}</strong>
+                <span>{{ sample.description }}</span>
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="post"
+          action="/teacher/lesson-planning/plan"
+          class="lesson-form"
+          id="lesson-form">
+        <input type="hidden" name="plan_date" value="{{ plan_date.isoformat() }}">
+        <input type="hidden" name="cal_month" value="{{ cal_month_param }}">
+
+        <div class="form-row">
+            <label for="plan-title">Title</label>
+            <input type="text" name="title" id="plan-title" required
+                   value="{{ editor_context.title }}"
+                   placeholder="e.g. Math & Science Wednesday">
+        </div>
+        <div class="form-row">
+            <label for="plan-description">Description</label>
+            <textarea name="description" id="plan-description" rows="2"
+                      placeholder="Brief overview of the day's learning">{{ editor_context.description }}</textarea>
+        </div>
+        <div class="form-row">
+            <label>Students</label>
+            <div class="student-picker">
+                <div class="student-picker-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" id="select-all-students">Select All</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="clear-all-students">Clear All</button>
+                </div>
+                <div class="student-checkboxes">
+                    {% for s in students %}
+                    <label class="student-check">
+                        <input type="checkbox" name="student_ids" value="{{ s.id }}"
+                               {% if s.id in editor_context.student_ids %}checked{% endif %}>
+                        <span>{{ s.full_name }}{% if s.grade_age_label %} <em class="student-meta">({{ s.grade_age_label }})</em>{% endif %}</span>
+                    </label>
+                    {% endfor %}
+                    {% if not students %}
+                    <p class="empty-state">No students available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="activities-builder">
+            <div class="activities-header">
+                <h3>Activities</h3>
+                <div class="activities-header-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" id="apply-schedule-suggestions">Apply Day's Schedule</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="add-activity">+ Add Activity</button>
+                </div>
+            </div>
+            <p class="field-hint" id="schedule-day-hint"></p>
+            <div id="activities-list">
+                {% if editor_context.activities %}
+                    {% for activity in editor_context.activities %}
+                    <div class="activity-row" data-activity-row>
+                        <input type="text" name="activity_titles" placeholder="Activity title" required
+                               value="{{ activity.title }}">
+                        <input type="text" name="activity_descriptions" placeholder="Description (optional)"
+                               value="{{ activity.description }}">
+                        <select name="activity_types" class="activity-type-select">
+                            <option value="regular" {% if activity.activity_type == 'regular' %}selected{% endif %}>Regular</option>
+                            <option value="special" {% if activity.activity_type == 'special' %}selected{% endif %}>Special Activity</option>
+                            <option value="subject" {% if activity.activity_type == 'subject' %}selected{% endif %}>Subject</option>
+                            <option value="history" {% if activity.activity_type == 'history' %}selected{% endif %}>History (with audio)</option>
+                        </select>
+                        <input type="url" name="activity_audio_urls" placeholder="Audio URL (history)" class="activity-audio-field"
+                               value="{{ activity.audio_url }}">
+                        <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field"
+                               value="{{ activity.external_link }}">
+                        <button type="button" class="btn-remove" aria-label="Remove activity">&times;</button>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="activity-row" data-activity-row>
+                        <input type="text" name="activity_titles" placeholder="Activity title" required>
+                        <input type="text" name="activity_descriptions" placeholder="Description (optional)">
+                        <select name="activity_types" class="activity-type-select">
+                            <option value="regular">Regular</option>
+                            <option value="special">Special Activity</option>
+                            <option value="subject">Subject</option>
+                            <option value="history">History (with audio)</option>
+                        </select>
+                        <input type="url" name="activity_audio_urls" placeholder="Audio URL (history)" class="activity-audio-field">
+                        <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field">
+                        <button type="button" class="btn-remove" aria-label="Remove activity">&times;</button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="lesson-plan-editor-actions">
+            <a href="/teacher/lesson-planning?cal_month={{ cal_month_param }}"
+               class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">
+                {% if editor_context.is_edit %}Update Lesson Plan{% else %}Save Lesson Plan{% endif %}
+            </button>
+        </div>
+    </form>
+</section>

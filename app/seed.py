@@ -91,6 +91,7 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             special_type=SpecialActivityKind.co_op,
             weekdays="0,2",
             description="Community co-op classes with other homeschool families.",
+            lesson_amount=36,
             sort_order=1,
         ),
         WeeklyScheduleItem(
@@ -100,6 +101,7 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             special_type=SpecialActivityKind.wild_and_free,
             weekdays="4",
             description="Outdoor nature exploration and adventure learning.",
+            lesson_amount=36,
             sort_order=2,
         ),
         WeeklyScheduleItem(
@@ -110,6 +112,7 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             weekdays="0,2",
             description="Essentials program — grammar, writing, and presentations.",
             external_link="https://classicalconversations.com/programs/essentials/",
+            lesson_amount=36,
             sort_order=3,
         ),
         WeeklyScheduleItem(
@@ -119,6 +122,7 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             weekdays="0,2",
             description="Listen to the history audio lesson and share what you learned.",
             audio_url=HISTORY_AUDIO_URL,
+            lesson_amount=72,
             sort_order=4,
         ),
         WeeklyScheduleItem(
@@ -127,6 +131,7 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             item_kind=ScheduleItemKind.subject,
             weekdays="1,3",
             description="Complete math workbook pages and practice problems.",
+            lesson_amount=72,
             sort_order=5,
         ),
         WeeklyScheduleItem(
@@ -135,6 +140,7 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             item_kind=ScheduleItemKind.subject,
             weekdays="1,3,4",
             description="Grammar, spelling, and creative writing.",
+            lesson_amount=90,
             sort_order=6,
         ),
     ]

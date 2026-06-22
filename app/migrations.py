@@ -82,6 +82,16 @@ def run_schema_migrations(db: Session) -> None:
             db.commit()
             _mark_existing_sample_lesson_plans(db)
 
+    if _table_exists(inspector, "weekly_schedule_items"):
+        if not _column_exists(inspector, "weekly_schedule_items", "lesson_amount"):
+            db.execute(
+                text(
+                    "ALTER TABLE weekly_schedule_items ADD COLUMN lesson_amount INTEGER "
+                    "NOT NULL DEFAULT 0"
+                )
+            )
+            db.commit()
+
     _migrate_planned_school_days(db, inspector)
 
 

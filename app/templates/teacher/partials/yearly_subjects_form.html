@@ -1,0 +1,69 @@
+<div class="yearly-subjects-section">
+    <h2>Yearly Subjects &amp; Activities</h2>
+    <p class="section-hint">
+        Set subjects and activities with days of the week and how many times they should appear during the school year.
+        Saving will auto-populate the lesson planning calendar for all active students.
+    </p>
+    {% if not school_year %}
+    <p class="section-hint yearly-subjects-warning">
+        Configure your school year range on the
+        <a href="/teacher/school-days">School Year Planning</a> tab before auto-populating lesson plans.
+    </p>
+    {% endif %}
+    <form method="post" action="/teacher/lesson-planning/yearly-subjects" id="yearly-subjects-form">
+        <input type="hidden" name="cal_month" value="{{ cal_month_param }}">
+        <div id="schedule-items-list" class="yearly-subjects-table-wrap">
+            <div class="yearly-subjects-table-header" aria-hidden="true">
+                <span>Name</span>
+                <span>Kind</span>
+                <span>Type</span>
+                <span>Days</span>
+                <span>Lessons / Year</span>
+                <span></span>
+            </div>
+            {% for item in yearly_subjects %}
+            <div class="schedule-item-row yearly-subject-row" data-schedule-row>
+                <div class="schedule-item-header">
+                    <input type="text" name="item_names" value="{{ item.name }}" placeholder="Name" required>
+                    <select name="item_kinds">
+                        <option value="special_activity" {% if item.item_kind.value == 'special_activity' %}selected{% endif %}>Special Activity</option>
+                        <option value="subject" {% if item.item_kind.value == 'subject' %}selected{% endif %}>Subject</option>
+                    </select>
+                    <select name="special_types">
+                        <option value="">— Type —</option>
+                        <option value="co_op" {% if item.special_type and item.special_type.value == 'co_op' %}selected{% endif %}>Co-Op</option>
+                        <option value="wild_and_free" {% if item.special_type and item.special_type.value == 'wild_and_free' %}selected{% endif %}>Wild and Free Outing</option>
+                        <option value="classical_conversations" {% if item.special_type and item.special_type.value == 'classical_conversations' %}selected{% endif %}>Classical Conversations</option>
+                        <option value="other" {% if item.special_type and item.special_type.value == 'other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div class="weekday-picker">
+                    {% for label in weekday_labels %}
+                    <label class="weekday-check">
+                        <input type="checkbox" class="weekday-cb" value="{{ loop.index0 }}"
+                               {% if loop.index0|string in item.weekdays.replace(' ', '').split(',') %}checked{% endif %}>
+                        {{ label }}
+                    </label>
+                    {% endfor %}
+                    <input type="hidden" name="weekdays_list" value="{{ item.weekdays }}">
+                </div>
+                <div class="yearly-subject-meta">
+                    <label class="lesson-amount-label">
+                        <span class="sr-only">Lessons per year for {{ item.name }}</span>
+                        <input type="number" name="lesson_amounts" min="0" value="{{ item.lesson_amount }}"
+                               placeholder="0" class="lesson-amount-input">
+                    </label>
+                    <input type="text" name="item_descriptions" value="{{ item.description or '' }}" placeholder="Description">
+                    <input type="url" name="external_links" value="{{ item.external_link or '' }}" placeholder="External link (optional)">
+                    <input type="url" name="audio_urls" value="{{ item.audio_url or '' }}" placeholder="Audio link for history (optional)">
+                    <button type="button" class="btn-remove" aria-label="Remove subject or activity">&times;</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="schedule-actions">
+            <button type="button" class="btn btn-ghost btn-sm" id="add-schedule-item">+ Add Subject or Activity</button>
+            <button type="submit" class="btn btn-primary btn-sm">Save Yearly Subjects</button>
+        </div>
+    </form>
+</div>

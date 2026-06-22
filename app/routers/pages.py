@@ -32,6 +32,8 @@ from app.models import (
     UserRole,
     WeeklyScheduleItem,
 )
+from app.lesson_plan_generator import populate_lesson_plans_from_subjects
+from app.lesson_planning_context import build_lesson_planning_context
 from app.sample_plans import SAMPLE_LESSON_PLANS
 from app.school_day_context import build_school_day_context
 from app.school_year_utils import (
@@ -513,6 +515,114 @@ def _weekly_schedule_context(db: Session, teacher_id: int) -> dict:
     }
 
 
+def _lesson_planning_redirect(
+    cal_month: str | None = None,
+    plan_date: str | None = None,
+    success: str | None = None,
+    error: str | None = None,
+    count: str | None = None,
+) -> RedirectResponse:
+    params: list[str] = []
+    if cal_month:
+        params.append(f"cal_month={cal_month}")
+    if plan_date:
+        params.append(f"plan_date={plan_date}")
+    if success:
+        params.append(f"success={success}")
+    if error:
+        params.append(f"error={error}")
+    if count:
+        params.append(f"count={count}")
+    query = f"?{'&'.join(params)}" if params else ""
+    return RedirectResponse(
+        url=f"/teacher/lesson-planning{query}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+def _parse_lesson_activities(
+    activity_titles: list[str],
+    activity_descriptions: list[str],
+    activity_types: list[str],
+    activity_audio_urls: list[str],
+    activity_external_links: list[str],
+) -> list[tuple[str, str | None, ActivityType, str | None, str | None, int]]:
+    activities_data = []
+    for idx, act_title in enumerate(activity_titles):
+        if not act_title.strip():
+            continue
+        desc = activity_descriptions[idx] if idx < len(activity_descriptions) else ""
+        type_raw = activity_types[idx] if idx < len(activity_types) else "regular"
+        audio = activity_audio_urls[idx] if idx < len(activity_audio_urls) else ""
+        link = activity_external_links[idx] if idx < len(activity_external_links) else ""
+        try:
+            act_type = ActivityType(type_raw)
+        except ValueError:
+            act_type = ActivityType.regular
+        activities_data.append(
+            (
+                act_title.strip(),
+                desc.strip() or None,
+                act_type,
+                audio.strip() or None,
+                link.strip() or None,
+                idx + 1,
+            )
+        )
+    return activities_data
+
+
+def _save_lesson_plans_for_date(
+    db: Session,
+    teacher_id: int,
+    parsed_date: date,
+    title: str,
+    description: str,
+    student_ids: list[int],
+    activities_data: list[tuple[str, str | None, ActivityType, str | None, str | None, int]],
+) -> int:
+    existing = (
+        db.query(LessonPlan)
+        .filter(LessonPlan.teacher_id == teacher_id, LessonPlan.plan_date == parsed_date)
+        .all()
+    )
+    for plan in existing:
+        db.delete(plan)
+
+    for student_id in student_ids:
+        plan = LessonPlan(
+            title=title,
+            description=description or None,
+            plan_date=parsed_date,
+            teacher_id=teacher_id,
+            student_id=student_id,
+        )
+        db.add(plan)
+        db.flush()
+        for act_title, act_desc, act_type, audio, link, sort_order in activities_data:
+            db.add(
+                Activity(
+                    lesson_plan_id=plan.id,
+                    title=act_title,
+                    description=act_desc,
+                    sort_order=sort_order,
+                    activity_type=act_type,
+                    audio_url=audio,
+                    external_link=link,
+                )
+            )
+    return len(student_ids)
+
+
+def _yearly_subjects_context(db: Session, teacher_id: int) -> dict:
+    yearly_subjects = _fetch_weekly_schedule(db, teacher_id)
+    return {
+        "yearly_subjects": yearly_subjects,
+        "weekday_labels": WEEKDAY_LABELS,
+        "format_weekdays": format_weekdays,
+    }
+
+
 def _sample_plans_context(db: Session) -> dict:
     show_samples = sample_lesson_plans_enabled(db) and sample_data_enabled(db)
     return {
@@ -535,20 +645,16 @@ def _legacy_teacher_redirect(
         return RedirectResponse(url=f"/teacher/school-days{query}", status_code=status.HTTP_303_SEE_OTHER)
     if tab == "lessons":
         params = []
-        if view and view != "daily":
-            params.append(f"view={view}")
         if ref_date:
-            params.append(f"ref_date={ref_date}")
+            params.append(f"plan_date={ref_date}")
+            params.append(f"cal_month={ref_date[:7]}")
         query = f"?{'&'.join(params)}" if params else ""
-        return RedirectResponse(url=f"/teacher/lesson-plans{query}", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url=f"/teacher/lesson-planning{query}", status_code=status.HTTP_303_SEE_OTHER)
     return None
 
 
 @router.get("/teacher", response_class=HTMLResponse)
 async def teacher_hub(
-    request: Request,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
     tab: str | None = Query(None),
     cal_month: str | None = Query(None),
     view: str | None = Query(None),
@@ -560,105 +666,246 @@ async def teacher_hub(
     if redirect := _legacy_teacher_redirect(tab, cal_month, view, ref_date):
         return redirect
 
-    if view or ref_date or success or error:
-        params: list[str] = []
-        if view:
-            params.append(f"view={view}")
-        if ref_date:
-            params.append(f"ref_date={ref_date}")
-        if success:
-            params.append(f"success={success}")
-        if error:
-            params.append(f"error={error}")
-        if count:
-            params.append(f"count={count}")
-        query = f"?{'&'.join(params)}"
-        return RedirectResponse(url=f"/teacher/lesson-plans{query}", status_code=status.HTTP_303_SEE_OTHER)
+    params: list[str] = []
+    if cal_month:
+        params.append(f"cal_month={cal_month}")
+    if ref_date:
+        params.append(f"plan_date={ref_date}")
+        if not cal_month:
+            params.append(f"cal_month={ref_date[:7]}")
+    if success:
+        params.append(f"success={success}")
+    if error:
+        params.append(f"error={error}")
+    if count:
+        params.append(f"count={count}")
+    query = f"?{'&'.join(params)}" if params else ""
+    return RedirectResponse(url=f"/teacher/lesson-planning{query}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/teacher/lesson-planning", response_class=HTMLResponse)
+async def teacher_lesson_planning_page(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    cal_month: str | None = Query(None),
+    plan_date: str | None = Query(None),
+):
+    school_year = _fetch_school_day_year(db, current_user.id)
+    if school_year:
+        ensure_planned_days(db, school_year)
+        db.commit()
+        school_year = _fetch_school_day_year(db, current_user.id)
 
     all_plans = _fetch_teacher_plans(db, current_user.id)
-    today = date.today()
-    today_plans = [p for p in all_plans if p.plan_date == today]
-    weekly_schedule = _fetch_weekly_schedule(db, current_user.id)
-    student_responses = _fetch_student_responses(db, current_user.id)
+    planning = build_lesson_planning_context(school_year, all_plans, cal_month, plan_date)
+    students = _fetch_active_students(db)
 
     return render(
         request,
-        "teacher/dashboard.html",
+        "teacher/lesson_planning.html",
         {
             "user": current_user,
-            "active_page": "overview",
-            "today_plans": today_plans,
-            "stats": {
-                "total_plans": len(all_plans),
-                "plans_today": len(today_plans),
-                "schedule_items": len(weekly_schedule),
-                "response_count": len(student_responses),
-            },
+            "active_page": "lesson-planning",
+            "students": students,
+            **_yearly_subjects_context(db, current_user.id),
+            **_sample_plans_context(db),
+            **planning,
         },
     )
 
 
 @router.get("/teacher/lesson-plans", response_class=HTMLResponse)
 async def teacher_lesson_plans(
-    request: Request,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
-    view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    view: str = Query("daily"),
     ref_date: str | None = Query(None),
+    success: str | None = Query(None),
+    error: str | None = Query(None),
+    count: str | None = Query(None),
 ):
-    all_plans = _fetch_teacher_plans(db, current_user.id)
-    calendar = build_calendar_context(all_plans, view, ref_date)
-
-    return render(
-        request,
-        "teacher/lesson_plans.html",
-        {
-            "user": current_user,
-            "active_page": "lesson-plans",
-            "base_path": "/teacher/lesson-plans",
-            "pdf_path": "/teacher/lesson-plans.pdf",
-            "plan_card_partial": "teacher/partials/plan_card.html",
-            "empty_hint": "Create one to get started!",
-            **calendar,
-        },
-    )
+    params: list[str] = []
+    if view == "monthly" and ref_date:
+        params.append(f"cal_month={ref_date[:7]}")
+        params.append(f"plan_date={ref_date}")
+    elif ref_date:
+        params.append(f"plan_date={ref_date}")
+        params.append(f"cal_month={ref_date[:7]}")
+    if success:
+        params.append(f"success={success}")
+    if error:
+        params.append(f"error={error}")
+    if count:
+        params.append(f"count={count}")
+    query = f"?{'&'.join(params)}" if params else ""
+    return RedirectResponse(url=f"/teacher/lesson-planning{query}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/teacher/lesson-plans/new", response_class=HTMLResponse)
 async def teacher_lesson_plan_new(
-    request: Request,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    plan_date: str | None = Query(None),
 ):
-    students = _fetch_active_students(db)
-
-    return render(
-        request,
-        "teacher/lesson_plan_new.html",
-        {
-            "user": current_user,
-            "active_page": "create-plan",
-            "students": students,
-            "today": date.today().isoformat(),
-            **_sample_plans_context(db),
-        },
-    )
+    params: list[str] = []
+    if plan_date:
+        params.append(f"plan_date={plan_date}")
+        params.append(f"cal_month={plan_date[:7]}")
+    query = f"?{'&'.join(params)}" if params else ""
+    return RedirectResponse(url=f"/teacher/lesson-planning{query}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/teacher/weekly-schedule", response_class=HTMLResponse)
 async def teacher_weekly_schedule_page(
-    request: Request,
+    success: str | None = Query(None),
+):
+    query = f"?success={success}#yearly-subjects" if success else "#yearly-subjects"
+    return RedirectResponse(url=f"/teacher/lesson-planning{query}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/teacher/lesson-planning/plan")
+async def save_lesson_planning_plan(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    title: str = Form(...),
+    description: str = Form(""),
+    plan_date: str = Form(...),
+    cal_month: str = Form(""),
+    student_ids: list[int] = Form(...),
+    activity_titles: list[str] = Form(...),
+    activity_descriptions: list[str] = Form(default=[]),
+    activity_types: list[str] = Form(default=[]),
+    activity_audio_urls: list[str] = Form(default=[]),
+    activity_external_links: list[str] = Form(default=[]),
 ):
-    return render(
-        request,
-        "teacher/weekly_schedule.html",
-        {
-            "user": current_user,
-            "active_page": "weekly-schedule",
-            **_weekly_schedule_context(db, current_user.id),
-        },
+    school_year = _fetch_school_day_year(db, current_user.id)
+    if school_year is None:
+        return _lesson_planning_redirect(error="school-year")
+
+    if not student_ids:
+        return _lesson_planning_redirect(
+            cal_month=cal_month or None,
+            plan_date=plan_date,
+            error="students",
+        )
+
+    try:
+        parsed_date = date.fromisoformat(plan_date)
+    except ValueError:
+        return _lesson_planning_redirect(cal_month=cal_month or None, error="date")
+
+    if not (school_year.start_date <= parsed_date <= school_year.end_date):
+        return _lesson_planning_redirect(
+            cal_month=cal_month or None,
+            plan_date=plan_date,
+            error="range",
+        )
+
+    activities_data = _parse_lesson_activities(
+        activity_titles,
+        activity_descriptions,
+        activity_types,
+        activity_audio_urls,
+        activity_external_links,
+    )
+    count = _save_lesson_plans_for_date(
+        db,
+        current_user.id,
+        parsed_date,
+        title,
+        description,
+        student_ids,
+        activities_data,
+    )
+    db.commit()
+    return _lesson_planning_redirect(
+        cal_month=cal_month or parsed_date.strftime("%Y-%m"),
+        plan_date=plan_date,
+        success="plan",
+        count=str(count),
+    )
+
+
+@router.post("/teacher/lesson-planning/yearly-subjects")
+async def save_yearly_subjects(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    cal_month: str = Form(""),
+    item_names: list[str] = Form(default=[]),
+    item_kinds: list[str] = Form(default=[]),
+    special_types: list[str] = Form(default=[]),
+    weekdays_list: list[str] = Form(default=[]),
+    lesson_amounts: list[str] = Form(default=[]),
+    item_descriptions: list[str] = Form(default=[]),
+    external_links: list[str] = Form(default=[]),
+    audio_urls: list[str] = Form(default=[]),
+):
+    db.query(WeeklyScheduleItem).filter(
+        WeeklyScheduleItem.teacher_id == current_user.id
+    ).delete()
+
+    saved_items: list[WeeklyScheduleItem] = []
+    for idx, name in enumerate(item_names):
+        if not name.strip():
+            continue
+        kind_raw = item_kinds[idx] if idx < len(item_kinds) else "subject"
+        special_raw = special_types[idx] if idx < len(special_types) else ""
+        weekdays = weekdays_list[idx] if idx < len(weekdays_list) else ""
+        desc = item_descriptions[idx] if idx < len(item_descriptions) else ""
+        link = external_links[idx] if idx < len(external_links) else ""
+        audio = audio_urls[idx] if idx < len(audio_urls) else ""
+        amount_raw = lesson_amounts[idx] if idx < len(lesson_amounts) else "0"
+        try:
+            lesson_amount = max(int(amount_raw or 0), 0)
+        except ValueError:
+            lesson_amount = 0
+
+        try:
+            item_kind = ScheduleItemKind(kind_raw)
+        except ValueError:
+            item_kind = ScheduleItemKind.subject
+
+        special_type = None
+        if special_raw:
+            try:
+                special_type = SpecialActivityKind(special_raw)
+            except ValueError:
+                special_type = None
+
+        item = WeeklyScheduleItem(
+            teacher_id=current_user.id,
+            name=name.strip(),
+            item_kind=item_kind,
+            special_type=special_type,
+            weekdays=weekdays.strip(),
+            description=desc.strip() or None,
+            external_link=link.strip() or None,
+            audio_url=audio.strip() or None,
+            lesson_amount=lesson_amount,
+            sort_order=idx + 1,
+        )
+        db.add(item)
+        saved_items.append(item)
+
+    db.flush()
+
+    school_year = _fetch_school_day_year(db, current_user.id)
+    populated = 0
+    if school_year:
+        ensure_planned_days(db, school_year)
+        db.flush()
+        school_year = _fetch_school_day_year(db, current_user.id)
+        students = _fetch_active_students(db)
+        populated = populate_lesson_plans_from_subjects(
+            db,
+            current_user.id,
+            school_year,
+            saved_items,
+            students,
+        )
+
+    db.commit()
+    return _lesson_planning_redirect(
+        cal_month=cal_month or None,
+        success="yearly-subjects",
+        count=str(populated) if populated else None,
     )
 
 
@@ -836,7 +1083,7 @@ async def save_weekly_schedule(
 
     db.commit()
     return RedirectResponse(
-        url="/teacher/weekly-schedule?success=schedule",
+        url="/teacher/lesson-planning?success=yearly-subjects#yearly-subjects",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -856,62 +1103,35 @@ async def create_lesson_plan(
     activity_external_links: list[str] = Form(default=[]),
 ):
     if not student_ids:
-        return RedirectResponse(
-            url="/teacher/lesson-plans/new?error=students",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return _lesson_planning_redirect(plan_date=plan_date, error="students")
 
-    activities_data = []
-    for idx, act_title in enumerate(activity_titles):
-        if not act_title.strip():
-            continue
-        desc = activity_descriptions[idx] if idx < len(activity_descriptions) else ""
-        type_raw = activity_types[idx] if idx < len(activity_types) else "regular"
-        audio = activity_audio_urls[idx] if idx < len(activity_audio_urls) else ""
-        link = activity_external_links[idx] if idx < len(activity_external_links) else ""
-        try:
-            act_type = ActivityType(type_raw)
-        except ValueError:
-            act_type = ActivityType.regular
-        activities_data.append(
-            (
-                act_title.strip(),
-                desc.strip() or None,
-                act_type,
-                audio.strip() or None,
-                link.strip() or None,
-                idx + 1,
-            )
-        )
+    try:
+        parsed_date = date.fromisoformat(plan_date)
+    except ValueError:
+        return _lesson_planning_redirect(error="date")
 
-    parsed_date = date.fromisoformat(plan_date)
-    for student_id in student_ids:
-        plan = LessonPlan(
-            title=title,
-            description=description or None,
-            plan_date=parsed_date,
-            teacher_id=current_user.id,
-            student_id=student_id,
-        )
-        db.add(plan)
-        db.flush()
-        for act_title, act_desc, act_type, audio, link, sort_order in activities_data:
-            db.add(
-                Activity(
-                    lesson_plan_id=plan.id,
-                    title=act_title,
-                    description=act_desc,
-                    sort_order=sort_order,
-                    activity_type=act_type,
-                    audio_url=audio,
-                    external_link=link,
-                )
-            )
+    activities_data = _parse_lesson_activities(
+        activity_titles,
+        activity_descriptions,
+        activity_types,
+        activity_audio_urls,
+        activity_external_links,
+    )
+    count = _save_lesson_plans_for_date(
+        db,
+        current_user.id,
+        parsed_date,
+        title,
+        description,
+        student_ids,
+        activities_data,
+    )
     db.commit()
-    count = len(student_ids)
-    return RedirectResponse(
-        url=f"/teacher/lesson-plans?success=plan&count={count}",
-        status_code=status.HTTP_303_SEE_OTHER,
+    return _lesson_planning_redirect(
+        cal_month=parsed_date.strftime("%Y-%m"),
+        plan_date=plan_date,
+        success="plan",
+        count=str(count),
     )
 
 

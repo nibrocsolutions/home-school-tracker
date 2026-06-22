@@ -1,0 +1,65 @@
+<script>
+const weekdayLabels = {{ weekday_labels | tojson }};
+
+function syncWeekdayHidden(row) {
+    const checked = [...row.querySelectorAll('.weekday-cb:checked')].map(cb => cb.value);
+    const hidden = row.querySelector('input[name="weekdays_list"]');
+    if (hidden) hidden.value = checked.join(',');
+}
+
+function bindScheduleRow(row) {
+    row.querySelectorAll('.weekday-cb').forEach(cb => {
+        cb.addEventListener('change', () => syncWeekdayHidden(row));
+    });
+    row.querySelector('.btn-remove')?.addEventListener('click', () => row.remove());
+}
+
+document.querySelectorAll('[data-schedule-row]').forEach(bindScheduleRow);
+
+document.getElementById('yearly-subjects-form')?.addEventListener('submit', () => {
+    document.querySelectorAll('[data-schedule-row]').forEach(syncWeekdayHidden);
+});
+
+document.getElementById('add-schedule-item')?.addEventListener('click', () => {
+    const list = document.getElementById('schedule-items-list');
+    const row = document.createElement('div');
+    row.className = 'schedule-item-row yearly-subject-row';
+    row.setAttribute('data-schedule-row', '');
+    row.innerHTML = `
+        <div class="schedule-item-header">
+            <input type="text" name="item_names" placeholder="Name" required>
+            <select name="item_kinds">
+                <option value="special_activity">Special Activity</option>
+                <option value="subject">Subject</option>
+            </select>
+            <select name="special_types">
+                <option value="">— Type —</option>
+                <option value="co_op">Co-Op</option>
+                <option value="wild_and_free">Wild and Free Outing</option>
+                <option value="classical_conversations">Classical Conversations</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        <div class="weekday-picker">
+            ${weekdayLabels.map((label, i) => `
+                <label class="weekday-check">
+                    <input type="checkbox" class="weekday-cb" value="${i}"> ${label}
+                </label>
+            `).join('')}
+            <input type="hidden" name="weekdays_list" value="">
+        </div>
+        <div class="yearly-subject-meta">
+            <label class="lesson-amount-label">
+                <span class="sr-only">Lessons per year</span>
+                <input type="number" name="lesson_amounts" min="0" value="0" placeholder="0" class="lesson-amount-input">
+            </label>
+            <input type="text" name="item_descriptions" placeholder="Description">
+            <input type="url" name="external_links" placeholder="External link (optional)">
+            <input type="url" name="audio_urls" placeholder="Audio link for history (optional)">
+            <button type="button" class="btn-remove" aria-label="Remove subject or activity">&times;</button>
+        </div>
+    `;
+    list.appendChild(row);
+    bindScheduleRow(row);
+});
+</script>

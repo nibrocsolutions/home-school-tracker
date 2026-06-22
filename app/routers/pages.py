@@ -704,37 +704,6 @@ async def teacher_school_days_page(
     )
 
 
-@router.get("/teacher/school-days/attendance-report", response_class=HTMLResponse)
-async def teacher_attendance_report_page(
-    request: Request,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
-):
-    school_year = _fetch_school_day_year(db, current_user.id)
-    if school_year is None:
-        return RedirectResponse(
-            url="/teacher/school-days?error=config",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-    ensure_planned_days(db, school_year)
-    db.commit()
-    school_year = _fetch_school_day_year(db, current_user.id)
-    attendance = collect_school_day_attendance(school_year)
-    pdf_url = "/teacher/school-days/attendance-report.pdf"
-
-    return render(
-        request,
-        "teacher/attendance_report.html",
-        {
-            "user": current_user,
-            "active_page": "school-days",
-            "school_year": school_year,
-            "attendance": attendance,
-            "pdf_url": pdf_url,
-        },
-    )
-
-
 @router.get("/teacher/school-days/attendance-report.pdf")
 async def teacher_attendance_report_pdf(
     db: Annotated[Session, Depends(get_db)],

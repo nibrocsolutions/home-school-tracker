@@ -78,6 +78,20 @@
                  {% if not (school_year and completed_count >= required_days) %}hidden{% endif %}>
                 All required school days have been completed for this school year!
             </div>
+            {% if school_year %}
+            <div class="school-day-report-actions pdf-buttons">
+                <a href="/teacher/school-days/attendance-report.pdf?disposition=inline"
+                   class="btn btn-pdf-view btn-sm"
+                   target="_blank"
+                   rel="noopener">
+                    <span aria-hidden="true">👁</span> View Attendance Report
+                </a>
+                <a href="/teacher/school-days/attendance-report.pdf?disposition=attachment"
+                   class="btn btn-pdf btn-sm">
+                    <span aria-hidden="true">📄</span> Download Attendance Report
+                </a>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -145,19 +159,15 @@
 
         <div class="school-day-legend">
             <span class="legend-item"><span class="legend-swatch day-type-actual_school"></span> Planned actual school days</span>
-            <span class="legend-item"><span class="legend-swatch day-type-actual_school completed"></span> Completed actual school days</span>
+            <span class="legend-item">
+                <span class="legend-swatch day-type-actual_school completed">
+                    <span class="legend-check" aria-hidden="true">✓</span>
+                </span>
+                Completed actual school days
+            </span>
             <span class="legend-item"><span class="legend-swatch day-type-school_off"></span> Planned school days off</span>
             <span class="legend-item"><span class="legend-swatch day-type-holiday"></span> Holidays</span>
             <span class="legend-item"><span class="legend-swatch day-type-weekend"></span> Weekends</span>
-        </div>
-
-        <div class="school-day-report-actions">
-            <a href="/teacher/school-days/attendance-report"
-               class="btn btn-primary"
-               target="_blank"
-               rel="noopener">
-                Attendance Report
-            </a>
         </div>
 
         <dialog id="school-day-editor" class="school-day-editor-dialog" aria-labelledby="school-day-editor-title">

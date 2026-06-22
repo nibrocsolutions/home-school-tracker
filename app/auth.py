@@ -15,7 +15,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ROLE_HOME_PAGES = {
     UserRole.admin: "/admin",
-    UserRole.teacher: "/teacher",
+    UserRole.teacher: "/teacher/lesson-planning",
     UserRole.student: "/student",
 }
 

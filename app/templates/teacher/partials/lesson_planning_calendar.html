@@ -1,0 +1,81 @@
+<div class="lesson-planning-calendar" data-preserve-scroll>
+    <div class="calendar-header">
+        <h2>Lesson Planning Calendar</h2>
+        <div class="calendar-actions">
+            <div class="pdf-buttons">
+                <a href="/teacher/lesson-plans.pdf?view=monthly&ref_date={{ pdf_ref_date }}&disposition=inline"
+                   class="btn btn-pdf-view btn-sm" target="_blank" rel="noopener">
+                    <span aria-hidden="true">👁</span> View PDF
+                </a>
+                <a href="/teacher/lesson-plans.pdf?view=monthly&ref_date={{ pdf_ref_date }}&disposition=attachment"
+                   class="btn btn-pdf btn-sm">
+                    <span aria-hidden="true">📄</span> Download PDF
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="calendar-nav">
+        <a href="/teacher/lesson-planning?cal_month={{ prev_cal_month }}{% if plan_date_param %}&plan_date={{ plan_date_param }}{% endif %}"
+           class="cal-nav-btn" aria-label="Previous month">‹</a>
+        <div class="cal-period">
+            <strong>{{ cal_month_label }}</strong>
+            <span class="school-year-range">
+                {{ school_year.start_date.strftime('%b %d, %Y') }} – {{ school_year.end_date.strftime('%b %d, %Y') }}
+            </span>
+        </div>
+        <a href="/teacher/lesson-planning?cal_month={{ next_cal_month }}{% if plan_date_param %}&plan_date={{ plan_date_param }}{% endif %}"
+           class="cal-nav-btn" aria-label="Next month">›</a>
+    </div>
+
+    <div class="month-calendar lesson-planning-month-calendar" data-cal-month="{{ cal_month_param }}">
+        <div class="month-weekdays">
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span>
+            <span>Fri</span><span>Sat</span><span>Sun</span>
+        </div>
+        {% for week in planning_grid %}
+        <div class="month-week">
+            {% for cell in week %}
+            {% if cell.day %}
+                {% if cell.in_range %}
+                <a href="/teacher/lesson-planning?cal_month={{ cal_month_param }}&plan_date={{ cell.date.isoformat() }}"
+                   class="school-day-cell lesson-plan-day-link day-type-{{ cell.day_type.value }}{% if cell.is_completed %} completed{% endif %}{% if cell.is_today %} today{% endif %}{% if cell.has_plans %} has-plans{% endif %}{% if plan_date and cell.date == plan_date %} selected{% endif %}"
+                   aria-label="{{ cell.date.strftime('%B %d, %Y') }}, {{ cell.day_type.value | replace('_', ' ') }}{% if cell.holiday_name %}, {{ cell.holiday_name }}{% endif %}{% if cell.has_plans %}, has lesson plan{% endif %}"
+                   title="{{ cell.date.strftime('%B %d, %Y') }}{% if cell.holiday_name %} — {{ cell.holiday_name }}{% endif %}">
+                    <span class="school-day-num">{{ cell.day }}</span>
+                    {% if cell.holiday_name %}
+                    <span class="school-day-holiday-name" aria-hidden="true">{{ cell.holiday_name }}</span>
+                    {% endif %}
+                    {% if cell.day_type.value == 'actual_school' and cell.is_completed %}
+                    <span class="school-day-check" aria-hidden="true">✓</span>
+                    {% endif %}
+                    {% if cell.has_plans %}
+                    <span class="lesson-plan-dot" aria-hidden="true"></span>
+                    {% endif %}
+                </a>
+                {% else %}
+                <span class="school-day-cell out-of-range {% if cell.is_today %}today{% endif %}"
+                      aria-hidden="true">
+                    <span class="school-day-num">{{ cell.day }}</span>
+                </span>
+                {% endif %}
+            {% else %}
+            <span class="school-day-cell empty"></span>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="school-day-legend lesson-planning-legend">
+        <span class="legend-item"><span class="legend-swatch day-type-actual_school"></span> Planned actual school days</span>
+        <span class="legend-item">
+            <span class="legend-swatch day-type-actual_school completed" aria-hidden="true"></span>
+            Completed actual school days
+        </span>
+        <span class="legend-item"><span class="legend-swatch day-type-school_off"></span> Planned school days off</span>
+        <span class="legend-item"><span class="legend-swatch day-type-holiday"></span> Holidays</span>
+        <span class="legend-item"><span class="legend-swatch day-type-weekend"></span> Weekends</span>
+        <span class="legend-item"><span class="legend-swatch lesson-plan-indicator"></span> Has lesson plan</span>
+    </div>
+</div>

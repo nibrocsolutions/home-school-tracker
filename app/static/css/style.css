@@ -1667,6 +1667,8 @@ button.school-day-cell:hover {
     height: 14px;
     border-radius: 4px;
     border: 2px solid transparent;
+    box-sizing: border-box;
+    flex-shrink: 0;
 }
 
 .legend-swatch.in-range {
@@ -1682,19 +1684,15 @@ button.school-day-cell:hover {
 .legend-swatch.day-type-actual_school.completed {
     background: #86efac;
     border-color: #15803d;
-    box-sizing: border-box;
-    position: relative;
-    overflow: hidden;
-    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.legend-check {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 8px;
-    font-weight: 800;
+.legend-swatch.day-type-actual_school.completed::after {
+    content: "✓";
+    font-size: 7px;
+    font-weight: 900;
     line-height: 1;
     color: #15803d;
 }
@@ -2142,6 +2140,127 @@ button.school-day-cell:hover {
 
 @media (max-width: 960px) {
     .schedule-item-header {
+        grid-template-columns: 1fr;
+    }
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.lesson-planning-layout {
+    align-items: start;
+}
+
+.lesson-planning-main {
+    min-width: 0;
+}
+
+.lesson-planning-sidebar {
+    min-width: 0;
+}
+
+.lesson-planning-notice {
+    margin-bottom: 0;
+}
+
+.lesson-planning-month-calendar .month-week {
+    gap: 0.35rem;
+}
+
+a.school-day-cell.lesson-plan-day-link {
+    text-decoration: none;
+    cursor: pointer;
+    width: 100%;
+    padding: 0;
+}
+
+a.school-day-cell.lesson-plan-day-link:hover {
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+a.school-day-cell.lesson-plan-day-link.selected {
+    outline: 3px solid var(--primary);
+    outline-offset: 1px;
+}
+
+.lesson-plan-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--primary);
+}
+
+.legend-swatch.lesson-plan-indicator {
+    background: var(--primary);
+    border-color: #4f46e5;
+}
+
+.lesson-planning-legend {
+    margin-top: 1rem;
+}
+
+.lesson-plan-editor-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--border);
+}
+
+.lesson-plan-editor-header h2 {
+    margin-bottom: 0.25rem;
+}
+
+.lesson-plan-editor-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.yearly-subjects-section h2 {
+    margin-bottom: 0.35rem;
+}
+
+.yearly-subjects-warning {
+    color: #b45309;
+}
+
+.yearly-subjects-table-header {
+    display: none;
+}
+
+.yearly-subject-row .yearly-subject-meta {
+    display: grid;
+    grid-template-columns: 90px 1fr 1fr 1fr auto;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.lesson-amount-input {
+    width: 100%;
+}
+
+@media (min-width: 1100px) {
+    .lesson-planning-layout {
+        grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+    }
+}
+
+@media (max-width: 960px) {
+    .yearly-subject-row .yearly-subject-meta {
         grid-template-columns: 1fr;
     }
 }

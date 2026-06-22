@@ -1,14 +1,19 @@
 {% if request.query_params.get('success') == 'plan' %}
 <div class="alert alert-success">
-    Lesson plan{{ 's' if request.query_params.get('count', '1') != '1' else '' }} created successfully
+    Lesson plan{{ 's' if request.query_params.get('count', '1') != '1' else '' }} saved successfully
     {% if request.query_params.get('count') %}for {{ request.query_params.get('count') }} student{{ 's' if request.query_params.get('count') != '1' else '' }}{% endif %}!
 </div>
 {% endif %}
-{% if request.query_params.get('success') == 'schedule' %}
-<div class="alert alert-success">Weekly schedule saved.</div>
+{% if request.query_params.get('success') == 'schedule' or request.query_params.get('success') == 'yearly-subjects' %}
+<div class="alert alert-success">
+    Yearly subjects and activities saved{% if request.query_params.get('count') %} and {{ request.query_params.get('count') }} lesson activit{{ 'ies' if request.query_params.get('count') != '1' else 'y' }} added to the calendar{% endif %}.
+</div>
 {% endif %}
 {% if request.query_params.get('error') == 'students' %}
 <div class="alert alert-error">Please select at least one student.</div>
+{% endif %}
+{% if request.query_params.get('error') == 'school-year' %}
+<div class="alert alert-error">Set your school year range on the School Year Planning tab before saving lesson plans.</div>
 {% endif %}
 {% if request.query_params.get('success') == 'config' %}
 <div class="alert alert-success">School year settings saved.</div>

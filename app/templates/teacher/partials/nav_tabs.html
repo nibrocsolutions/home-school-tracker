@@ -1,23 +1,8 @@
 <nav class="chrome-tabstrip" role="tablist" aria-label="Teacher sections">
-    <a href="/teacher"
-       class="chrome-tab {% if active_page == 'overview' %}active{% endif %}"
-       role="tab" aria-selected="{{ 'true' if active_page == 'overview' else 'false' }}">
-        <span class="chrome-tab-label">Overview</span>
-    </a>
-    <a href="/teacher/lesson-plans"
-       class="chrome-tab {% if active_page == 'lesson-plans' %}active{% endif %}"
-       role="tab" aria-selected="{{ 'true' if active_page == 'lesson-plans' else 'false' }}">
-        <span class="chrome-tab-label">Lesson Plans</span>
-    </a>
-    <a href="/teacher/lesson-plans/new"
-       class="chrome-tab {% if active_page == 'create-plan' %}active{% endif %}"
-       role="tab" aria-selected="{{ 'true' if active_page == 'create-plan' else 'false' }}">
-        <span class="chrome-tab-label">Create Plan</span>
-    </a>
-    <a href="/teacher/weekly-schedule"
-       class="chrome-tab {% if active_page == 'weekly-schedule' %}active{% endif %}"
-       role="tab" aria-selected="{{ 'true' if active_page == 'weekly-schedule' else 'false' }}">
-        <span class="chrome-tab-label">Weekly Schedule</span>
+    <a href="/teacher/lesson-planning"
+       class="chrome-tab {% if active_page == 'lesson-planning' %}active{% endif %}"
+       role="tab" aria-selected="{{ 'true' if active_page == 'lesson-planning' else 'false' }}">
+        <span class="chrome-tab-label">Lesson Planning</span>
     </a>
     <a href="/teacher/student-responses"
        class="chrome-tab {% if active_page == 'student-responses' %}active{% endif %}"

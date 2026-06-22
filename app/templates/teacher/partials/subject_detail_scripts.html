@@ -1,0 +1,20 @@
+<script>
+(function () {
+    const form = document.getElementById('subject-detail-form');
+    if (!form) return;
+
+    const hidden = document.getElementById('weekdays_list');
+
+    function syncWeekdays() {
+        const checked = [...form.querySelectorAll('.weekday-cb:checked')].map(cb => cb.value);
+        if (hidden) hidden.value = checked.join(',');
+    }
+
+    form.querySelectorAll('.weekday-cb').forEach(cb => {
+        cb.addEventListener('change', syncWeekdays);
+    });
+
+    form.addEventListener('submit', syncWeekdays);
+    syncWeekdays();
+})();
+</script>

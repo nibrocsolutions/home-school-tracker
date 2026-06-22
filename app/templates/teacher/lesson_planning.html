@@ -4,7 +4,7 @@
 {% block body_class %}dashboard-page teacher-page lesson-planning-page{% endblock %}
 
 {% set page_title = 'Lesson Planning' %}
-{% set page_subtitle = 'Plan lessons on your school year calendar and manage yearly subjects and activities.' %}
+{% set page_subtitle = 'Plan lessons on your school year calendar.' %}
 
 {% block teacher_content %}
 {% include "teacher/partials/flash_alerts.html" %}
@@ -22,19 +22,12 @@
         {% else %}
         {% include "teacher/partials/lesson_planning_calendar.html" %}
         {% endif %}
-
-        <div class="yearly-subjects-panel" id="yearly-subjects">
-            {% include "teacher/partials/yearly_subjects_form.html" %}
-        </div>
     </div>
     {% endif %}
 </section>
 {% endblock %}
 
 {% block scripts %}
-{% if not editor_context %}
-{% include "teacher/partials/yearly_subjects_scripts.html" %}
-{% endif %}
 {% if editor_context %}
 {% include "teacher/partials/lesson_plan_editor_scripts.html" %}
 {% endif %}

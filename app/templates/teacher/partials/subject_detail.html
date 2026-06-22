@@ -1,0 +1,100 @@
+<section class="panel subjects-view">
+    <div class="subjects-view-toolbar">
+        <a href="/teacher/school-days?cal_month={{ cal_month_param }}&subjects_view=list"
+           class="btn btn-secondary btn-sm">
+            ← Back to Subjects
+        </a>
+    </div>
+
+    <h2>{% if is_new_subject %}Add Subject or Activity{% else %}Edit {{ subject.name }}{% endif %}</h2>
+    <p class="section-hint">
+        Set the days of the week and how many times this appears during the school year.
+        Saving will update lesson planning for all active students.
+    </p>
+
+    <form method="post" action="/teacher/school-days/subjects" class="subject-detail-form" id="subject-detail-form">
+        <input type="hidden" name="cal_month" value="{{ cal_month_param }}">
+        {% if not is_new_subject %}
+        <input type="hidden" name="subject_id" value="{{ subject.id }}">
+        {% endif %}
+
+        <div class="form-row">
+            <label for="item_name">Name</label>
+            <input type="text" id="item_name" name="item_name" required
+                   value="{{ subject.name if subject else '' }}" placeholder="e.g. Math">
+        </div>
+
+        <div class="form-row">
+            <label for="item_kind">Kind</label>
+            <select id="item_kind" name="item_kind">
+                <option value="subject" {% if subject and subject.item_kind.value == 'subject' %}selected{% endif %}>Subject</option>
+                <option value="special_activity" {% if subject and subject.item_kind.value == 'special_activity' %}selected{% endif %}>Special Activity</option>
+            </select>
+        </div>
+
+        <div class="form-row">
+            <label for="special_type">Special Activity Type</label>
+            <select id="special_type" name="special_type">
+                <option value="">—</option>
+                <option value="co_op" {% if subject and subject.special_type and subject.special_type.value == 'co_op' %}selected{% endif %}>Co-Op</option>
+                <option value="wild_and_free" {% if subject and subject.special_type and subject.special_type.value == 'wild_and_free' %}selected{% endif %}>Wild and Free Outing</option>
+                <option value="classical_conversations" {% if subject and subject.special_type and subject.special_type.value == 'classical_conversations' %}selected{% endif %}>Classical Conversations</option>
+                <option value="other" {% if subject and subject.special_type and subject.special_type.value == 'other' %}selected{% endif %}>Other</option>
+            </select>
+        </div>
+
+        <div class="form-row">
+            <label>Days of the Week</label>
+            <div class="weekday-picker subject-weekday-picker">
+                {% for label in weekday_labels %}
+                <label class="weekday-check">
+                    <input type="checkbox" class="weekday-cb" value="{{ loop.index0 }}"
+                           {% if subject and loop.index0|string in subject.weekdays.replace(' ', '').split(',') %}checked{% endif %}>
+                    {{ label }}
+                </label>
+                {% endfor %}
+                <input type="hidden" name="weekdays_list" id="weekdays_list"
+                       value="{{ subject.weekdays if subject else '' }}">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <label for="lesson_amount">Lessons per Year</label>
+            <input type="number" id="lesson_amount" name="lesson_amount" min="0"
+                   value="{{ subject.lesson_amount if subject else 0 }}">
+        </div>
+
+        <div class="form-row">
+            <label for="item_description">Description</label>
+            <textarea id="item_description" name="item_description" rows="2"
+                      placeholder="Optional description">{{ subject.description if subject and subject.description else '' }}</textarea>
+        </div>
+
+        <div class="form-row">
+            <label for="external_link">External Link</label>
+            <input type="url" id="external_link" name="external_link"
+                   value="{{ subject.external_link if subject and subject.external_link else '' }}"
+                   placeholder="https://">
+        </div>
+
+        <div class="form-row">
+            <label for="audio_url">Audio Link</label>
+            <input type="url" id="audio_url" name="audio_url"
+                   value="{{ subject.audio_url if subject and subject.audio_url else '' }}"
+                   placeholder="https://">
+        </div>
+
+        <div class="subject-detail-actions">
+            {% if not is_new_subject %}
+            <button type="submit"
+                    formaction="/teacher/school-days/subjects/delete"
+                    formmethod="post"
+                    class="btn btn-secondary btn-danger"
+                    onclick="return confirm('Delete this subject or activity?');">
+                Delete
+            </button>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">Save Subject</button>
+        </div>
+    </form>
+</section>

@@ -6,11 +6,20 @@
 {% endif %}
 {% if request.query_params.get('success') == 'schedule' or request.query_params.get('success') == 'yearly-subjects' %}
 <div class="alert alert-success">
-    Yearly subjects and activities saved{% if request.query_params.get('count') %} and {{ request.query_params.get('count') }} lesson activit{{ 'ies' if request.query_params.get('count') != '1' else 'y' }} added to the calendar{% endif %}.
+    Subject saved{% if request.query_params.get('count') %} and {{ request.query_params.get('count') }} lesson activit{{ 'ies' if request.query_params.get('count') != '1' else 'y' }} added to the calendar{% endif %}.
 </div>
+{% endif %}
+{% if request.query_params.get('success') == 'subject-deleted' %}
+<div class="alert alert-success">Subject or activity deleted.</div>
 {% endif %}
 {% if request.query_params.get('error') == 'students' %}
 <div class="alert alert-error">Please select at least one student.</div>
+{% endif %}
+{% if request.query_params.get('error') == 'subject' %}
+<div class="alert alert-error">That subject or activity could not be found.</div>
+{% endif %}
+{% if request.query_params.get('error') == 'name' %}
+<div class="alert alert-error">Please enter a name for the subject or activity.</div>
 {% endif %}
 {% if request.query_params.get('error') == 'school-year' %}
 <div class="alert alert-error">Set your school year range on the School Year Planning tab before saving lesson plans.</div>

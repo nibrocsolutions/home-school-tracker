@@ -14,7 +14,10 @@ function bindScheduleRow(row) {
     row.querySelector('.btn-remove')?.addEventListener('click', () => row.remove());
 }
 
-document.querySelectorAll('[data-schedule-row]').forEach(bindScheduleRow);
+document.querySelectorAll('[data-schedule-row]').forEach(row => {
+    syncWeekdayHidden(row);
+    bindScheduleRow(row);
+});
 
 document.getElementById('yearly-subjects-form')?.addEventListener('submit', () => {
     document.querySelectorAll('[data-schedule-row]').forEach(syncWeekdayHidden);
@@ -22,42 +25,52 @@ document.getElementById('yearly-subjects-form')?.addEventListener('submit', () =
 
 document.getElementById('add-schedule-item')?.addEventListener('click', () => {
     const list = document.getElementById('schedule-items-list');
-    const row = document.createElement('div');
-    row.className = 'schedule-item-row yearly-subject-row';
+    const row = document.createElement('tr');
+    row.className = 'yearly-subject-row';
     row.setAttribute('data-schedule-row', '');
     row.innerHTML = `
-        <div class="schedule-item-header">
+        <td>
+            <input type="hidden" name="weekdays_list" value="">
             <input type="text" name="item_names" placeholder="Name" required>
+        </td>
+        <td>
             <select name="item_kinds">
                 <option value="special_activity">Special Activity</option>
                 <option value="subject">Subject</option>
             </select>
+        </td>
+        <td>
             <select name="special_types">
-                <option value="">— Type —</option>
+                <option value="">—</option>
                 <option value="co_op">Co-Op</option>
-                <option value="wild_and_free">Wild and Free Outing</option>
-                <option value="classical_conversations">Classical Conversations</option>
+                <option value="wild_and_free">Wild &amp; Free</option>
+                <option value="classical_conversations">CC</option>
                 <option value="other">Other</option>
             </select>
-        </div>
-        <div class="weekday-picker">
-            ${weekdayLabels.map((label, i) => `
-                <label class="weekday-check">
-                    <input type="checkbox" class="weekday-cb" value="${i}"> ${label}
+        </td>
+        ${weekdayLabels.map((label, i) => `
+            <td class="weekday-col">
+                <label class="weekday-check weekday-check-table">
+                    <input type="checkbox" class="weekday-cb" value="${i}">
+                    <span class="sr-only">${label}</span>
                 </label>
-            `).join('')}
-            <input type="hidden" name="weekdays_list" value="">
-        </div>
-        <div class="yearly-subject-meta">
-            <label class="lesson-amount-label">
-                <span class="sr-only">Lessons per year</span>
-                <input type="number" name="lesson_amounts" min="0" value="0" placeholder="0" class="lesson-amount-input">
-            </label>
+            </td>
+        `).join('')}
+        <td>
+            <input type="number" name="lesson_amounts" min="0" value="0" placeholder="0" class="lesson-amount-input">
+        </td>
+        <td>
             <input type="text" name="item_descriptions" placeholder="Description">
-            <input type="url" name="external_links" placeholder="External link (optional)">
-            <input type="url" name="audio_urls" placeholder="Audio link for history (optional)">
+        </td>
+        <td>
+            <input type="url" name="external_links" placeholder="URL">
+        </td>
+        <td>
+            <input type="url" name="audio_urls" placeholder="URL">
+        </td>
+        <td class="yearly-subject-actions">
             <button type="button" class="btn-remove" aria-label="Remove subject or activity">&times;</button>
-        </div>
+        </td>
     `;
     list.appendChild(row);
     bindScheduleRow(row);

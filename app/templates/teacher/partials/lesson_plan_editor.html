@@ -1,4 +1,11 @@
 <section class="lesson-plan-editor-section" id="lesson-plan-editor">
+    <div class="lesson-plan-editor-toolbar">
+        <a href="/teacher/lesson-planning?cal_month={{ cal_month_param }}"
+           class="btn btn-secondary btn-sm lesson-plan-back-btn">
+            ← Back to Lesson Planning
+        </a>
+    </div>
+
     <div class="lesson-plan-editor-header">
         <h2>{% if editor_context.is_edit %}Edit Lesson Plan{% else %}Create Lesson Plan{% endif %}</h2>
         <p class="section-hint">

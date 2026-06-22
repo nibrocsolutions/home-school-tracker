@@ -1684,17 +1684,17 @@ button.school-day-cell:hover {
 .legend-swatch.day-type-actual_school.completed {
     background: #86efac;
     border-color: #15803d;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-grid;
+    place-items: center;
+    vertical-align: middle;
 }
 
-.legend-swatch.day-type-actual_school.completed::after {
-    content: "✓";
-    font-size: 7px;
+.legend-check-mark {
+    font-size: 9px;
     font-weight: 900;
     line-height: 1;
     color: #15803d;
+    display: block;
 }
 
 .legend-swatch.day-type-school_off {
@@ -2157,23 +2157,40 @@ button.school-day-cell:hover {
 }
 
 .lesson-planning-layout {
-    align-items: start;
+    display: block;
 }
 
-.lesson-planning-main {
-    min-width: 0;
-}
-
-.lesson-planning-sidebar {
-    min-width: 0;
+.lesson-planning-overview {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
 }
 
 .lesson-planning-notice {
     margin-bottom: 0;
 }
 
-.lesson-planning-month-calendar .month-week {
-    gap: 0.35rem;
+.lesson-planning-month-calendar.school-day-calendar .month-week {
+    gap: 0.5rem;
+}
+
+.lesson-planning-month-calendar .school-day-cell {
+    min-height: 78px;
+    font-size: 0.95rem;
+}
+
+.lesson-planning-month-calendar .month-weekdays {
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.lesson-planning-calendar {
+    width: 100%;
+}
+
+.yearly-subjects-panel {
+    border-top: 2px solid var(--border);
+    padding-top: 1.5rem;
 }
 
 a.school-day-cell.lesson-plan-day-link {
@@ -2191,6 +2208,24 @@ a.school-day-cell.lesson-plan-day-link:hover {
 a.school-day-cell.lesson-plan-day-link.selected {
     outline: 3px solid var(--primary);
     outline-offset: 1px;
+}
+
+.lesson-plan-editor-section {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+.lesson-plan-editor-toolbar {
+    margin-bottom: 1.25rem;
+}
+
+.lesson-plan-back-btn {
+    text-decoration: none;
+}
+
+.lesson-plan-editor-header h2 {
+    margin-bottom: 0.25rem;
 }
 
 .lesson-plan-dot {
@@ -2212,16 +2247,6 @@ a.school-day-cell.lesson-plan-day-link.selected {
     margin-top: 1rem;
 }
 
-.lesson-plan-editor-section {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 2px solid var(--border);
-}
-
-.lesson-plan-editor-header h2 {
-    margin-bottom: 0.25rem;
-}
-
 .lesson-plan-editor-actions {
     display: flex;
     flex-wrap: wrap;
@@ -2237,30 +2262,76 @@ a.school-day-cell.lesson-plan-day-link.selected {
     color: #b45309;
 }
 
-.yearly-subjects-table-header {
-    display: none;
+.yearly-subjects-table-wrap {
+    overflow-x: auto;
+    margin-bottom: 1rem;
 }
 
-.yearly-subject-row .yearly-subject-meta {
-    display: grid;
-    grid-template-columns: 90px 1fr 1fr 1fr auto;
-    gap: 0.5rem;
-    align-items: center;
-    margin-top: 0.5rem;
+.yearly-subjects-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.yearly-subjects-table th,
+.yearly-subjects-table td {
+    border: 1px solid var(--border);
+    padding: 0.5rem;
+    vertical-align: middle;
+    background: var(--surface);
+}
+
+.yearly-subjects-table thead th {
+    background: #ede9fe;
+    color: var(--text);
+    font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.yearly-subjects-table tbody tr:nth-child(even) td {
+    background: var(--bg);
+}
+
+.yearly-subjects-table input[type="text"],
+.yearly-subjects-table input[type="url"],
+.yearly-subjects-table input[type="number"],
+.yearly-subjects-table select {
+    width: 100%;
+    min-width: 0;
+    font-size: 0.85rem;
+}
+
+.yearly-subjects-table .weekday-col {
+    text-align: center;
+    width: 2.5rem;
+}
+
+.weekday-check-table {
+    justify-content: center;
+    margin: 0 auto;
 }
 
 .lesson-amount-input {
-    width: 100%;
+    width: 4.5rem;
+    min-width: 4.5rem;
 }
 
-@media (min-width: 1100px) {
-    .lesson-planning-layout {
-        grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
-    }
+.yearly-subject-actions {
+    text-align: center;
+    width: 2.5rem;
+}
+
+.schedule-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
 }
 
 @media (max-width: 960px) {
-    .yearly-subject-row .yearly-subject-meta {
-        grid-template-columns: 1fr;
+    .lesson-planning-month-calendar .school-day-cell {
+        min-height: 58px;
+        font-size: 0.8rem;
     }
 }

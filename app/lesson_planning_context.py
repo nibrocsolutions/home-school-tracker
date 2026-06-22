@@ -1,4 +1,4 @@
-from calendar import monthcalendar
+from calendar import SUNDAY, Calendar
 from datetime import date
 
 from app.calendar_utils import month_end, month_start, shift_ref_date
@@ -23,7 +23,7 @@ def build_lesson_planning_month_grid(
         if school_year
         else {}
     )
-    weeks = monthcalendar(cal_month.year, cal_month.month)
+    weeks = Calendar(firstweekday=SUNDAY).monthdayscalendar(cal_month.year, cal_month.month)
     grid = []
     for week in weeks:
         row = []
@@ -99,9 +99,9 @@ def build_lesson_planning_context(
         except ValueError:
             plan_date = None
 
-    editor_plans = plans_for_date(plans, plan_date) if plan_date else []
+    editor_plans = plans_for_date(plans, plan_date) if plan_date and school_year else []
     editor_context = None
-    if plan_date and editor_plans:
+    if plan_date and school_year and editor_plans:
         first = editor_plans[0]
         editor_context = {
             "title": first.title,
@@ -119,7 +119,7 @@ def build_lesson_planning_context(
             ],
             "is_edit": True,
         }
-    elif plan_date:
+    elif plan_date and school_year:
         editor_context = {
             "title": "",
             "description": "",

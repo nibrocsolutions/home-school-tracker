@@ -93,9 +93,4 @@ document.getElementById('lesson-form')?.addEventListener('submit', function(e) {
 document.querySelectorAll('[data-activity-row] .btn-remove').forEach(btn => {
     btn.addEventListener('click', () => btn.closest('[data-activity-row]')?.remove());
 });
-
-const editorSection = document.getElementById('lesson-plan-editor');
-if (editorSection) {
-    editorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
 </script>

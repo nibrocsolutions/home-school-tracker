@@ -1682,19 +1682,12 @@ button.school-day-cell:hover {
 }
 
 .legend-swatch.day-type-actual_school.completed {
-    background: #86efac;
+    background-color: #86efac;
     border-color: #15803d;
-    display: inline-grid;
-    place-items: center;
-    vertical-align: middle;
-}
-
-.legend-check-mark {
-    font-size: 9px;
-    font-weight: 900;
-    line-height: 1;
-    color: #15803d;
-    display: block;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 L5.2 8.8 L9.5 3.5' stroke='%2315803d' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: 10px 10px;
 }
 
 .legend-swatch.day-type-school_off {
@@ -2158,12 +2151,17 @@ button.school-day-cell:hover {
 
 .lesson-planning-layout {
     display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .lesson-planning-overview {
     display: flex;
     flex-direction: column;
     gap: 2rem;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .lesson-planning-notice {
@@ -2191,6 +2189,8 @@ button.school-day-cell:hover {
 .yearly-subjects-panel {
     border-top: 2px solid var(--border);
     padding-top: 1.5rem;
+    min-width: 0;
+    max-width: 100%;
 }
 
 a.school-day-cell.lesson-plan-day-link {
@@ -2254,6 +2254,11 @@ a.school-day-cell.lesson-plan-day-link.selected {
     margin-top: 1rem;
 }
 
+.yearly-subjects-section {
+    min-width: 0;
+    max-width: 100%;
+}
+
 .yearly-subjects-section h2 {
     margin-bottom: 0.35rem;
 }
@@ -2263,12 +2268,20 @@ a.school-day-cell.lesson-plan-day-link.selected {
 }
 
 .yearly-subjects-table-wrap {
+    display: block;
+    width: 100%;
+    max-width: 100%;
     overflow-x: auto;
+    overflow-y: hidden;
     margin-bottom: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    -webkit-overflow-scrolling: touch;
 }
 
 .yearly-subjects-table {
-    width: 100%;
+    width: max-content;
+    min-width: 100%;
     border-collapse: collapse;
     font-size: 0.88rem;
 }

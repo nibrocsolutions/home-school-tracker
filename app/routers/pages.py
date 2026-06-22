@@ -35,12 +35,19 @@ from app.models import (
 from app.sample_plans import SAMPLE_LESSON_PLANS
 from app.school_day_context import build_school_day_context
 from app.school_year_utils import (
+    collect_school_day_attendance,
     count_possible_school_days,
     ensure_planned_days,
     holiday_name_for_date,
     planned_day_counts,
 )
-from app.pdf_export import build_lesson_plan_pdf, pdf_filename, pdf_response_headers
+from app.pdf_export import (
+    attendance_report_pdf_filename,
+    build_attendance_report_pdf,
+    build_lesson_plan_pdf,
+    pdf_filename,
+    pdf_response_headers,
+)
 from app.weekly_schedule import (
     WEEKDAY_LABELS,
     format_weekdays,
@@ -694,6 +701,65 @@ async def teacher_school_days_page(
             "active_page": "school-days",
             **school_days,
         },
+    )
+
+
+@router.get("/teacher/school-days/attendance-report", response_class=HTMLResponse)
+async def teacher_attendance_report_page(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+):
+    school_year = _fetch_school_day_year(db, current_user.id)
+    if school_year is None:
+        return RedirectResponse(
+            url="/teacher/school-days?error=config",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    ensure_planned_days(db, school_year)
+    db.commit()
+    school_year = _fetch_school_day_year(db, current_user.id)
+    attendance = collect_school_day_attendance(school_year)
+    pdf_url = "/teacher/school-days/attendance-report.pdf"
+
+    return render(
+        request,
+        "teacher/attendance_report.html",
+        {
+            "user": current_user,
+            "active_page": "school-days",
+            "school_year": school_year,
+            "attendance": attendance,
+            "pdf_url": pdf_url,
+        },
+    )
+
+
+@router.get("/teacher/school-days/attendance-report.pdf")
+async def teacher_attendance_report_pdf(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    disposition: str = Query("inline", pattern="^(inline|attachment)$"),
+):
+    school_year = _fetch_school_day_year(db, current_user.id)
+    if school_year is None:
+        raise HTTPException(status_code=404, detail="School year not configured")
+    ensure_planned_days(db, school_year)
+    db.commit()
+    school_year = _fetch_school_day_year(db, current_user.id)
+    attendance = collect_school_day_attendance(school_year)
+    pdf_bytes = build_attendance_report_pdf(
+        attendance,
+        subtitle=f"Teacher: {current_user.full_name}",
+    )
+    filename = attendance_report_pdf_filename(
+        attendance["start_date"],
+        attendance["end_date"],
+    )
+    return RawResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers=pdf_response_headers(filename, inline=disposition == "inline"),
     )
 
 

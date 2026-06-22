@@ -11,7 +11,7 @@ from app.calendar_utils import (
     period_label,
     week_start,
 )
-from app.models import LessonPlan
+from app.models import LessonPlan, SchoolDayType
 
 COLORS = {
     "primary": (79, 110, 247),
@@ -356,3 +356,123 @@ def pdf_response_headers(filename: str, inline: bool) -> dict[str, str]:
         "Content-Disposition": f'{disposition}; filename="{filename}"',
         "Content-Type": "application/pdf",
     }
+
+
+class AttendanceReportPDF(LessonPlanPDF):
+    def header(self):
+        if self.page_no() == 1:
+            self._draw_books_logo(self.l_margin, 8, 14)
+            self.set_xy(self.l_margin + 18, 8)
+            self.set_font("Helvetica", "B", 16)
+            self.set_text_color(*COLORS["primary"])
+            self.cell(0, 7, "Home School Tracker", new_x="LMARGIN", new_y="NEXT")
+            self.set_x(self.l_margin + 18)
+            self.set_font("Helvetica", "", 10)
+            self.set_text_color(*COLORS["muted"])
+            self.cell(0, 5, "Attendance Report", new_x="LMARGIN", new_y="NEXT")
+            self.ln(6)
+
+
+def _format_date_list(dates: list[date]) -> str:
+    if not dates:
+        return "None"
+    return ", ".join(d.strftime("%b %d, %Y") for d in sorted(dates))
+
+
+def _format_holiday_date_list(entries: list[dict]) -> str:
+    if not entries:
+        return "None"
+    lines = []
+    for entry in sorted(entries, key=lambda item: item["date"]):
+        label = entry.get("holiday_name") or "Holiday"
+        lines.append(f"{entry['date'].strftime('%b %d, %Y')} - {label}")
+    return "\n".join(lines)
+
+
+def _render_date_block(pdf: AttendanceReportPDF, title: str, body: str) -> None:
+    pdf._section_title(title)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(*COLORS["text"])
+    pdf.multi_cell(pdf._usable_width(), 5, _safe_text(body), align="L")
+    pdf.ln(4)
+
+
+def build_attendance_report_pdf(attendance: dict, *, subtitle: str) -> bytes:
+    pdf = AttendanceReportPDF()
+    pdf.add_page()
+
+    start = attendance["start_date"]
+    end = attendance["end_date"]
+    counts = attendance["counts"]
+
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.set_text_color(*COLORS["text"])
+    pdf.cell(
+        0,
+        8,
+        _safe_text(
+            f"{start.strftime('%B %d, %Y')} - {end.strftime('%B %d, %Y')}"
+        ),
+        new_x="LMARGIN",
+        new_y="NEXT",
+    )
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(*COLORS["muted"])
+    pdf.cell(0, 6, _safe_text(subtitle), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    pdf._section_title("Summary")
+    width = pdf._usable_width()
+    summary_rows = [
+        ("Possible School Days", str(counts["possible_days"])),
+        ("Planned Actual School Days", str(counts["planned_actual_count"])),
+        ("Planned School Days Off", str(counts["planned_school_off_count"])),
+        ("Completed Actual School Days", str(counts["completed_count"])),
+        ("Required Full Days", str(attendance["required_days"])),
+        ("School Days Remaining", str(attendance["remaining_days"])),
+    ]
+    label_width = width * 0.62
+    value_width = width * 0.38
+    pdf._table_row(["Metric", "Count"], [label_width, value_width], header=True)
+    for index, (label, value) in enumerate(summary_rows):
+        pdf._table_row([label, value], [label_width, value_width], alt=index % 2 == 1)
+    pdf.ln(4)
+
+    by_type = attendance["by_type"]
+    _render_date_block(
+        pdf,
+        "Completed Actual School Days",
+        _format_date_list(attendance["completed_dates"]),
+    )
+    _render_date_block(
+        pdf,
+        "Planned Actual School Days (Not Completed)",
+        _format_date_list(attendance["incomplete_actual_dates"]),
+    )
+    _render_date_block(
+        pdf,
+        "Planned School Days Off",
+        _format_date_list(
+            [entry["date"] for entry in by_type.get(SchoolDayType.school_off, [])]
+        ),
+    )
+    _render_date_block(
+        pdf,
+        "Holidays",
+        _format_holiday_date_list(by_type.get(SchoolDayType.holiday, [])),
+    )
+    _render_date_block(
+        pdf,
+        "Weekends",
+        _format_date_list(
+            [entry["date"] for entry in by_type.get(SchoolDayType.weekend, [])]
+        ),
+    )
+
+    buffer = BytesIO()
+    pdf.output(buffer)
+    return buffer.getvalue()
+
+
+def attendance_report_pdf_filename(start: date, end: date) -> str:
+    return f"attendance-report-{start.isoformat()}-to-{end.isoformat()}.pdf"

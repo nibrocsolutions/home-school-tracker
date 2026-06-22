@@ -1652,6 +1652,36 @@ button.school-day-cell:hover {
     color: var(--text-muted);
 }
 
+.school-day-report-actions {
+    margin-top: 1.25rem;
+}
+
+.attendance-report-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.attendance-report-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.attendance-report-range {
+    margin: 0;
+}
+
+.attendance-report-frame {
+    width: 100%;
+    min-height: 75vh;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: #f8f9fc;
+}
+
 .legend-item {
     display: inline-flex;
     align-items: center;
@@ -1673,6 +1703,11 @@ button.school-day-cell:hover {
 .legend-swatch.day-type-actual_school {
     background: #dcfce7;
     border-color: #16a34a;
+}
+
+.legend-swatch.day-type-actual_school.completed {
+    background: #86efac;
+    border-color: #15803d;
 }
 
 .legend-swatch.day-type-school_off {

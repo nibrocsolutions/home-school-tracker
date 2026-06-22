@@ -147,6 +147,57 @@ def next_day_type_after_click(
     return next_type, False
 
 
+def collect_school_day_attendance(school_year: SchoolDayYear) -> dict:
+    holidays = holidays_in_range(school_year.start_date, school_year.end_date)
+    holiday_names = holiday_names_in_range(school_year.start_date, school_year.end_date)
+    planned_map = {
+        day.day_date: day
+        for day in school_year.planned_days
+        if school_year.start_date <= day.day_date <= school_year.end_date
+    }
+
+    by_type: dict[SchoolDayType, list[dict]] = {day_type: [] for day_type in SchoolDayType}
+    completed_dates: list[date] = []
+    incomplete_actual_dates: list[date] = []
+
+    for day_date in iter_dates_in_range(school_year.start_date, school_year.end_date):
+        planned = planned_map.get(day_date)
+        if planned is not None:
+            day_type = planned.day_type
+            is_completed = planned.is_completed
+        else:
+            day_type = default_day_type(day_date, holidays)
+            is_completed = False
+
+        entry = {
+            "date": day_date,
+            "holiday_name": holiday_names.get(day_date),
+            "is_completed": is_completed,
+        }
+        by_type[day_type].append(entry)
+
+        if day_type == SchoolDayType.actual_school:
+            if is_completed:
+                completed_dates.append(day_date)
+            else:
+                incomplete_actual_dates.append(day_date)
+
+    counts = planned_day_counts(school_year)
+    required_days = school_year.required_days
+    remaining_days = max(required_days - counts["completed_count"], 0)
+
+    return {
+        "start_date": school_year.start_date,
+        "end_date": school_year.end_date,
+        "required_days": required_days,
+        "counts": counts,
+        "remaining_days": remaining_days,
+        "by_type": by_type,
+        "completed_dates": completed_dates,
+        "incomplete_actual_dates": incomplete_actual_dates,
+    }
+
+
 def planned_day_counts(school_year: SchoolDayYear) -> dict[str, int]:
     planned = [
         day

@@ -12,54 +12,74 @@
     {% endif %}
     <form method="post" action="/teacher/lesson-planning/yearly-subjects" id="yearly-subjects-form">
         <input type="hidden" name="cal_month" value="{{ cal_month_param }}">
-        <div id="schedule-items-list" class="yearly-subjects-table-wrap">
-            <div class="yearly-subjects-table-header" aria-hidden="true">
-                <span>Name</span>
-                <span>Kind</span>
-                <span>Type</span>
-                <span>Days</span>
-                <span>Lessons / Year</span>
-                <span></span>
-            </div>
-            {% for item in yearly_subjects %}
-            <div class="schedule-item-row yearly-subject-row" data-schedule-row>
-                <div class="schedule-item-header">
-                    <input type="text" name="item_names" value="{{ item.name }}" placeholder="Name" required>
-                    <select name="item_kinds">
-                        <option value="special_activity" {% if item.item_kind.value == 'special_activity' %}selected{% endif %}>Special Activity</option>
-                        <option value="subject" {% if item.item_kind.value == 'subject' %}selected{% endif %}>Subject</option>
-                    </select>
-                    <select name="special_types">
-                        <option value="">— Type —</option>
-                        <option value="co_op" {% if item.special_type and item.special_type.value == 'co_op' %}selected{% endif %}>Co-Op</option>
-                        <option value="wild_and_free" {% if item.special_type and item.special_type.value == 'wild_and_free' %}selected{% endif %}>Wild and Free Outing</option>
-                        <option value="classical_conversations" {% if item.special_type and item.special_type.value == 'classical_conversations' %}selected{% endif %}>Classical Conversations</option>
-                        <option value="other" {% if item.special_type and item.special_type.value == 'other' %}selected{% endif %}>Other</option>
-                    </select>
-                </div>
-                <div class="weekday-picker">
-                    {% for label in weekday_labels %}
-                    <label class="weekday-check">
-                        <input type="checkbox" class="weekday-cb" value="{{ loop.index0 }}"
-                               {% if loop.index0|string in item.weekdays.replace(' ', '').split(',') %}checked{% endif %}>
-                        {{ label }}
-                    </label>
+        <div class="yearly-subjects-table-wrap">
+            <table class="yearly-subjects-table" aria-label="Yearly subjects and activities">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Kind</th>
+                        <th scope="col">Type</th>
+                        {% for label in weekday_labels %}
+                        <th scope="col" class="weekday-col">{{ label }}</th>
+                        {% endfor %}
+                        <th scope="col">Lessons / Year</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">External Link</th>
+                        <th scope="col">Audio Link</th>
+                        <th scope="col"><span class="sr-only">Remove</span></th>
+                    </tr>
+                </thead>
+                <tbody id="schedule-items-list">
+                    {% for item in yearly_subjects %}
+                    <tr class="yearly-subject-row" data-schedule-row>
+                        <td>
+                            <input type="hidden" name="weekdays_list" value="{{ item.weekdays }}">
+                            <input type="text" name="item_names" value="{{ item.name }}" placeholder="Name" required>
+                        </td>
+                        <td>
+                            <select name="item_kinds">
+                                <option value="special_activity" {% if item.item_kind.value == 'special_activity' %}selected{% endif %}>Special Activity</option>
+                                <option value="subject" {% if item.item_kind.value == 'subject' %}selected{% endif %}>Subject</option>
+                            </select>
+                        </td>
+                        <td>
+                            <select name="special_types">
+                                <option value="">—</option>
+                                <option value="co_op" {% if item.special_type and item.special_type.value == 'co_op' %}selected{% endif %}>Co-Op</option>
+                                <option value="wild_and_free" {% if item.special_type and item.special_type.value == 'wild_and_free' %}selected{% endif %}>Wild &amp; Free</option>
+                                <option value="classical_conversations" {% if item.special_type and item.special_type.value == 'classical_conversations' %}selected{% endif %}>CC</option>
+                                <option value="other" {% if item.special_type and item.special_type.value == 'other' %}selected{% endif %}>Other</option>
+                            </select>
+                        </td>
+                        {% for label in weekday_labels %}
+                        <td class="weekday-col">
+                            <label class="weekday-check weekday-check-table">
+                                <input type="checkbox" class="weekday-cb" value="{{ loop.index0 }}"
+                                       {% if loop.index0|string in item.weekdays.replace(' ', '').split(',') %}checked{% endif %}>
+                                <span class="sr-only">{{ label }}</span>
+                            </label>
+                        </td>
+                        {% endfor %}
+                        <td>
+                            <input type="number" name="lesson_amounts" min="0" value="{{ item.lesson_amount }}"
+                                   placeholder="0" class="lesson-amount-input">
+                        </td>
+                        <td>
+                            <input type="text" name="item_descriptions" value="{{ item.description or '' }}" placeholder="Description">
+                        </td>
+                        <td>
+                            <input type="url" name="external_links" value="{{ item.external_link or '' }}" placeholder="URL">
+                        </td>
+                        <td>
+                            <input type="url" name="audio_urls" value="{{ item.audio_url or '' }}" placeholder="URL">
+                        </td>
+                        <td class="yearly-subject-actions">
+                            <button type="button" class="btn-remove" aria-label="Remove subject or activity">&times;</button>
+                        </td>
+                    </tr>
                     {% endfor %}
-                    <input type="hidden" name="weekdays_list" value="{{ item.weekdays }}">
-                </div>
-                <div class="yearly-subject-meta">
-                    <label class="lesson-amount-label">
-                        <span class="sr-only">Lessons per year for {{ item.name }}</span>
-                        <input type="number" name="lesson_amounts" min="0" value="{{ item.lesson_amount }}"
-                               placeholder="0" class="lesson-amount-input">
-                    </label>
-                    <input type="text" name="item_descriptions" value="{{ item.description or '' }}" placeholder="Description">
-                    <input type="url" name="external_links" value="{{ item.external_link or '' }}" placeholder="External link (optional)">
-                    <input type="url" name="audio_urls" value="{{ item.audio_url or '' }}" placeholder="Audio link for history (optional)">
-                    <button type="button" class="btn-remove" aria-label="Remove subject or activity">&times;</button>
-                </div>
-            </div>
-            {% endfor %}
+                </tbody>
+            </table>
         </div>
         <div class="schedule-actions">
             <button type="button" class="btn btn-ghost btn-sm" id="add-schedule-item">+ Add Subject or Activity</button>

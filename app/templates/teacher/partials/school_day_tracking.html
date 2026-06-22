@@ -160,13 +160,24 @@
         <div class="school-day-legend">
             <span class="legend-item"><span class="legend-swatch day-type-actual_school"></span> Planned actual school days</span>
             <span class="legend-item">
-                <span class="legend-swatch day-type-actual_school completed" aria-hidden="true"></span>
+                <span class="legend-check-only" aria-hidden="true">✓</span>
                 Completed actual school days
             </span>
             <span class="legend-item"><span class="legend-swatch day-type-school_off"></span> Planned school days off</span>
             <span class="legend-item"><span class="legend-swatch day-type-holiday"></span> Holidays</span>
             <span class="legend-item"><span class="legend-swatch day-type-weekend"></span> Weekends</span>
         </div>
+
+        {% if school_year %}
+        <div class="school-day-subjects-section">
+            <h3>Yearly Subjects &amp; Activities</h3>
+            <p class="section-hint">Manage subjects and activities scheduled across the school year.</p>
+            <a href="/teacher/school-days?cal_month={{ cal_month_param }}&subjects_view=list"
+               class="btn btn-primary">
+                Subjects
+            </a>
+        </div>
+        {% endif %}
 
         <dialog id="school-day-editor" class="school-day-editor-dialog" aria-labelledby="school-day-editor-title">
             <form method="dialog" class="school-day-editor-form" id="school-day-editor-form">

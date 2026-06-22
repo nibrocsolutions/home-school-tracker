@@ -467,18 +467,52 @@ def _school_days_redirect(
     cal_month: str | None = None,
     success: str | None = None,
     error: str | None = None,
+    subjects_view: str | None = None,
+    subject_id: str | None = None,
+    count: str | None = None,
 ) -> RedirectResponse:
     params: list[str] = []
     if cal_month:
         params.append(f"cal_month={cal_month}")
+    if subjects_view:
+        params.append(f"subjects_view={subjects_view}")
+    if subject_id:
+        params.append(f"subject_id={subject_id}")
     if success:
         params.append(f"success={success}")
     if error:
         params.append(f"error={error}")
+    if count:
+        params.append(f"count={count}")
     query = f"?{'&'.join(params)}" if params else ""
     return RedirectResponse(
         url=f"/teacher/school-days{query}",
         status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+def _populate_lesson_plans_for_teacher(db: Session, teacher_id: int) -> int:
+    school_year = _fetch_school_day_year(db, teacher_id)
+    if school_year is None:
+        return 0
+    ensure_planned_days(db, school_year)
+    db.flush()
+    school_year = _fetch_school_day_year(db, teacher_id)
+    schedule_items = _fetch_weekly_schedule(db, teacher_id)
+    students = _fetch_active_students(db)
+    return populate_lesson_plans_from_subjects(
+        db, teacher_id, school_year, schedule_items, students
+    )
+
+
+def _fetch_subject(db: Session, teacher_id: int, subject_id: int) -> WeeklyScheduleItem | None:
+    return (
+        db.query(WeeklyScheduleItem)
+        .filter(
+            WeeklyScheduleItem.id == subject_id,
+            WeeklyScheduleItem.teacher_id == teacher_id,
+        )
+        .first()
     )
 
 
@@ -708,7 +742,6 @@ async def teacher_lesson_planning_page(
             "user": current_user,
             "active_page": "lesson-planning",
             "students": students,
-            **_yearly_subjects_context(db, current_user.id),
             **_sample_plans_context(db),
             **planning,
         },
@@ -756,8 +789,8 @@ async def teacher_lesson_plan_new(
 async def teacher_weekly_schedule_page(
     success: str | None = Query(None),
 ):
-    query = f"?success={success}#yearly-subjects" if success else "#yearly-subjects"
-    return RedirectResponse(url=f"/teacher/lesson-planning{query}", status_code=status.HTTP_303_SEE_OTHER)
+    query = f"?success={success}&subjects_view=list" if success else "?subjects_view=list"
+    return RedirectResponse(url=f"/teacher/school-days{query}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/teacher/lesson-planning/plan")
@@ -823,90 +856,123 @@ async def save_lesson_planning_plan(
     )
 
 
-@router.post("/teacher/lesson-planning/yearly-subjects")
-async def save_yearly_subjects(
+@router.post("/teacher/school-days/subjects")
+async def save_school_day_subject(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
     cal_month: str = Form(""),
-    item_names: list[str] = Form(default=[]),
-    item_kinds: list[str] = Form(default=[]),
-    special_types: list[str] = Form(default=[]),
-    weekdays_list: list[str] = Form(default=[]),
-    lesson_amounts: list[str] = Form(default=[]),
-    item_descriptions: list[str] = Form(default=[]),
-    external_links: list[str] = Form(default=[]),
-    audio_urls: list[str] = Form(default=[]),
+    subject_id: str | None = Form(None),
+    item_name: str = Form(...),
+    item_kind: str = Form("subject"),
+    special_type: str = Form(""),
+    weekdays_list: str = Form(""),
+    lesson_amount: str = Form("0"),
+    item_description: str = Form(""),
+    external_link: str = Form(""),
+    audio_url: str = Form(""),
 ):
-    db.query(WeeklyScheduleItem).filter(
-        WeeklyScheduleItem.teacher_id == current_user.id
-    ).delete()
-
-    saved_items: list[WeeklyScheduleItem] = []
-    for idx, name in enumerate(item_names):
-        if not name.strip():
-            continue
-        kind_raw = item_kinds[idx] if idx < len(item_kinds) else "subject"
-        special_raw = special_types[idx] if idx < len(special_types) else ""
-        weekdays = weekdays_list[idx] if idx < len(weekdays_list) else ""
-        desc = item_descriptions[idx] if idx < len(item_descriptions) else ""
-        link = external_links[idx] if idx < len(external_links) else ""
-        audio = audio_urls[idx] if idx < len(audio_urls) else ""
-        amount_raw = lesson_amounts[idx] if idx < len(lesson_amounts) else "0"
-        try:
-            lesson_amount = max(int(amount_raw or 0), 0)
-        except ValueError:
-            lesson_amount = 0
-
-        try:
-            item_kind = ScheduleItemKind(kind_raw)
-        except ValueError:
-            item_kind = ScheduleItemKind.subject
-
-        special_type = None
-        if special_raw:
-            try:
-                special_type = SpecialActivityKind(special_raw)
-            except ValueError:
-                special_type = None
-
-        item = WeeklyScheduleItem(
-            teacher_id=current_user.id,
-            name=name.strip(),
-            item_kind=item_kind,
-            special_type=special_type,
-            weekdays=weekdays.strip(),
-            description=desc.strip() or None,
-            external_link=link.strip() or None,
-            audio_url=audio.strip() or None,
-            lesson_amount=lesson_amount,
-            sort_order=idx + 1,
-        )
-        db.add(item)
-        saved_items.append(item)
-
-    db.flush()
-
-    school_year = _fetch_school_day_year(db, current_user.id)
-    populated = 0
-    if school_year:
-        ensure_planned_days(db, school_year)
-        db.flush()
-        school_year = _fetch_school_day_year(db, current_user.id)
-        students = _fetch_active_students(db)
-        populated = populate_lesson_plans_from_subjects(
-            db,
-            current_user.id,
-            school_year,
-            saved_items,
-            students,
+    if not item_name.strip():
+        return _school_days_redirect(
+            cal_month=cal_month or None,
+            subjects_view="detail",
+            subject_id=subject_id or "new",
+            error="name",
         )
 
+    try:
+        amount = max(int(lesson_amount or 0), 0)
+    except ValueError:
+        amount = 0
+
+    try:
+        kind = ScheduleItemKind(item_kind)
+    except ValueError:
+        kind = ScheduleItemKind.subject
+
+    parsed_special = None
+    if special_type:
+        try:
+            parsed_special = SpecialActivityKind(special_type)
+        except ValueError:
+            parsed_special = None
+
+    if subject_id and subject_id != "new":
+        try:
+            parsed_id = int(subject_id)
+        except ValueError:
+            return _school_days_redirect(cal_month=cal_month or None, subjects_view="list", error="subject")
+        subject = _fetch_subject(db, current_user.id, parsed_id)
+        if subject is None:
+            return _school_days_redirect(cal_month=cal_month or None, subjects_view="list", error="subject")
+        subject.name = item_name.strip()
+        subject.item_kind = kind
+        subject.special_type = parsed_special
+        subject.weekdays = weekdays_list.strip()
+        subject.description = item_description.strip() or None
+        subject.external_link = external_link.strip() or None
+        subject.audio_url = audio_url.strip() or None
+        subject.lesson_amount = amount
+    else:
+        max_order = (
+            db.query(WeeklyScheduleItem)
+            .filter(WeeklyScheduleItem.teacher_id == current_user.id)
+            .count()
+        )
+        db.add(
+            WeeklyScheduleItem(
+                teacher_id=current_user.id,
+                name=item_name.strip(),
+                item_kind=kind,
+                special_type=parsed_special,
+                weekdays=weekdays_list.strip(),
+                description=item_description.strip() or None,
+                external_link=external_link.strip() or None,
+                audio_url=audio_url.strip() or None,
+                lesson_amount=amount,
+                sort_order=max_order + 1,
+            )
+        )
+
+    populated = _populate_lesson_plans_for_teacher(db, current_user.id)
     db.commit()
-    return _lesson_planning_redirect(
+    return _school_days_redirect(
         cal_month=cal_month or None,
+        subjects_view="list",
         success="yearly-subjects",
         count=str(populated) if populated else None,
     )
+
+
+@router.post("/teacher/school-days/subjects/delete")
+async def delete_school_day_subject(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    cal_month: str = Form(""),
+    subject_id: str = Form(...),
+):
+    try:
+        parsed_id = int(subject_id)
+    except ValueError:
+        return _school_days_redirect(cal_month=cal_month or None, subjects_view="list", error="subject")
+
+    subject = _fetch_subject(db, current_user.id, parsed_id)
+    if subject:
+        db.delete(subject)
+        db.commit()
+    return _school_days_redirect(
+        cal_month=cal_month or None,
+        subjects_view="list",
+        success="subject-deleted",
+    )
+
+
+@router.post("/teacher/lesson-planning/yearly-subjects")
+async def save_yearly_subjects_legacy(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    cal_month: str = Form(""),
+):
+    return _school_days_redirect(cal_month=cal_month or None, subjects_view="list")
 
 
 @router.get("/teacher/student-responses", response_class=HTMLResponse)
@@ -932,6 +998,8 @@ async def teacher_school_days_page(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
     cal_month: str | None = Query(None),
+    subjects_view: str | None = Query(None),
+    subject_id: str | None = Query(None),
 ):
     school_year = _fetch_school_day_year(db, current_user.id)
     if school_year:
@@ -939,6 +1007,25 @@ async def teacher_school_days_page(
         db.commit()
         school_year = _fetch_school_day_year(db, current_user.id)
     school_days = build_school_day_context(school_year, cal_month)
+    yearly_subjects = _fetch_weekly_schedule(db, current_user.id)
+
+    subject = None
+    is_new_subject = False
+    if subjects_view == "detail":
+        if subject_id == "new":
+            is_new_subject = True
+        elif subject_id:
+            try:
+                parsed_id = int(subject_id)
+                subject = _fetch_subject(db, current_user.id, parsed_id)
+            except ValueError:
+                subject = None
+            if subject is None and subject_id != "new":
+                return _school_days_redirect(
+                    cal_month=school_days["cal_month_param"],
+                    subjects_view="list",
+                    error="subject",
+                )
 
     return render(
         request,
@@ -946,6 +1033,12 @@ async def teacher_school_days_page(
         {
             "user": current_user,
             "active_page": "school-days",
+            "subjects_view": subjects_view,
+            "subject": subject,
+            "is_new_subject": is_new_subject,
+            "yearly_subjects": yearly_subjects,
+            "weekday_labels": WEEKDAY_LABELS,
+            "format_weekdays": format_weekdays,
             **school_days,
         },
     )
@@ -1083,7 +1176,7 @@ async def save_weekly_schedule(
 
     db.commit()
     return RedirectResponse(
-        url="/teacher/lesson-planning?success=yearly-subjects#yearly-subjects",
+        url="/teacher/school-days?subjects_view=list&success=yearly-subjects",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 

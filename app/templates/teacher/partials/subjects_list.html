@@ -1,0 +1,28 @@
+<section class="panel subjects-view">
+    <div class="subjects-view-toolbar">
+        <a href="/teacher/school-days?cal_month={{ cal_month_param }}"
+           class="btn btn-secondary btn-sm">
+            ← Back to School Year Planning
+        </a>
+    </div>
+
+    <h2>Yearly Subjects &amp; Activities</h2>
+    <p class="section-hint">Choose a subject or activity to view and edit its schedule for the school year.</p>
+
+    <div class="subjects-button-grid">
+        {% for item in yearly_subjects %}
+        <a href="/teacher/school-days?cal_month={{ cal_month_param }}&subjects_view=detail&subject_id={{ item.id }}"
+           class="btn btn-secondary subject-list-btn">
+            {{ item.name }}
+        </a>
+        {% endfor %}
+        <a href="/teacher/school-days?cal_month={{ cal_month_param }}&subjects_view=detail&subject_id=new"
+           class="btn btn-primary subject-list-btn">
+            + Add Subject or Activity
+        </a>
+    </div>
+
+    {% if not yearly_subjects %}
+    <p class="empty-state">No subjects or activities yet. Add one to get started.</p>
+    {% endif %}
+</section>

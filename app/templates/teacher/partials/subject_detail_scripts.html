@@ -14,7 +14,29 @@
         cb.addEventListener('change', syncWeekdays);
     });
 
-    form.addEventListener('submit', syncWeekdays);
+    form.addEventListener('submit', function (e) {
+        syncWeekdays();
+        const submitter = e.submitter;
+        if (submitter && submitter.getAttribute('formaction')?.includes('/delete')) {
+            return;
+        }
+        const checked = form.querySelectorAll('.student-checkboxes input[type="checkbox"]:checked');
+        if (checked.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one student.');
+        }
+    });
     syncWeekdays();
+
+    document.getElementById('select-all-subject-students')?.addEventListener('click', () => {
+        form.querySelectorAll('.student-checkboxes input[type="checkbox"]').forEach(cb => {
+            cb.checked = true;
+        });
+    });
+    document.getElementById('clear-all-subject-students')?.addEventListener('click', () => {
+        form.querySelectorAll('.student-checkboxes input[type="checkbox"]').forEach(cb => {
+            cb.checked = false;
+        });
+    });
 })();
 </script>

@@ -145,6 +145,20 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
         ),
     ]
     db.add_all(defaults)
+    db.flush()
+
+    student_ids = [
+        student.id
+        for student in db.query(User).filter(
+            User.role == UserRole.student, User.is_active == True
+        ).all()
+    ]
+    for item in defaults:
+        item.assigned_students = [
+            student
+            for student in db.query(User).filter(User.id.in_(student_ids)).all()
+        ]
+
     db.commit()
 
 

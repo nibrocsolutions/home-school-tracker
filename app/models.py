@@ -3,12 +3,14 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean,
+    Column,
     Date,
     DateTime,
     Enum,
     ForeignKey,
     Integer,
     String,
+    Table,
     Text,
     UniqueConstraint,
 )
@@ -40,6 +42,24 @@ class SpecialActivityKind(str, enum.Enum):
 class ScheduleItemKind(str, enum.Enum):
     special_activity = "special_activity"
     subject = "subject"
+
+
+weekly_schedule_item_students = Table(
+    "weekly_schedule_item_students",
+    Base.metadata,
+    Column(
+        "schedule_item_id",
+        Integer,
+        ForeignKey("weekly_schedule_items.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "student_id",
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
 
 
 class User(Base):
@@ -116,6 +136,10 @@ class WeeklyScheduleItem(Base):
     lesson_amount: Mapped[int] = mapped_column(Integer, default=0)
 
     teacher: Mapped["User"] = relationship("User", back_populates="weekly_schedule_items")
+    assigned_students: Mapped[list["User"]] = relationship(
+        "User",
+        secondary=weekly_schedule_item_students,
+    )
 
 
 class LessonPlan(Base):

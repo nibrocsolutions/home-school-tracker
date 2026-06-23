@@ -17,6 +17,7 @@ from app.models import (
     User,
     UserRole,
     WeeklyScheduleItem,
+    weekly_schedule_item_students,
 )
 
 BACKUP_VERSION = 1
@@ -111,8 +112,18 @@ def export_database(db: Session) -> bytes:
                 "external_link": item.external_link,
                 "audio_url": item.audio_url,
                 "sort_order": item.sort_order,
+                "lesson_amount": item.lesson_amount,
             }
             for item in db.query(WeeklyScheduleItem).order_by(WeeklyScheduleItem.id).all()
+        ],
+        "weekly_schedule_item_students": [
+            {
+                "schedule_item_id": row.schedule_item_id,
+                "student_id": row.student_id,
+            }
+            for row in db.execute(
+                text("SELECT schedule_item_id, student_id FROM weekly_schedule_item_students")
+            ).fetchall()
         ],
         "school_day_years": [
             {
@@ -157,7 +168,7 @@ def _validate_backup(data: dict[str, Any]) -> None:
     for key in ("users", "lesson_plans", "activities", "activity_completions"):
         if key not in data or not isinstance(data[key], list):
             raise ValueError(f"Backup file is missing a valid '{key}' section.")
-    for key in ("school_day_years", "planned_school_days", "approved_school_days", "app_settings", "weekly_schedule_items"):
+    for key in ("school_day_years", "planned_school_days", "approved_school_days", "app_settings", "weekly_schedule_items", "weekly_schedule_item_students"):
         if key in data and not isinstance(data[key], list):
             raise ValueError(f"Backup file is missing a valid '{key}' section.")
 
@@ -267,6 +278,15 @@ def import_database(db: Session, raw: bytes) -> None:
                 external_link=row.get("external_link"),
                 audio_url=row.get("audio_url"),
                 sort_order=row.get("sort_order", 0),
+                lesson_amount=row.get("lesson_amount", 0),
+            )
+        )
+
+    for row in data.get("weekly_schedule_item_students", []):
+        db.execute(
+            weekly_schedule_item_students.insert().values(
+                schedule_item_id=row["schedule_item_id"],
+                student_id=row["student_id"],
             )
         )
 

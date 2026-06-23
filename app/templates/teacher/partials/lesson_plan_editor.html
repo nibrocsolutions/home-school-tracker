@@ -72,11 +72,9 @@
             <div class="activities-header">
                 <h3>Activities</h3>
                 <div class="activities-header-actions">
-                    <button type="button" class="btn btn-ghost btn-sm" id="apply-schedule-suggestions">Apply Day's Schedule</button>
                     <button type="button" class="btn btn-ghost btn-sm" id="add-activity">+ Add Activity</button>
                 </div>
             </div>
-            <p class="field-hint" id="schedule-day-hint"></p>
             <div id="activities-list">
                 {% if editor_context.activities %}
                     {% for activity in editor_context.activities %}

@@ -9,47 +9,30 @@
     <h2>Yearly Subjects &amp; Activities</h2>
     <p class="section-hint">Choose a subject or activity to view and edit its schedule for the school year.</p>
 
-    <div class="subjects-list-table-wrap">
-        <table class="subjects-list-table" aria-label="Yearly subjects and activities">
-            <thead>
-                <tr>
-                    <th scope="col">Name</th>
-                    <th scope="col">Kind</th>
-                    <th scope="col">Days</th>
-                    <th scope="col">Lessons / Year</th>
-                    <th scope="col">Students</th>
-                    <th scope="col">Actions</th>
-                </tr>
-            </thead>
+    {% if yearly_subjects %}
+    <div class="subjects-button-table-wrap">
+        <table class="subjects-button-table" aria-label="Yearly subjects and activities">
             <tbody>
                 {% for item in yearly_subjects %}
                 <tr>
-                    <td>{{ item.name }}</td>
-                    <td>{{ 'Special Activity' if item.item_kind.value == 'special_activity' else 'Subject' }}</td>
-                    <td>{{ format_weekdays(item.weekdays) or '—' }}</td>
-                    <td>{{ item.lesson_amount }}</td>
-                    <td>
-                        {% if item.assigned_students %}
-                            {{ item.assigned_students | map(attribute='full_name') | join(', ') }}
-                        {% else %}
-                            —
-                        {% endif %}
-                    </td>
-                    <td class="subjects-list-actions">
+                    <td class="subjects-button-cell">
                         <form method="get" action="/teacher/school-days" class="subject-list-form">
                             <input type="hidden" name="cal_month" value="{{ cal_month_param }}">
                             <input type="hidden" name="subjects_view" value="detail">
                             <input type="hidden" name="subject_id" value="{{ item.id }}">
-                            <button type="submit" class="btn btn-secondary btn-sm subject-list-btn">
-                                Edit
+                            <button type="submit" class="btn btn-secondary subject-list-btn">
+                                {{ item.name }}
                             </button>
                         </form>
+                    </td>
+                    <td class="subjects-remove-cell">
                         <form method="post" action="/teacher/school-days/subjects/delete" class="subject-list-form">
                             <input type="hidden" name="cal_month" value="{{ cal_month_param }}">
                             <input type="hidden" name="subject_id" value="{{ item.id }}">
                             <button type="submit"
-                                    class="btn btn-secondary btn-sm btn-danger subject-list-btn"
-                                    onclick="return confirm('Delete {{ item.name }}?');">
+                                    class="btn btn-secondary btn-sm btn-danger subject-remove-btn"
+                                    onclick="return confirm('Remove {{ item.name }}?');"
+                                    aria-label="Remove {{ item.name }}">
                                 Remove
                             </button>
                         </form>
@@ -59,6 +42,9 @@
             </tbody>
         </table>
     </div>
+    {% else %}
+    <p class="empty-state">No subjects or activities yet. Add one to get started.</p>
+    {% endif %}
 
     <div class="subjects-list-footer">
         <form method="get" action="/teacher/school-days" class="subject-list-form">
@@ -70,8 +56,4 @@
             </button>
         </form>
     </div>
-
-    {% if not yearly_subjects %}
-    <p class="empty-state">No subjects or activities yet. Add one to get started.</p>
-    {% endif %}
 </section>

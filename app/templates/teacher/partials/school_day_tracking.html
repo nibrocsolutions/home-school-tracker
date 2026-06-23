@@ -95,15 +95,16 @@
         </div>
     </div>
 
-    <div class="panel school-day-calendar-panel" data-preserve-scroll>
-        <div class="calendar-header">
-            <h2>School Days Calendar</h2>
-            <p class="section-hint">Click a day to open the editor and set its kind or mark it completed.</p>
-        </div>
+    <div class="school-day-main">
+        <div class="panel school-day-calendar-panel" data-preserve-scroll>
+            <div class="calendar-header">
+                <h2>School Days Calendar</h2>
+                <p class="section-hint">Click a day to open the editor and set its kind or mark it completed.</p>
+            </div>
 
-        {% if not school_year %}
-        <p class="empty-state">Save your school year dates to start planning full school days.</p>
-        {% else %}
+            {% if not school_year %}
+            <p class="empty-state">Save your school year dates to start planning full school days.</p>
+            {% else %}
         <div class="calendar-nav">
             <a href="/teacher/school-days?cal_month={{ prev_cal_month }}"
                class="cal-nav-btn" aria-label="Previous month">‹</a>
@@ -168,18 +169,7 @@
             <span class="legend-item"><span class="legend-swatch day-type-weekend"></span> Weekends</span>
         </div>
 
-        {% if school_year %}
-        <div class="school-day-subjects-section">
-            <h3>Yearly Subjects &amp; Activities</h3>
-            <p class="section-hint">Manage subjects and activities scheduled across the school year.</p>
-            <a href="/teacher/school-days?cal_month={{ cal_month_param }}&subjects_view=list"
-               class="btn btn-primary">
-                Subjects
-            </a>
-        </div>
-        {% endif %}
-
-        <dialog id="school-day-editor" class="school-day-editor-dialog" aria-labelledby="school-day-editor-title">
+            <dialog id="school-day-editor" class="school-day-editor-dialog" aria-labelledby="school-day-editor-title">
             <form method="dialog" class="school-day-editor-form" id="school-day-editor-form">
                 <div class="school-day-editor-header">
                     <h3 id="school-day-editor-title">Edit School Day</h3>
@@ -218,7 +208,19 @@
                     <button type="submit" class="btn btn-primary school-day-editor-save">Save</button>
                 </div>
             </form>
-        </dialog>
+            </dialog>
+            {% endif %}
+        </div>
+
+        {% if school_year %}
+        <div class="panel school-day-subjects-panel">
+            <h2>Yearly Subjects &amp; Activities</h2>
+            <p class="section-hint">Manage subjects and activities scheduled across the school year.</p>
+            <a href="/teacher/school-days?cal_month={{ cal_month_param }}&subjects_view=list"
+               class="btn btn-primary">
+                Subjects
+            </a>
+        </div>
         {% endif %}
     </div>
 </section>

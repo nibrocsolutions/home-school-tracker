@@ -3,7 +3,6 @@
 {% endif %}
 <script>
 const samplePlans = JSON.parse(document.getElementById('sample-plans-data')?.textContent || '[]');
-const planDateValue = {{ plan_date_param | tojson }};
 
 function createActivityRow(activity = {}) {
     const row = document.createElement('div');
@@ -44,31 +43,6 @@ document.querySelectorAll('.sample-plan-card').forEach(btn => {
         document.getElementById('plan-description').value = sample.description || '';
         setActivities(sample.activities || []);
     });
-});
-
-async function loadScheduleSuggestions() {
-    const hint = document.getElementById('schedule-day-hint');
-    if (!planDateValue) return [];
-    try {
-        const res = await fetch(`/teacher/schedule-suggestions?plan_date=${planDateValue}`);
-        const data = await res.json();
-        if (hint) {
-            const count = (data.activities || []).length;
-            hint.textContent = count
-                ? `${data.weekday}: ${count} scheduled item${count !== 1 ? 's' : ''} for this day`
-                : `${data.weekday}: no scheduled items for this day`;
-        }
-        return data.activities || [];
-    } catch {
-        return [];
-    }
-}
-
-loadScheduleSuggestions();
-
-document.getElementById('apply-schedule-suggestions')?.addEventListener('click', async () => {
-    const activities = await loadScheduleSuggestions();
-    if (activities.length) setActivities(activities);
 });
 
 document.getElementById('add-activity')?.addEventListener('click', () => {

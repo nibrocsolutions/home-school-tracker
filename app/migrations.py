@@ -92,7 +92,60 @@ def run_schema_migrations(db: Session) -> None:
             )
             db.commit()
 
+    _migrate_weekly_schedule_item_students(db, inspector)
     _migrate_planned_school_days(db, inspector)
+
+
+def _migrate_weekly_schedule_item_students(db: Session, inspector) -> None:
+    if not _table_exists(inspector, "weekly_schedule_items"):
+        return
+
+    if not _table_exists(inspector, "weekly_schedule_item_students"):
+        db.execute(
+            text(
+                "CREATE TABLE weekly_schedule_item_students ("
+                "schedule_item_id INTEGER NOT NULL, "
+                "student_id INTEGER NOT NULL, "
+                "PRIMARY KEY (schedule_item_id, student_id), "
+                "FOREIGN KEY(schedule_item_id) REFERENCES weekly_schedule_items (id) ON DELETE CASCADE, "
+                "FOREIGN KEY(student_id) REFERENCES users (id) ON DELETE CASCADE"
+                ")"
+            )
+        )
+        db.commit()
+        inspector = inspect(db.get_bind())
+
+    if not _table_exists(inspector, "weekly_schedule_item_students"):
+        return
+
+    existing_links = db.execute(
+        text("SELECT COUNT(*) FROM weekly_schedule_item_students")
+    ).scalar()
+    if existing_links:
+        return
+
+    student_ids = [
+        row[0]
+        for row in db.execute(
+            text("SELECT id FROM users WHERE role = 'student' AND is_active = TRUE")
+        ).fetchall()
+    ]
+    if not student_ids:
+        return
+
+    schedule_item_ids = [
+        row[0] for row in db.execute(text("SELECT id FROM weekly_schedule_items")).fetchall()
+    ]
+    for schedule_item_id in schedule_item_ids:
+        for student_id in student_ids:
+            db.execute(
+                text(
+                    "INSERT INTO weekly_schedule_item_students "
+                    "(schedule_item_id, student_id) VALUES (:schedule_item_id, :student_id)"
+                ),
+                {"schedule_item_id": schedule_item_id, "student_id": student_id},
+            )
+    db.commit()
 
 
 def _migrate_planned_school_days(db: Session, inspector) -> None:

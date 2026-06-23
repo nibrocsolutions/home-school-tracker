@@ -9,7 +9,7 @@
     <h2>{% if is_new_subject %}Add Subject or Activity{% else %}Edit {{ subject.name }}{% endif %}</h2>
     <p class="section-hint">
         Set the days of the week and how many times this appears during the school year.
-        Saving will update lesson planning for all active students.
+        Select which students this subject applies to. Saving will update lesson planning for those students only.
     </p>
 
     <form method="post" action="/teacher/school-days/subjects" class="subject-detail-form" id="subject-detail-form">
@@ -82,6 +82,28 @@
             <input type="url" id="audio_url" name="audio_url"
                    value="{{ subject.audio_url if subject and subject.audio_url else '' }}"
                    placeholder="https://">
+        </div>
+
+        <div class="form-row">
+            <label>Students</label>
+            <div class="student-picker">
+                <div class="student-picker-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" id="select-all-subject-students">Select All</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="clear-all-subject-students">Clear All</button>
+                </div>
+                <div class="student-checkboxes">
+                    {% for s in students %}
+                    <label class="student-check">
+                        <input type="checkbox" name="student_ids" value="{{ s.id }}"
+                               {% if s.id in subject_student_ids %}checked{% endif %}>
+                        <span>{{ s.full_name }}{% if s.grade_age_label %} <em class="student-meta">({{ s.grade_age_label }})</em>{% endif %}</span>
+                    </label>
+                    {% endfor %}
+                    {% if not students %}
+                    <p class="empty-state">No students available.</p>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
         <div class="subject-detail-actions">

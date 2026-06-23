@@ -1449,6 +1449,12 @@ body {
     gap: 1.5rem;
 }
 
+.school-day-subjects-panel {
+    margin-top: 0.25rem;
+    border-top: 2px solid var(--border);
+    padding-top: 1.5rem;
+}
+
 .school-year-form .form-row {
     margin-bottom: 1rem;
 }
@@ -2180,6 +2186,48 @@ button.school-day-cell:hover {
     margin-bottom: 1.25rem;
 }
 
+.subjects-list-table-wrap {
+    overflow-x: auto;
+    margin-top: 1rem;
+}
+
+.subjects-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.subjects-list-table th,
+.subjects-list-table td {
+    padding: 0.75rem 0.85rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+.subjects-list-table thead th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    background: var(--bg);
+}
+
+.subjects-list-table tbody tr:nth-child(even) td {
+    background: rgba(247, 244, 239, 0.55);
+}
+
+.subjects-list-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.subjects-list-footer {
+    margin-top: 1.25rem;
+}
+
 .subjects-button-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -2192,9 +2240,12 @@ button.school-day-cell:hover {
 }
 
 .subject-list-btn {
-    width: 100%;
     text-align: center;
     text-decoration: none;
+}
+
+.subjects-list-actions .subject-list-btn {
+    width: auto;
 }
 
 .subject-detail-form .form-row {

@@ -661,6 +661,10 @@ body {
     gap: 0.75rem;
 }
 
+.calendar-back-row {
+    margin: 0 0 0.75rem;
+}
+
 .pdf-buttons {
     display: flex;
     flex-wrap: wrap;

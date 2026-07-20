@@ -65,11 +65,17 @@ function formatSchoolDayDate(isoDate) {
     });
 }
 
+function displaySchoolDayType(dayType) {
+    // Holidays keep holiday metadata/text but look like normal school days on the calendar.
+    return dayType === 'holiday' ? 'actual_school' : dayType;
+}
+
 function updateSchoolDayButton(button, dayType, isCompleted, holidayName) {
     DAY_TYPE_CLASSES.forEach(function (className) {
         button.classList.remove(className);
     });
-    button.classList.add('day-type-' + dayType);
+    const displayType = displaySchoolDayType(dayType);
+    button.classList.add('day-type-' + displayType);
     button.classList.toggle('completed', dayType === 'actual_school' && isCompleted);
     button.dataset.dayType = dayType;
     button.dataset.isCompleted = isCompleted ? 'true' : 'false';
@@ -107,12 +113,13 @@ function updateSchoolDayButton(button, dayType, isCompleted, holidayName) {
         delete button.dataset.holidayName;
     }
 
-    const typeLabel = DAY_TYPE_LABELS[dayType] || dayType.replace(/_/g, ' ');
-    const datePart = button.title.split(' — ')[0];
+    const datePart = formatSchoolDayDate(button.dataset.dayDate || '');
     button.title = holidayName ? datePart + ' — ' + holidayName : datePart;
-    let ariaLabel = datePart + ', ' + typeLabel;
+    let ariaLabel = datePart;
     if (holidayName) {
         ariaLabel += ', ' + holidayName;
+    } else {
+        ariaLabel += ', ' + (DAY_TYPE_LABELS[displayType] || displayType.replace(/_/g, ' '));
     }
     if (dayType === 'actual_school' && isCompleted) {
         ariaLabel += ', completed';

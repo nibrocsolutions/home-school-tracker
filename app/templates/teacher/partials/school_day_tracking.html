@@ -128,13 +128,14 @@
                 {% for cell in week %}
                 {% if cell.day %}
                     {% if cell.in_range %}
+                    {% set display_day_type = 'actual_school' if cell.day_type.value == 'holiday' else cell.day_type.value %}
                     <button type="button"
-                            class="school-day-cell school-day-edit-btn day-type-{{ cell.day_type.value }}{% if cell.is_completed %} completed{% endif %}{% if cell.is_today %} today{% endif %}"
+                            class="school-day-cell school-day-edit-btn day-type-{{ display_day_type }}{% if cell.is_completed and cell.day_type.value == 'actual_school' %} completed{% endif %}{% if cell.is_today %} today{% endif %}"
                             data-day-date="{{ cell.date.isoformat() }}"
                             data-day-type="{{ cell.day_type.value }}"
                             data-is-completed="{{ 'true' if cell.is_completed else 'false' }}"
                             {% if cell.holiday_name %}data-holiday-name="{{ cell.holiday_name }}"{% endif %}
-                            aria-label="{{ cell.date.strftime('%B %d, %Y') }}, {{ cell.day_type.value | replace('_', ' ') }}{% if cell.holiday_name %}, {{ cell.holiday_name }}{% endif %}{% if cell.is_completed %}, completed{% endif %}"
+                            aria-label="{{ cell.date.strftime('%B %d, %Y') }}{% if cell.holiday_name %}, {{ cell.holiday_name }}{% else %}, {{ display_day_type | replace('_', ' ') }}{% endif %}{% if cell.is_completed and cell.day_type.value == 'actual_school' %}, completed{% endif %}"
                             title="{{ cell.date.strftime('%B %d, %Y') }}{% if cell.holiday_name %} — {{ cell.holiday_name }}{% endif %}">
                         <span class="school-day-num">{{ cell.day }}</span>
                         {% if cell.holiday_name %}
@@ -165,7 +166,6 @@
                 Completed actual school days
             </span>
             <span class="legend-item"><span class="legend-swatch day-type-school_off"></span> Planned school days off</span>
-            <span class="legend-item"><span class="legend-swatch day-type-holiday"></span> Holidays</span>
             <span class="legend-item"><span class="legend-swatch day-type-weekend"></span> Weekends</span>
         </div>
 

@@ -2,6 +2,7 @@
 <div class="calendar-header">
     <h2>{% if calendar_title %}{{ calendar_title }}{% else %}Lesson Plan Calendar{% endif %}</h2>
     <div class="calendar-actions">
+        {% if not hide_view_toggle %}
         <div class="view-toggle" role="tablist" aria-label="Calendar view">
             <a href="{{ base_path }}?view=daily&ref_date={{ ref_date }}"
                class="view-btn {% if view == 'daily' %}active{% endif %}"
@@ -13,6 +14,8 @@
                class="view-btn {% if view == 'monthly' %}active{% endif %}"
                role="tab" aria-selected="{{ 'true' if view == 'monthly' else 'false' }}">Monthly</a>
         </div>
+        {% endif %}
+        {% if not hide_pdf_buttons %}
         <div class="pdf-buttons">
             <a href="{{ pdf_path }}?view={{ view }}&ref_date={{ ref_date }}&disposition=inline"
                class="btn btn-pdf-view btn-sm" target="_blank" rel="noopener">
@@ -23,14 +26,22 @@
                 <span aria-hidden="true">📄</span> Download PDF
             </a>
         </div>
+        {% endif %}
     </div>
 </div>
+
+{% if week_back_ref and view == 'daily' %}
+<div class="calendar-back-row">
+    <a href="{{ base_path }}?view=weekly&ref_date={{ week_back_ref }}"
+       class="btn btn-secondary btn-sm">← Back to week</a>
+</div>
+{% endif %}
 
 <div class="calendar-nav">
     <a href="{{ base_path }}?view={{ view }}&ref_date={{ prev_ref }}" class="cal-nav-btn" aria-label="Previous period">‹</a>
     <div class="cal-period">
         <strong>{{ period_label }}</strong>
-        {% if view == 'daily' %}
+        {% if view == 'daily' and not hide_view_toggle %}
         <input type="date" class="cal-date-picker" value="{{ ref_date }}"
                data-nav-url="{{ base_path }}?view=daily&ref_date=">
         {% endif %}
@@ -42,7 +53,7 @@
 <div class="week-strip">
     {% for day in week_days %}
     <a href="{{ base_path }}?view=daily&ref_date={{ day.date.isoformat() }}"
-       class="week-day {% if day.is_today %}today{% endif %} {% if day.plans %}has-plans{% endif %}">
+       class="week-day {% if day.is_today %}today{% endif %} {% if day.plans %}has-plans{% endif %} {% if day.is_ref %}selected{% endif %}">
         <span class="week-day-label">{{ day.label }}</span>
         <span class="week-day-num">{{ day.day_num }}</span>
         {% if day.plans %}

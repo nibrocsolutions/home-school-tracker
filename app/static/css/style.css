@@ -1638,22 +1638,14 @@ button.school-day-cell:hover {
     border-color: #15803d;
 }
 
-.school-day-cell.day-type-school_off {
-    background: #fee2e2;
-    border-color: #dc2626;
-    color: #991b1b;
-}
-
-.school-day-cell.day-type-school_off:hover {
-    background: #fecaca;
-}
-
+.school-day-cell.day-type-school_off,
 .school-day-cell.day-type-sick {
     background: #fee2e2;
     border-color: #dc2626;
     color: #991b1b;
 }
 
+.school-day-cell.day-type-school_off:hover,
 .school-day-cell.day-type-sick:hover {
     background: #fecaca;
 }
@@ -1782,11 +1774,7 @@ button.school-day-cell:hover {
     flex-shrink: 0;
 }
 
-.legend-swatch.day-type-school_off {
-    background: #fee2e2;
-    border-color: #dc2626;
-}
-
+.legend-swatch.day-type-school_off,
 .legend-swatch.day-type-sick {
     background: #fee2e2;
     border-color: #dc2626;
@@ -1812,8 +1800,15 @@ button.school-day-cell:hover {
     border-color: #d1d5db;
 }
 
-.counter-planned-off {
+.counter-planned-off,
+.counter-planned-sick {
     color: #dc2626;
+}
+
+.progress-metric-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
 }
 
 .school-day-editor-dialog {

@@ -32,7 +32,10 @@ from app.models import (
     UserRole,
     WeeklyScheduleItem,
 )
-from app.lesson_plan_generator import populate_lesson_plans_from_subjects
+from app.lesson_plan_generator import (
+    populate_lesson_plans_from_subjects,
+    shift_lesson_plans_by_days,
+)
 from app.lesson_planning_context import build_lesson_planning_context
 from app.sample_plans import SAMPLE_LESSON_PLANS
 from app.school_day_context import build_school_day_context
@@ -1308,6 +1311,17 @@ async def save_school_day_config(
 
     school_year = _fetch_school_day_year(db, current_user.id)
     if school_year:
+        old_start = school_year.start_date
+        old_end = school_year.end_date
+        day_delta = (parsed_start - old_start).days
+        if day_delta != 0:
+            shift_lesson_plans_by_days(
+                db,
+                current_user.id,
+                old_start,
+                old_end,
+                day_delta,
+            )
         school_year.start_date = parsed_start
         school_year.end_date = parsed_end
         school_year.required_days = required_days

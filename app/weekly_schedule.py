@@ -75,7 +75,18 @@ def schedule_items_for_date(
     return [item for item in items if day_idx in parse_weekdays(item.weekdays)]
 
 
-def schedule_item_to_activity(item: WeeklyScheduleItem) -> dict:
+LESSON_NUMBERED_SUBJECTS = frozenset({"math", "language arts"})
+
+
+def schedule_item_base_title(item: WeeklyScheduleItem) -> str:
+    if item.item_kind == ScheduleItemKind.subject and item.name.lower() == "history":
+        return f"History: {item.name}"
+    return item.name
+
+
+def schedule_item_to_activity(
+    item: WeeklyScheduleItem, *, lesson_number: int | None = None
+) -> dict:
     from app.models import ActivityType
 
     if item.item_kind == ScheduleItemKind.subject and item.name.lower() == "history":
@@ -87,9 +98,13 @@ def schedule_item_to_activity(item: WeeklyScheduleItem) -> dict:
     else:
         activity_type = ActivityType.regular
 
-    title = item.name
-    if activity_type.value == "history":
-        title = f"History: {item.name}"
+    title = schedule_item_base_title(item)
+    if (
+        lesson_number is not None
+        and item.item_kind == ScheduleItemKind.subject
+        and item.name.lower() in LESSON_NUMBERED_SUBJECTS
+    ):
+        title = f"{item.name} - Lesson {lesson_number}"
 
     return {
         "title": title,
@@ -98,3 +113,16 @@ def schedule_item_to_activity(item: WeeklyScheduleItem) -> dict:
         "audio_url": item.audio_url or "",
         "external_link": item.external_link or "",
     }
+
+
+def activity_matches_schedule_item(activity_title: str, item: WeeklyScheduleItem) -> bool:
+    """Return True if an activity title was generated from this schedule item."""
+    base = schedule_item_base_title(item)
+    if activity_title == base or activity_title == item.name:
+        return True
+    prefix = f"{item.name} - Lesson "
+    if activity_title.startswith(prefix):
+        suffix = activity_title[len(prefix) :]
+        return suffix.isdigit()
+    return False
+

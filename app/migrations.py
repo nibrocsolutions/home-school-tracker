@@ -134,19 +134,58 @@ def _migrate_school_day_type_enum(db: Session) -> None:
                 conn.execute(text(f"ALTER TYPE {type_name} ADD VALUE '{value}'"))
 
 
+def _enum_has_label(db: Session, label: str) -> bool:
+    """Return True if the planned_school_days day_type enum includes the given label."""
+    bind = db.get_bind()
+    if bind.dialect.name != "postgresql":
+        return True
+
+    row = db.execute(
+        text(
+            "SELECT 1 "
+            "FROM pg_enum e "
+            "JOIN pg_type t ON t.oid = e.enumtypid "
+            "JOIN information_schema.columns c "
+            "  ON c.udt_name = t.typname "
+            "WHERE c.table_name = 'planned_school_days' "
+            "  AND c.column_name = 'day_type' "
+            "  AND e.enumlabel = :label "
+            "LIMIT 1"
+        ),
+        {"label": label},
+    ).first()
+    if row:
+        return True
+
+    # Fallback for atypical type naming.
+    row = db.execute(
+        text(
+            "SELECT 1 FROM pg_enum e "
+            "JOIN pg_type t ON t.oid = e.enumtypid "
+            "WHERE t.typname ILIKE '%schooldaytype%' AND e.enumlabel = :label "
+            "LIMIT 1"
+        ),
+        {"label": label},
+    ).first()
+    return row is not None
+
+
 def _migrate_remove_skip_and_auto_holidays(db: Session, inspector) -> None:
     """Convert skip days to school_off; one-time reset of auto-applied holidays."""
     if not _table_exists(inspector, "planned_school_days"):
         return
 
-    db.execute(
-        text(
-            "UPDATE planned_school_days "
-            "SET day_type = 'school_off' "
-            "WHERE day_type = 'skip'"
+    # Only rewrite skip rows when the DB enum actually contains 'skip'.
+    # Fresh installs never added that label, and comparing to it raises InvalidTextRepresentation.
+    if _enum_has_label(db, "skip"):
+        db.execute(
+            text(
+                "UPDATE planned_school_days "
+                "SET day_type = 'school_off' "
+                "WHERE day_type = 'skip'"
+            )
         )
-    )
-    db.commit()
+        db.commit()
 
     if not _table_exists(inspector, "app_settings"):
         return

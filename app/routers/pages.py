@@ -1477,17 +1477,19 @@ async def update_school_day(
     planned.updated_at = datetime.utcnow()
     db.flush()
 
-    # Sick/off (or restore to actual school) shifts unfinished subject lessons.
+    # Sick/off/holiday (or restore to actual school) shifts unfinished subject lessons.
     if previous_type != parsed_type and (
         previous_type == SchoolDayType.actual_school
         or parsed_type == SchoolDayType.actual_school
         or parsed_type in (
             SchoolDayType.sick,
             SchoolDayType.school_off,
+            SchoolDayType.holiday,
         )
         or previous_type in (
             SchoolDayType.sick,
             SchoolDayType.school_off,
+            SchoolDayType.holiday,
         )
     ):
         school_year = _fetch_school_day_year(db, current_user.id)

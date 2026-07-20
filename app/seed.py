@@ -89,7 +89,7 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             name="Co-Op",
             item_kind=ScheduleItemKind.special_activity,
             special_type=SpecialActivityKind.co_op,
-            weekdays="0,2",
+            weekdays="",
             description="Community co-op classes with other homeschool families.",
             lesson_amount=36,
             sort_order=1,
@@ -99,7 +99,7 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             name="Wild and Free Outing",
             item_kind=ScheduleItemKind.special_activity,
             special_type=SpecialActivityKind.wild_and_free,
-            weekdays="4",
+            weekdays="",
             description="Outdoor nature exploration and adventure learning.",
             lesson_amount=36,
             sort_order=2,
@@ -109,7 +109,7 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             name="Classical Conversations Essentials",
             item_kind=ScheduleItemKind.special_activity,
             special_type=SpecialActivityKind.classical_conversations,
-            weekdays="0,2",
+            weekdays="",
             description="Essentials program — grammar, writing, and presentations.",
             external_link="https://classicalconversations.com/programs/essentials/",
             lesson_amount=36,
@@ -119,7 +119,7 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             teacher_id=teacher_id,
             name="History",
             item_kind=ScheduleItemKind.subject,
-            weekdays="0,2",
+            weekdays="",
             description="Listen to the history audio lesson and share what you learned.",
             audio_url=HISTORY_AUDIO_URL,
             lesson_amount=72,
@@ -129,36 +129,22 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             teacher_id=teacher_id,
             name="Math",
             item_kind=ScheduleItemKind.subject,
-            weekdays="1,3",
+            weekdays="",
             description="Complete math workbook pages and practice problems.",
-            lesson_amount=72,
+            lesson_amount=120,
             sort_order=5,
         ),
         WeeklyScheduleItem(
             teacher_id=teacher_id,
             name="Language Arts",
             item_kind=ScheduleItemKind.subject,
-            weekdays="1,3,4",
+            weekdays="",
             description="Grammar, spelling, and creative writing.",
-            lesson_amount=90,
+            lesson_amount=120,
             sort_order=6,
         ),
     ]
     db.add_all(defaults)
-    db.flush()
-
-    student_ids = [
-        student.id
-        for student in db.query(User).filter(
-            User.role == UserRole.student, User.is_active == True
-        ).all()
-    ]
-    for item in defaults:
-        item.assigned_students = [
-            student
-            for student in db.query(User).filter(User.id.in_(student_ids)).all()
-        ]
-
     db.commit()
 
 

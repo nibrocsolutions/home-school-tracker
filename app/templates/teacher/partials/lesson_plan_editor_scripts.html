@@ -2,69 +2,195 @@
 <script type="application/json" id="sample-plans-data">{{ sample_lesson_plans | tojson }}</script>
 {% endif %}
 <script>
-const samplePlans = JSON.parse(document.getElementById('sample-plans-data')?.textContent || '[]');
+(function () {
+    const samplePlans = JSON.parse(document.getElementById('sample-plans-data')?.textContent || '[]');
+    const form = document.getElementById('lesson-form');
+    const sections = document.getElementById('student-plan-sections');
+    const emptyHint = document.getElementById('no-student-plans-hint');
+    const defaultTitle = document.getElementById('default-plan-title')?.value || '';
+    let focusedStudentId = null;
 
-function createActivityRow(activity = {}) {
-    const row = document.createElement('div');
-    row.className = 'activity-row';
-    row.setAttribute('data-activity-row', '');
-    row.innerHTML = `
-        <input type="text" name="activity_titles" placeholder="Activity title" value="${activity.title || ''}">
-        <input type="text" name="activity_descriptions" placeholder="Description (optional)" value="${activity.description || ''}">
-        <select name="activity_types" class="activity-type-select">
-            <option value="regular" ${activity.activity_type === 'regular' ? 'selected' : ''}>Regular</option>
-            <option value="special" ${activity.activity_type === 'special' ? 'selected' : ''}>Special Activity</option>
-            <option value="subject" ${activity.activity_type === 'subject' ? 'selected' : ''}>Subject</option>
-            <option value="history" ${activity.activity_type === 'history' ? 'selected' : ''}>History (with audio)</option>
-        </select>
-        <input type="url" name="activity_audio_urls" placeholder="Audio URL (history)" class="activity-audio-field" value="${activity.audio_url || ''}">
-        <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field" value="${activity.external_link || ''}">
-        <button type="button" class="btn-remove" aria-label="Remove activity">&times;</button>
-    `;
-    row.querySelector('.btn-remove').addEventListener('click', () => row.remove());
-    return row;
-}
-
-function setActivities(activities) {
-    const list = document.getElementById('activities-list');
-    list.innerHTML = '';
-    if (!activities.length) {
-        list.appendChild(createActivityRow());
-        return;
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
     }
-    activities.forEach(act => list.appendChild(createActivityRow(act)));
-}
 
-document.querySelectorAll('.sample-plan-card').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const sample = samplePlans.find(s => s.id === btn.dataset.sampleId);
-        if (!sample) return;
-        document.getElementById('plan-title').value = sample.title;
-        document.getElementById('plan-description').value = sample.description || '';
-        setActivities(sample.activities || []);
+    function createActivityRow(studentId, activity = {}) {
+        const row = document.createElement('div');
+        row.className = 'activity-row';
+        row.setAttribute('data-activity-row', '');
+        const type = activity.activity_type || 'regular';
+        row.innerHTML = `
+            <input type="hidden" name="activity_student_ids" value="${studentId}">
+            <input type="text" name="activity_titles" placeholder="Activity title" required value="${escapeHtml(activity.title || '')}">
+            <input type="text" name="activity_descriptions" placeholder="Description (optional)" value="${escapeHtml(activity.description || '')}">
+            <select name="activity_types" class="activity-type-select">
+                <option value="regular" ${type === 'regular' ? 'selected' : ''}>Regular</option>
+                <option value="special" ${type === 'special' ? 'selected' : ''}>Special Activity</option>
+                <option value="subject" ${type === 'subject' ? 'selected' : ''}>Subject</option>
+                <option value="history" ${type === 'history' ? 'selected' : ''}>History (with audio)</option>
+            </select>
+            <input type="url" name="activity_audio_urls" placeholder="Audio URL (history)" class="activity-audio-field" value="${escapeHtml(activity.audio_url || '')}">
+            <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field" value="${escapeHtml(activity.external_link || '')}">
+            <button type="button" class="btn-remove" aria-label="Remove activity">&times;</button>
+        `;
+        row.querySelector('.btn-remove').addEventListener('click', () => row.remove());
+        return row;
+    }
+
+    function setSectionActivities(section, activities) {
+        const list = section.querySelector('.activities-list');
+        const studentId = section.getAttribute('data-student-plan');
+        list.innerHTML = '';
+        if (!activities.length) {
+            list.appendChild(createActivityRow(studentId));
+            return;
+        }
+        activities.forEach((act) => list.appendChild(createActivityRow(studentId, act)));
+    }
+
+    function createStudentSection(studentId, studentName, plan = {}) {
+        const section = document.createElement('section');
+        section.className = 'student-plan-section panel';
+        section.setAttribute('data-student-plan', studentId);
+        section.innerHTML = `
+            <input type="hidden" name="student_ids" value="${studentId}">
+            <div class="student-plan-section-header">
+                <h3>${escapeHtml(studentName)}</h3>
+                <p class="section-hint">Activities and lessons for this student only.</p>
+            </div>
+            <div class="form-row">
+                <label for="plan-title-${studentId}">Title</label>
+                <input type="text" name="plan_titles" id="plan-title-${studentId}" required
+                       value="${escapeHtml(plan.title || defaultTitle)}"
+                       placeholder="e.g. Math & Science Wednesday">
+            </div>
+            <div class="form-row">
+                <label for="plan-description-${studentId}">Description</label>
+                <textarea name="plan_descriptions" id="plan-description-${studentId}" rows="2"
+                          placeholder="Brief overview of the day's learning">${escapeHtml(plan.description || '')}</textarea>
+            </div>
+            <div class="activities-builder">
+                <div class="activities-header">
+                    <h3>Activities / Lessons</h3>
+                    <div class="activities-header-actions">
+                        <button type="button" class="btn btn-ghost btn-sm add-student-activity"
+                                data-student-id="${studentId}">+ Add Activity</button>
+                    </div>
+                </div>
+                <div class="activities-list" data-activities-for="${studentId}"></div>
+            </div>
+        `;
+        setSectionActivities(section, plan.activities || []);
+        section.addEventListener('focusin', () => {
+            focusedStudentId = String(studentId);
+        });
+        section.querySelector('.add-student-activity')?.addEventListener('click', () => {
+            section.querySelector('.activities-list').appendChild(createActivityRow(studentId));
+        });
+        return section;
+    }
+
+    function syncStudentSections() {
+        const checked = [...document.querySelectorAll('.lesson-student-toggle:checked')];
+        const existingById = {};
+        [...sections.querySelectorAll('[data-student-plan]')].forEach((section) => {
+            existingById[section.getAttribute('data-student-plan')] = section;
+        });
+
+        const ordered = document.createDocumentFragment();
+        checked.forEach((cb) => {
+            const studentId = cb.value;
+            let section = existingById[studentId];
+            if (section) {
+                delete existingById[studentId];
+            } else {
+                section = createStudentSection(studentId, cb.dataset.studentName || `Student ${studentId}`);
+            }
+            ordered.appendChild(section);
+        });
+
+        Object.values(existingById).forEach((section) => section.remove());
+        sections.innerHTML = '';
+        sections.appendChild(ordered);
+
+        if (emptyHint) {
+            emptyHint.hidden = checked.length > 0;
+        }
+    }
+
+    function getFocusedSection() {
+        if (focusedStudentId) {
+            const focused = sections.querySelector(`[data-student-plan="${focusedStudentId}"]`);
+            if (focused) return focused;
+        }
+        return sections.querySelector('[data-student-plan]');
+    }
+
+    document.querySelectorAll('.sample-plan-card').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const sample = samplePlans.find((s) => s.id === btn.dataset.sampleId);
+            if (!sample) return;
+            const section = getFocusedSection();
+            if (!section) {
+                alert('Select a student first, then apply a sample plan.');
+                return;
+            }
+            const titleInput = section.querySelector('input[name="plan_titles"]');
+            const descInput = section.querySelector('textarea[name="plan_descriptions"]');
+            if (titleInput) titleInput.value = sample.title || '';
+            if (descInput) descInput.value = sample.description || '';
+            setSectionActivities(section, sample.activities || []);
+        });
     });
-});
 
-document.getElementById('add-activity')?.addEventListener('click', () => {
-    document.getElementById('activities-list').appendChild(createActivityRow());
-});
+    document.querySelectorAll('.lesson-student-toggle').forEach((cb) => {
+        cb.addEventListener('change', syncStudentSections);
+    });
 
-document.getElementById('select-all-students')?.addEventListener('click', function() {
-    document.querySelectorAll('.student-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = true);
-});
-document.getElementById('clear-all-students')?.addEventListener('click', function() {
-    document.querySelectorAll('.student-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
-});
+    document.getElementById('select-all-students')?.addEventListener('click', () => {
+        document.querySelectorAll('.lesson-student-toggle').forEach((cb) => {
+            cb.checked = true;
+        });
+        syncStudentSections();
+    });
+    document.getElementById('clear-all-students')?.addEventListener('click', () => {
+        document.querySelectorAll('.lesson-student-toggle').forEach((cb) => {
+            cb.checked = false;
+        });
+        syncStudentSections();
+    });
 
-document.getElementById('lesson-form')?.addEventListener('submit', function(e) {
-    const checked = document.querySelectorAll('.student-checkboxes input[type="checkbox"]:checked');
-    if (checked.length === 0) {
-        e.preventDefault();
-        alert('Please select at least one student.');
+    sections?.querySelectorAll('[data-student-plan]').forEach((section) => {
+        const studentId = section.getAttribute('data-student-plan');
+        section.addEventListener('focusin', () => {
+            focusedStudentId = studentId;
+        });
+        section.querySelector('.add-student-activity')?.addEventListener('click', () => {
+            section.querySelector('.activities-list').appendChild(createActivityRow(studentId));
+        });
+    });
+
+    sections?.querySelectorAll('[data-activity-row] .btn-remove').forEach((btn) => {
+        btn.addEventListener('click', () => btn.closest('[data-activity-row]')?.remove());
+    });
+
+    form?.addEventListener('submit', (e) => {
+        const checked = document.querySelectorAll('.lesson-student-toggle:checked');
+        if (checked.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one student.');
+            return;
+        }
+        // Ensure submitted student_ids order matches plan_titles/plan_descriptions sections.
+        syncStudentSections();
+    });
+
+    if (sections && !sections.querySelector('[data-student-plan]')) {
+        syncStudentSections();
     }
-});
-
-document.querySelectorAll('[data-activity-row] .btn-remove').forEach(btn => {
-    btn.addEventListener('click', () => btn.closest('[data-activity-row]')?.remove());
-});
+})();
 </script>

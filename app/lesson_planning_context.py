@@ -76,6 +76,19 @@ def plans_for_date(plans: list[LessonPlan], plan_date: date) -> list[LessonPlan]
     return [plan for plan in plans if plan.plan_date == plan_date]
 
 
+def _serialize_plan_activities(plan: LessonPlan) -> list[dict]:
+    return [
+        {
+            "title": activity.title,
+            "description": activity.description or "",
+            "activity_type": activity.activity_type.value,
+            "audio_url": activity.audio_url or "",
+            "external_link": activity.external_link or "",
+        }
+        for activity in sorted(plan.activities, key=lambda a: a.sort_order)
+    ]
+
+
 def build_lesson_planning_context(
     school_year: SchoolDayYear | None,
     plans: list[LessonPlan],
@@ -102,30 +115,36 @@ def build_lesson_planning_context(
     editor_plans = plans_for_date(plans, plan_date) if plan_date and school_year else []
     editor_context = None
     if plan_date and school_year and editor_plans:
-        first = editor_plans[0]
-        editor_context = {
-            "title": first.title,
-            "description": first.description or "",
-            "student_ids": [plan.student_id for plan in editor_plans],
-            "activities": [
+        student_plans = []
+        for plan in sorted(
+            editor_plans,
+            key=lambda p: (
+                (p.student.last_name if p.student else ""),
+                (p.student.first_name if p.student else ""),
+                p.student_id,
+            ),
+        ):
+            student_name = plan.student.full_name if plan.student else f"Student #{plan.student_id}"
+            student_plans.append(
                 {
-                    "title": activity.title,
-                    "description": activity.description or "",
-                    "activity_type": activity.activity_type.value,
-                    "audio_url": activity.audio_url or "",
-                    "external_link": activity.external_link or "",
+                    "student_id": plan.student_id,
+                    "student_name": student_name,
+                    "title": plan.title,
+                    "description": plan.description or "",
+                    "activities": _serialize_plan_activities(plan),
                 }
-                for activity in sorted(first.activities, key=lambda a: a.sort_order)
-            ],
+            )
+        editor_context = {
+            "student_plans": student_plans,
+            "student_ids": [plan["student_id"] for plan in student_plans],
             "is_edit": True,
         }
     elif plan_date and school_year:
         editor_context = {
-            "title": "",
-            "description": "",
+            "student_plans": [],
             "student_ids": [],
-            "activities": [],
             "is_edit": False,
+            "default_title": plan_date.strftime("%A, %B %d, %Y"),
         }
 
     prev_month = shift_ref_date(cal_month, "monthly", -1)

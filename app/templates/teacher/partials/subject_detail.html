@@ -61,7 +61,8 @@
         <div class="form-row">
             <label for="lesson_amount">Lessons per Year</label>
             <input type="number" id="lesson_amount" name="lesson_amount" min="0"
-                   value="{{ subject.lesson_amount if subject else 0 }}">
+                   value="{{ subject.lesson_amount if subject else 0 }}"
+                   data-default-math-la="120">
         </div>
 
         <div class="form-row">

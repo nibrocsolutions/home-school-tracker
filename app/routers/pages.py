@@ -599,7 +599,8 @@ def _parse_lesson_activities(
     activity_types: list[str],
     activity_audio_urls: list[str],
     activity_external_links: list[str],
-) -> list[tuple[str, str | None, ActivityType, str | None, str | None, int]]:
+    activity_student_ids: list[int] | None = None,
+) -> list[tuple[int | None, str, str | None, ActivityType, str | None, str | None, int]]:
     activities_data = []
     for idx, act_title in enumerate(activity_titles):
         if not act_title.strip():
@@ -608,12 +609,16 @@ def _parse_lesson_activities(
         type_raw = activity_types[idx] if idx < len(activity_types) else "regular"
         audio = activity_audio_urls[idx] if idx < len(activity_audio_urls) else ""
         link = activity_external_links[idx] if idx < len(activity_external_links) else ""
+        student_id = None
+        if activity_student_ids is not None and idx < len(activity_student_ids):
+            student_id = activity_student_ids[idx]
         try:
             act_type = ActivityType(type_raw)
         except ValueError:
             act_type = ActivityType.regular
         activities_data.append(
             (
+                student_id,
                 act_title.strip(),
                 desc.strip() or None,
                 act_type,
@@ -629,11 +634,9 @@ def _save_lesson_plans_for_date(
     db: Session,
     teacher_id: int,
     parsed_date: date,
-    title: str,
-    description: str,
-    student_ids: list[int],
-    activities_data: list[tuple[str, str | None, ActivityType, str | None, str | None, int]],
+    student_plans: list[dict],
 ) -> int:
+    """Save one lesson plan per student, each with its own activities."""
     existing = (
         db.query(LessonPlan)
         .filter(LessonPlan.teacher_id == teacher_id, LessonPlan.plan_date == parsed_date)
@@ -641,30 +644,31 @@ def _save_lesson_plans_for_date(
     )
     for plan in existing:
         db.delete(plan)
+    db.flush()
 
-    for student_id in student_ids:
+    for sort_base, student_plan in enumerate(student_plans):
         plan = LessonPlan(
-            title=title,
-            description=description or None,
+            title=student_plan["title"],
+            description=student_plan.get("description") or None,
             plan_date=parsed_date,
             teacher_id=teacher_id,
-            student_id=student_id,
+            student_id=student_plan["student_id"],
         )
         db.add(plan)
         db.flush()
-        for act_title, act_desc, act_type, audio, link, sort_order in activities_data:
+        for act_idx, activity in enumerate(student_plan.get("activities") or [], start=1):
             db.add(
                 Activity(
                     lesson_plan_id=plan.id,
-                    title=act_title,
-                    description=act_desc,
-                    sort_order=sort_order,
-                    activity_type=act_type,
-                    audio_url=audio,
-                    external_link=link,
+                    title=activity["title"],
+                    description=activity.get("description"),
+                    sort_order=act_idx + sort_base * 100,
+                    activity_type=activity["activity_type"],
+                    audio_url=activity.get("audio_url"),
+                    external_link=activity.get("external_link"),
                 )
             )
-    return len(student_ids)
+    return len(student_plans)
 
 
 def _yearly_subjects_context(db: Session, teacher_id: int) -> dict:
@@ -812,16 +816,53 @@ async def teacher_weekly_schedule_page(
     return RedirectResponse(url=f"/teacher/school-days{query}", status_code=status.HTTP_303_SEE_OTHER)
 
 
+def _build_student_plans_from_form(
+    student_ids: list[int],
+    plan_titles: list[str],
+    plan_descriptions: list[str],
+    activities_data: list[
+        tuple[int | None, str, str | None, ActivityType, str | None, str | None, int]
+    ],
+    *,
+    fallback_title: str,
+) -> list[dict]:
+    plans: list[dict] = []
+    for idx, student_id in enumerate(student_ids):
+        title = plan_titles[idx] if idx < len(plan_titles) else ""
+        description = plan_descriptions[idx] if idx < len(plan_descriptions) else ""
+        student_activities = [
+            {
+                "title": act_title,
+                "description": act_desc,
+                "activity_type": act_type,
+                "audio_url": audio,
+                "external_link": link,
+            }
+            for act_student_id, act_title, act_desc, act_type, audio, link, _sort in activities_data
+            if act_student_id == student_id
+        ]
+        plans.append(
+            {
+                "student_id": student_id,
+                "title": title.strip() or fallback_title,
+                "description": description.strip(),
+                "activities": student_activities,
+            }
+        )
+    return plans
+
+
 @router.post("/teacher/lesson-planning/plan")
 async def save_lesson_planning_plan(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
-    title: str = Form(...),
-    description: str = Form(""),
     plan_date: str = Form(...),
     cal_month: str = Form(""),
     student_ids: list[int] = Form(...),
-    activity_titles: list[str] = Form(...),
+    plan_titles: list[str] = Form(default=[]),
+    plan_descriptions: list[str] = Form(default=[]),
+    activity_student_ids: list[int] = Form(default=[]),
+    activity_titles: list[str] = Form(default=[]),
     activity_descriptions: list[str] = Form(default=[]),
     activity_types: list[str] = Form(default=[]),
     activity_audio_urls: list[str] = Form(default=[]),
@@ -856,15 +897,20 @@ async def save_lesson_planning_plan(
         activity_types,
         activity_audio_urls,
         activity_external_links,
+        activity_student_ids,
+    )
+    student_plans = _build_student_plans_from_form(
+        student_ids,
+        plan_titles,
+        plan_descriptions,
+        activities_data,
+        fallback_title=parsed_date.strftime("%A, %B %d, %Y"),
     )
     count = _save_lesson_plans_for_date(
         db,
         current_user.id,
         parsed_date,
-        title,
-        description,
-        student_ids,
-        activities_data,
+        student_plans,
     )
     db.commit()
     return _lesson_planning_redirect(
@@ -1062,7 +1108,7 @@ async def teacher_school_days_page(
         subject_student_ids = (
             _fetch_subject_student_ids(subject)
             if subject
-            else [student.id for student in students]
+            else []
         )
 
     return render(
@@ -1249,15 +1295,32 @@ async def create_lesson_plan(
         activity_types,
         activity_audio_urls,
         activity_external_links,
+        activity_student_ids=None,
     )
+    # Legacy create form: shared title/activities copied to each selected student.
+    student_plans = [
+        {
+            "student_id": student_id,
+            "title": title.strip() or parsed_date.strftime("%A, %B %d, %Y"),
+            "description": description.strip(),
+            "activities": [
+                {
+                    "title": act_title,
+                    "description": act_desc,
+                    "activity_type": act_type,
+                    "audio_url": audio,
+                    "external_link": link,
+                }
+                for _sid, act_title, act_desc, act_type, audio, link, _sort in activities_data
+            ],
+        }
+        for student_id in student_ids
+    ]
     count = _save_lesson_plans_for_date(
         db,
         current_user.id,
         parsed_date,
-        title,
-        description,
-        student_ids,
-        activities_data,
+        student_plans,
     )
     db.commit()
     return _lesson_planning_redirect(

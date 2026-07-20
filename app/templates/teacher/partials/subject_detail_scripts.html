@@ -4,18 +4,41 @@
     if (!form) return;
 
     const hidden = document.getElementById('weekdays_list');
+    const nameInput = document.getElementById('item_name');
+    const lessonAmountInput = document.getElementById('lesson_amount');
+    const isNewSubject = !form.querySelector('input[name="subject_id"]');
+    const mathLaDefault = Number(lessonAmountInput?.dataset.defaultMathLa || 120);
 
     function syncWeekdays() {
         const checked = [...form.querySelectorAll('.weekday-cb:checked')].map(cb => cb.value);
         if (hidden) hidden.value = checked.join(',');
     }
 
+    function normalizedSubjectName(value) {
+        return (value || '').trim().toLowerCase();
+    }
+
+    function maybeDefaultMathLaLessons() {
+        if (!isNewSubject || !lessonAmountInput || !nameInput) return;
+        const name = normalizedSubjectName(nameInput.value);
+        if (name === 'math' || name === 'language arts') {
+            const current = lessonAmountInput.value.trim();
+            if (current === '' || current === '0') {
+                lessonAmountInput.value = String(mathLaDefault);
+            }
+        }
+    }
+
     form.querySelectorAll('.weekday-cb').forEach(cb => {
         cb.addEventListener('change', syncWeekdays);
     });
 
+    nameInput?.addEventListener('change', maybeDefaultMathLaLessons);
+    nameInput?.addEventListener('blur', maybeDefaultMathLaLessons);
+
     form.addEventListener('submit', function (e) {
         syncWeekdays();
+        maybeDefaultMathLaLessons();
         const submitter = e.submitter;
         if (submitter && submitter.getAttribute('formaction')?.includes('/delete')) {
             return;

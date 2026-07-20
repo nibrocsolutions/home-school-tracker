@@ -419,6 +419,20 @@ def build_attendance_report_pdf(attendance: dict, *, subtitle: str) -> bytes:
     )
     _render_date_block(
         pdf,
+        "Sick Days",
+        _format_date_list(
+            [entry["date"] for entry in by_type.get(SchoolDayType.sick, [])]
+        ),
+    )
+    _render_date_block(
+        pdf,
+        "Skip Days",
+        _format_date_list(
+            [entry["date"] for entry in by_type.get(SchoolDayType.skip, [])]
+        ),
+    )
+    _render_date_block(
+        pdf,
         "Holidays",
         _format_holiday_date_list(by_type.get(SchoolDayType.holiday, [])),
     )

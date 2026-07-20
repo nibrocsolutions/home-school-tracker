@@ -94,6 +94,43 @@ def run_schema_migrations(db: Session) -> None:
 
     _migrate_weekly_schedule_item_students(db, inspector)
     _migrate_planned_school_days(db, inspector)
+    _migrate_school_day_type_enum(db)
+
+
+def _migrate_school_day_type_enum(db: Session) -> None:
+    """Ensure sick/skip values exist for PostgreSQL native enums."""
+    bind = db.get_bind()
+    if bind.dialect.name != "postgresql":
+        return
+
+    db.commit()
+    rows = db.execute(
+        text(
+            "SELECT DISTINCT t.typname "
+            "FROM pg_type t "
+            "JOIN pg_enum e ON t.oid = e.enumtypid "
+            "WHERE e.enumlabel = 'actual_school'"
+        )
+    ).fetchall()
+    type_names = {row[0] for row in rows}
+    if not type_names:
+        return
+
+    raw = bind.execution_options(isolation_level="AUTOCOMMIT")
+    with raw.connect() as conn:
+        for type_name in type_names:
+            for value in ("sick", "skip"):
+                exists = conn.execute(
+                    text(
+                        "SELECT 1 FROM pg_enum e "
+                        "JOIN pg_type t ON t.oid = e.enumtypid "
+                        "WHERE t.typname = :type_name AND e.enumlabel = :value"
+                    ),
+                    {"type_name": type_name, "value": value},
+                ).first()
+                if exists:
+                    continue
+                conn.execute(text(f"ALTER TYPE {type_name} ADD VALUE '{value}'"))
 
 
 def _migrate_weekly_schedule_item_students(db: Session, inspector) -> None:

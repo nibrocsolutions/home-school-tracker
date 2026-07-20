@@ -45,6 +45,8 @@ const DAY_TYPE_CLASSES = [
     'day-type-school_off',
     'day-type-holiday',
     'day-type-weekend',
+    'day-type-sick',
+    'day-type-skip',
 ];
 
 const DAY_TYPE_LABELS = {
@@ -52,6 +54,8 @@ const DAY_TYPE_LABELS = {
     school_off: 'planned school day off',
     holiday: 'holiday',
     weekend: 'weekend',
+    sick: 'sick day',
+    skip: 'skip day',
 };
 
 function formatSchoolDayDate(isoDate) {
@@ -127,9 +131,39 @@ function updateSchoolDayButton(button, dayType, isCompleted, holidayName) {
     button.setAttribute('aria-label', ariaLabel);
 }
 
+function updateSubjectsProgress(rows) {
+    if (!rows || !rows.length) {
+        return;
+    }
+    rows.forEach(function (row) {
+        const tr = document.querySelector('[data-subject-progress-id="' + row.id + '"]');
+        if (!tr) {
+            return;
+        }
+        const available = tr.querySelector('.subject-available-days');
+        const balance = tr.querySelector('.subject-balance');
+        const scheduled = tr.querySelector('.subject-scheduled');
+        const dropped = tr.querySelector('.subject-dropped');
+        const requested = tr.querySelector('.subject-lessons-requested');
+        if (requested) requested.textContent = row.lessons_per_year;
+        if (available) available.textContent = row.available_days;
+        if (balance) {
+            balance.textContent = row.balance;
+            balance.classList.toggle('count-negative', row.balance < 0);
+        }
+        if (scheduled) scheduled.textContent = row.scheduled;
+        if (dropped) {
+            dropped.textContent = row.dropped;
+            dropped.classList.toggle('count-negative', row.dropped > 0);
+        }
+    });
+}
+
 function updateSchoolDayCounters(data) {
     const plannedActualEl = document.querySelector('.counter-planned-actual');
     const plannedOffEl = document.querySelector('.counter-planned-off');
+    const plannedSickEl = document.querySelector('.counter-planned-sick');
+    const plannedSkipEl = document.querySelector('.counter-planned-skip');
     const completedEl = document.querySelector('.counter-completed');
     const remainingEl = document.querySelector('.counter-remaining');
     const requiredEl = document.querySelector('.counter-required');
@@ -140,6 +174,12 @@ function updateSchoolDayCounters(data) {
     }
     if (plannedOffEl) {
         plannedOffEl.textContent = data.planned_school_off_count;
+    }
+    if (plannedSickEl && data.planned_sick_count != null) {
+        plannedSickEl.textContent = data.planned_sick_count;
+    }
+    if (plannedSkipEl && data.planned_skip_count != null) {
+        plannedSkipEl.textContent = data.planned_skip_count;
     }
     if (completedEl) {
         completedEl.textContent = data.completed_count;
@@ -269,6 +309,9 @@ function initSchoolDayEditor() {
                 data.holiday_name
             );
             updateSchoolDayCounters(data);
+            if (data.subjects_progress) {
+                updateSubjectsProgress(data.subjects_progress);
+            }
             closeEditor();
         } finally {
             saveBtn.disabled = false;

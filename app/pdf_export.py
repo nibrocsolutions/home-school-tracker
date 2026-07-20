@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date
 from io import BytesIO
 
 from fpdf import FPDF

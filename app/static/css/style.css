@@ -1552,6 +1552,27 @@ body {
     font-weight: 700;
 }
 
+.count-negative {
+    color: #b91c1c;
+}
+
+.subjects-progress-panel {
+    margin: 1rem 0 1.5rem;
+}
+
+.subjects-progress-panel h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.05rem;
+}
+
+.subjects-progress-table {
+    margin-bottom: 1rem;
+}
+
+.school-day-subjects-panel .subjects-progress-table {
+    margin: 0.75rem 0 1rem;
+}
+
 .school-day-complete {
     margin-top: 1rem;
 }
@@ -1625,6 +1646,26 @@ button.school-day-cell:hover {
 
 .school-day-cell.day-type-school_off:hover {
     background: #fecaca;
+}
+
+.school-day-cell.day-type-sick {
+    background: #ffedd5;
+    border-color: #ea580c;
+    color: #9a3412;
+}
+
+.school-day-cell.day-type-sick:hover {
+    background: #fed7aa;
+}
+
+.school-day-cell.day-type-skip {
+    background: #e0e7ff;
+    border-color: #4f46e5;
+    color: #3730a3;
+}
+
+.school-day-cell.day-type-skip:hover {
+    background: #c7d2fe;
 }
 
 .school-day-cell.day-type-holiday {
@@ -1754,6 +1795,16 @@ button.school-day-cell:hover {
 .legend-swatch.day-type-school_off {
     background: #fee2e2;
     border-color: #dc2626;
+}
+
+.legend-swatch.day-type-sick {
+    background: #ffedd5;
+    border-color: #ea580c;
+}
+
+.legend-swatch.day-type-skip {
+    background: #e0e7ff;
+    border-color: #4f46e5;
 }
 
 .legend-swatch.day-type-holiday {

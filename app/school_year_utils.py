@@ -8,6 +8,8 @@ DAY_TYPE_CYCLE = (
     SchoolDayType.weekend,
     SchoolDayType.holiday,
     SchoolDayType.school_off,
+    SchoolDayType.sick,
+    SchoolDayType.skip,
     SchoolDayType.actual_school,
 )
 
@@ -206,10 +208,14 @@ def planned_day_counts(school_year: SchoolDayYear) -> dict[str, int]:
     ]
     actual_school = [day for day in planned if day.day_type == SchoolDayType.actual_school]
     school_off = [day for day in planned if day.day_type == SchoolDayType.school_off]
+    sick = [day for day in planned if day.day_type == SchoolDayType.sick]
+    skip = [day for day in planned if day.day_type == SchoolDayType.skip]
     completed = [day for day in actual_school if day.is_completed]
     return {
         "planned_actual_count": len(actual_school),
         "planned_school_off_count": len(school_off),
+        "planned_sick_count": len(sick),
+        "planned_skip_count": len(skip),
         "completed_count": len(completed),
         "possible_days": count_possible_school_days(
             school_year.start_date, school_year.end_date

@@ -168,6 +168,8 @@ def build_lesson_planning_context(
         "school_day_type_labels": {
             SchoolDayType.actual_school: "Planned actual school days",
             SchoolDayType.school_off: "Planned school days off",
+            SchoolDayType.sick: "Sick days",
+            SchoolDayType.skip: "Skip days",
             SchoolDayType.holiday: "Holidays",
             SchoolDayType.weekend: "Weekends",
         },

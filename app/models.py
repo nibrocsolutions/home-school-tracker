@@ -113,6 +113,7 @@ class AppSetting(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     sample_lesson_plans_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     sample_data_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    cleared_auto_holidays: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -207,7 +208,6 @@ class SchoolDayType(str, enum.Enum):
     holiday = "holiday"
     weekend = "weekend"
     sick = "sick"
-    skip = "skip"
 
 
 class SchoolDayYear(Base):

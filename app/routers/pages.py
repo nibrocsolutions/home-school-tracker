@@ -1477,18 +1477,16 @@ async def update_school_day(
     planned.updated_at = datetime.utcnow()
     db.flush()
 
-    # Sick/skip/off (or restore to actual school) shifts unfinished subject lessons.
+    # Sick/off (or restore to actual school) shifts unfinished subject lessons.
     if previous_type != parsed_type and (
         previous_type == SchoolDayType.actual_school
         or parsed_type == SchoolDayType.actual_school
         or parsed_type in (
             SchoolDayType.sick,
-            SchoolDayType.skip,
             SchoolDayType.school_off,
         )
         or previous_type in (
             SchoolDayType.sick,
-            SchoolDayType.skip,
             SchoolDayType.school_off,
         )
     ):
@@ -1519,7 +1517,6 @@ async def update_school_day(
                 "planned_actual_count": counts["planned_actual_count"],
                 "planned_school_off_count": counts["planned_school_off_count"],
                 "planned_sick_count": counts.get("planned_sick_count", 0),
-                "planned_skip_count": counts.get("planned_skip_count", 0),
                 "completed_count": completed_count,
                 "required_days": required_days,
                 "remaining_days": max(required_days - completed_count, 0),

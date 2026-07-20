@@ -85,7 +85,7 @@ def build_school_day_month_grid(
                             day_type = planned[d]["day_type"]
                             is_completed = planned[d]["is_completed"]
                         else:
-                            day_type = default_day_type(d, holidays)
+                            day_type = default_day_type(d)
                 row.append(
                     {
                         "day": day_num,
@@ -114,7 +114,6 @@ def build_school_day_context(
         "planned_actual_count": 0,
         "planned_school_off_count": 0,
         "planned_sick_count": 0,
-        "planned_skip_count": 0,
         "completed_count": 0,
         "possible_days": 0,
     }
@@ -139,7 +138,6 @@ def build_school_day_context(
         "planned_actual_count": counts["planned_actual_count"],
         "planned_school_off_count": counts["planned_school_off_count"],
         "planned_sick_count": counts.get("planned_sick_count", 0),
-        "planned_skip_count": counts.get("planned_skip_count", 0),
         "completed_count": counts["completed_count"],
         "required_days": required_days,
         "remaining_days": remaining_days,

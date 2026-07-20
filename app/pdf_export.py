@@ -4,12 +4,8 @@ from io import BytesIO
 from fpdf import FPDF
 
 from app.calendar_utils import (
-    build_month_grid,
     group_plans_by_date,
-    month_end,
-    month_start,
     period_label,
-    week_start,
 )
 from app.models import LessonPlan, SchoolDayType
 
@@ -234,36 +230,6 @@ def _render_weekly_overview_table(pdf: LessonPlanPDF, plans: list[LessonPlan]) -
     pdf.ln(6)
 
 
-def _render_monthly_overview_table(pdf: LessonPlanPDF, plans: list[LessonPlan], ref: date) -> None:
-    pdf._section_title(f"Monthly Calendar — {ref.strftime('%B %Y')}")
-    plan_by_date = group_plans_by_date(plans)
-    plan_dates = set(plan_by_date.keys())
-    grid = build_month_grid(ref, plan_dates)
-
-    width = pdf._usable_width()
-    day_width = width / 7
-    weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    pdf._table_row(weekdays, [day_width] * 7, header=True)
-
-    for week in grid:
-        cells = []
-        for cell in week:
-            if cell["day"] is None:
-                cells.append("")
-            else:
-                d = cell["date"]
-                day_plans = plan_by_date.get(d, [])
-                if day_plans:
-                    titles = ", ".join(p.title for p in day_plans[:2])
-                    if len(day_plans) > 2:
-                        titles += f" (+{len(day_plans) - 2})"
-                    cells.append(f"{cell['day']}\n{titles}")
-                else:
-                    cells.append(str(cell["day"]))
-        pdf._multi_line_table_row(cells, [day_width] * 7, line_height=6)
-    pdf.ln(6)
-
-
 def _render_daily_view(
     pdf: LessonPlanPDF,
     plans: list[LessonPlan],
@@ -296,13 +262,8 @@ def _render_monthly_view(
     ref: date,
     completions_by_plan: dict[int, dict[int, bool]] | None,
 ) -> None:
-    _render_monthly_overview_table(pdf, plans, ref)
-    pdf._section_title("Lesson Plan Details")
-    grouped = group_plans_by_date(plans)
-    for plan_date, day_plans in sorted(grouped.items()):
-        for plan in day_plans:
-            plan_completions = completions_by_plan.get(plan.id) if completions_by_plan else None
-            _render_plan_block(pdf, plan, plan_completions, show_date=True)
+    # Monthly PDF export includes only daily lesson details (no monthly calendar overview).
+    _render_daily_view(pdf, plans, completions_by_plan)
 
 
 def build_lesson_plan_pdf(

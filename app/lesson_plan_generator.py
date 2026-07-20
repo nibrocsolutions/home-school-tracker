@@ -1,10 +1,14 @@
-from datetime import date
+from datetime import date, timedelta
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models import Activity, ActivityType, LessonPlan, SchoolDayType, SchoolDayYear, WeeklyScheduleItem
 from app.school_year_utils import iter_dates_in_range
-from app.weekly_schedule import parse_weekdays, schedule_item_to_activity
+from app.weekly_schedule import (
+    activity_matches_schedule_item,
+    parse_weekdays,
+    schedule_item_to_activity,
+)
 
 
 def distribute_lesson_dates(matching_days: list[date], lesson_amount: int) -> list[date]:
@@ -45,8 +49,8 @@ def build_subject_assignments(
 
         matching = [d for d in actual_days if d.weekday() in weekdays]
         selected_dates = distribute_lesson_dates(matching, lesson_amount)
-        activity = schedule_item_to_activity(item)
-        for day_date in selected_dates:
+        for lesson_number, day_date in enumerate(selected_dates, start=1):
+            activity = schedule_item_to_activity(item, lesson_number=lesson_number)
             assignments.setdefault(day_date, []).append(activity)
 
     return assignments
@@ -54,6 +58,81 @@ def build_subject_assignments(
 
 def _activity_exists(plan: LessonPlan, title: str) -> bool:
     return any(activity.title == title for activity in plan.activities)
+
+
+def _clear_schedule_item_activities(
+    db: Session,
+    teacher_id: int,
+    school_year: SchoolDayYear,
+    schedule_items: list[WeeklyScheduleItem],
+) -> None:
+    """Remove previously auto-populated activities for the given subjects so they can be rebuilt."""
+    if not schedule_items:
+        return
+
+    plans = (
+        db.query(LessonPlan)
+        .options(joinedload(LessonPlan.activities))
+        .filter(
+            LessonPlan.teacher_id == teacher_id,
+            LessonPlan.plan_date >= school_year.start_date,
+            LessonPlan.plan_date <= school_year.end_date,
+        )
+        .all()
+    )
+
+    empty_plans: list[LessonPlan] = []
+    for plan in plans:
+        remaining = []
+        for activity in list(plan.activities):
+            if any(activity_matches_schedule_item(activity.title, item) for item in schedule_items):
+                db.delete(activity)
+            else:
+                remaining.append(activity)
+        if not remaining:
+            empty_plans.append(plan)
+
+    db.flush()
+    for plan in empty_plans:
+        db.delete(plan)
+    db.flush()
+    db.expire_all()
+
+
+def shift_lesson_plans_by_days(
+    db: Session,
+    teacher_id: int,
+    old_start: date,
+    old_end: date,
+    day_delta: int,
+) -> int:
+    """Move lesson plans within the previous school-year range by day_delta days."""
+    if day_delta == 0:
+        return 0
+
+    delta = timedelta(days=day_delta)
+    plans = (
+        db.query(LessonPlan)
+        .filter(
+            LessonPlan.teacher_id == teacher_id,
+            LessonPlan.plan_date >= old_start,
+            LessonPlan.plan_date <= old_end,
+        )
+        .all()
+    )
+
+    shifted = 0
+    for plan in plans:
+        old_date = plan.plan_date
+        new_date = old_date + delta
+        auto_title = old_date.strftime("%A, %B %d, %Y")
+        if plan.title == auto_title:
+            plan.title = new_date.strftime("%A, %B %d, %Y")
+        plan.plan_date = new_date
+        shifted += 1
+
+    db.flush()
+    return shifted
 
 
 def populate_lesson_plans_from_subjects(
@@ -65,8 +144,12 @@ def populate_lesson_plans_from_subjects(
     if not schedule_items:
         return 0
 
+    # Rebuild from the current subject settings so weekday / amount changes replace old data.
+    _clear_schedule_item_activities(db, teacher_id, school_year, schedule_items)
+
     existing_plans = (
         db.query(LessonPlan)
+        .options(joinedload(LessonPlan.activities))
         .filter(
             LessonPlan.teacher_id == teacher_id,
             LessonPlan.plan_date >= school_year.start_date,

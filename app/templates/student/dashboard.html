@@ -6,7 +6,7 @@
 {% block body %}
 {% set home_url = '/student' %}
 {% set page_title = 'My Lesson Plans' %}
-{% set page_subtitle = 'View your plans and track daily activities.' %}
+{% set page_subtitle = 'Browse your week, then open a day to track activities.' %}
 {% include "partials/nav.html" %}
 
 <main class="main-content">
@@ -22,7 +22,14 @@
         {% include "partials/lesson_calendar.html" %}
     </section>
 
-    {% if show_interactive and lesson_plan %}
+    {% if view == 'weekly' %}
+    <section class="panel">
+        <p class="section-hint">Click a day above to view and complete that day's plans.</p>
+        {% if not has_week_plans %}
+        <p class="empty-state">No lesson plans for this week.{% if empty_hint %} {{ empty_hint }}{% endif %}</p>
+        {% endif %}
+    </section>
+    {% elif show_interactive and lesson_plan %}
     <section class="progress-section">
         <div class="progress-card">
             <div class="progress-header">
@@ -47,6 +54,8 @@
             {% set act_data = completions.get(act.id, {}) %}
             <div class="checklist-item-wrap {% if act_data.get('completed') %}completed{% endif %}">
                 <form method="post" action="/student/activities/{{ act.id }}/toggle" class="checklist-item">
+                    <input type="hidden" name="view" value="daily">
+                    <input type="hidden" name="ref_date" value="{{ ref_date }}">
                     <button type="submit" class="checkbox-btn" aria-label="Toggle {{ act.title }}">
                         <span class="check-icon">{% if act_data.get('completed') %}✓{% endif %}</span>
                     </button>
@@ -83,6 +92,8 @@
                     <p class="sent-message"><strong>Your message:</strong> {{ act_data.get('student_message') }}</p>
                     {% endif %}
                     <form method="post" action="/student/activities/{{ act.id }}/message" class="message-form">
+                        <input type="hidden" name="view" value="daily">
+                        <input type="hidden" name="ref_date" value="{{ ref_date }}">
                         <label for="message-{{ act.id }}">
                             Message your teacher <span class="message-optional">(optional)</span>
                         </label>
@@ -99,14 +110,14 @@
             <span>🎉</span>
             <div>
                 <strong>Amazing work!</strong>
-                <p>You completed all of today's activities. High five!</p>
+                <p>You completed all of this day's activities. High five!</p>
             </div>
         </div>
         {% endif %}
     </section>
     {% else %}
     <section class="panel">
-        {% include "partials/plan_list.html" %}
+        <p class="empty-state">No lesson plans for this day.{% if empty_hint %} {{ empty_hint }}{% endif %}</p>
     </section>
     {% endif %}
 </main>

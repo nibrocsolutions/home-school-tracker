@@ -1449,7 +1449,7 @@ async def student_dashboard(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.student))],
-    view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    view: str = Query("weekly", pattern="^(daily|weekly)$"),
     ref_date: str | None = Query(None),
 ):
     all_plans = _fetch_student_plans(db, current_user.id)
@@ -1462,9 +1462,10 @@ async def student_dashboard(
     progress = 0
     done_count = 0
     total_count = 0
-    show_interactive = view == "daily" and ref == today
+    # Interactive checklist for any selected day's plan (after clicking a day in the week).
+    show_interactive = view == "daily" and bool(calendar["lesson_plans"])
 
-    if show_interactive and calendar["lesson_plans"]:
+    if show_interactive:
         lesson_plan = calendar["lesson_plans"][0]
         plan_completions = load_completions_for_plans(db, current_user.id, [lesson_plan])
         completions = plan_completions.get(lesson_plan.id, {})
@@ -1473,6 +1474,9 @@ async def student_dashboard(
         progress = int((done_count / total_count) * 100) if total_count else 0
 
     all_completions = load_completions_for_plans(db, current_user.id, calendar["lesson_plans"])
+    has_week_plans = (
+        any(day["plans"] for day in calendar["week_days"]) if view == "weekly" else False
+    )
 
     return render(
         request,
@@ -1481,7 +1485,6 @@ async def student_dashboard(
             "user": current_user,
             "today": today,
             "base_path": "/student",
-            "pdf_path": "/student/lesson-plans.pdf",
             "plan_card_partial": "student/partials/plan_card.html",
             "empty_hint": "Check back later — your teacher may add activities soon!",
             "lesson_plan": lesson_plan,
@@ -1491,6 +1494,10 @@ async def student_dashboard(
             "total_count": total_count,
             "show_interactive": show_interactive,
             "all_completions": all_completions,
+            "hide_view_toggle": True,
+            "hide_pdf_buttons": True,
+            "week_back_ref": ref.isoformat() if view == "daily" else None,
+            "has_week_plans": has_week_plans,
             **calendar,
         },
     )
@@ -1522,11 +1529,33 @@ async def student_lesson_plans_pdf(
     )
 
 
+def _student_return_url(
+    *,
+    view: str = "weekly",
+    ref_date: str | None = None,
+    success: str | None = None,
+    error: str | None = None,
+) -> str:
+    params: list[str] = []
+    if view in ("daily", "weekly"):
+        params.append(f"view={view}")
+    if ref_date:
+        params.append(f"ref_date={ref_date}")
+    if success:
+        params.append(f"success={success}")
+    if error:
+        params.append(f"error={error}")
+    query = f"?{'&'.join(params)}" if params else ""
+    return f"/student{query}"
+
+
 @router.post("/student/activities/{activity_id}/toggle")
 async def toggle_activity(
     activity_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.student))],
+    view: str = Form("daily"),
+    ref_date: str = Form(""),
 ):
     activity = db.query(Activity).filter(Activity.id == activity_id).first()
     if not activity:
@@ -1556,7 +1585,10 @@ async def toggle_activity(
         )
         db.add(completion)
     db.commit()
-    return RedirectResponse(url="/student", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url=_student_return_url(view=view, ref_date=ref_date or None),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @router.post("/student/activities/{activity_id}/message")
@@ -1565,6 +1597,8 @@ async def submit_activity_message(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.student))],
     student_message: str = Form(""),
+    view: str = Form("daily"),
+    ref_date: str = Form(""),
 ):
     activity = db.query(Activity).filter(Activity.id == activity_id).first()
     if not activity:
@@ -1576,7 +1610,10 @@ async def submit_activity_message(
 
     message = student_message.strip()
     if not message:
-        return RedirectResponse(url="/student", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url=_student_return_url(view=view, ref_date=ref_date or None, error="message"),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
     completion = (
         db.query(ActivityCompletion)
@@ -1599,4 +1636,9 @@ async def submit_activity_message(
         )
         db.add(completion)
     db.commit()
-    return RedirectResponse(url="/student?success=message", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url=_student_return_url(
+            view=view, ref_date=ref_date or None, success="message"
+        ),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )

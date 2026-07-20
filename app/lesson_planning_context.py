@@ -55,7 +55,7 @@ def build_lesson_planning_month_grid(
                             day_type = planned[d]["day_type"]
                             is_completed = planned[d]["is_completed"]
                         else:
-                            day_type = default_day_type(d, holidays)
+                            day_type = default_day_type(d)
                 row.append(
                     {
                         "day": day_num,
@@ -169,7 +169,6 @@ def build_lesson_planning_context(
             SchoolDayType.actual_school: "Planned actual school days",
             SchoolDayType.school_off: "Planned school days off",
             SchoolDayType.sick: "Sick days",
-            SchoolDayType.skip: "Skip days",
             SchoolDayType.holiday: "Holidays",
             SchoolDayType.weekend: "Weekends",
         },

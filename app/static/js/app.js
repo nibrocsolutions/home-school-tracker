@@ -46,7 +46,6 @@ const DAY_TYPE_CLASSES = [
     'day-type-holiday',
     'day-type-weekend',
     'day-type-sick',
-    'day-type-skip',
 ];
 
 const DAY_TYPE_LABELS = {
@@ -55,7 +54,6 @@ const DAY_TYPE_LABELS = {
     holiday: 'holiday',
     weekend: 'weekend',
     sick: 'sick day',
-    skip: 'skip day',
 };
 
 function formatSchoolDayDate(isoDate) {
@@ -71,7 +69,14 @@ function formatSchoolDayDate(isoDate) {
 
 function displaySchoolDayType(dayType) {
     // Holidays keep holiday metadata/text but look like normal school days on the calendar.
-    return dayType === 'holiday' ? 'actual_school' : dayType;
+    // Sick days use the same red styling as planned school days off.
+    if (dayType === 'holiday') {
+        return 'actual_school';
+    }
+    if (dayType === 'sick') {
+        return 'school_off';
+    }
+    return dayType;
 }
 
 function updateSchoolDayButton(button, dayType, isCompleted, holidayName) {
@@ -163,7 +168,6 @@ function updateSchoolDayCounters(data) {
     const plannedActualEl = document.querySelector('.counter-planned-actual');
     const plannedOffEl = document.querySelector('.counter-planned-off');
     const plannedSickEl = document.querySelector('.counter-planned-sick');
-    const plannedSkipEl = document.querySelector('.counter-planned-skip');
     const completedEl = document.querySelector('.counter-completed');
     const remainingEl = document.querySelector('.counter-remaining');
     const requiredEl = document.querySelector('.counter-required');
@@ -177,9 +181,6 @@ function updateSchoolDayCounters(data) {
     }
     if (plannedSickEl && data.planned_sick_count != null) {
         plannedSickEl.textContent = data.planned_sick_count;
-    }
-    if (plannedSkipEl && data.planned_skip_count != null) {
-        plannedSkipEl.textContent = data.planned_skip_count;
     }
     if (completedEl) {
         completedEl.textContent = data.completed_count;

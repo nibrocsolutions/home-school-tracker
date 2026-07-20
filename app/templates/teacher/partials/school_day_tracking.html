@@ -55,10 +55,6 @@
                         <td><strong class="counter-planned-sick">{{ planned_sick_count }}</strong></td>
                     </tr>
                     <tr>
-                        <td>Skip Days</td>
-                        <td><strong class="counter-planned-skip">{{ planned_skip_count }}</strong></td>
-                    </tr>
-                    <tr>
                         <td>Completed Actual School Days</td>
                         <td><strong class="counter-completed">{{ completed_count }}</strong></td>
                     </tr>
@@ -74,11 +70,11 @@
             </table>
             {% if school_year %}
             <p class="section-hint progress-footnote">
-                Possible school days are weekdays (Monday–Friday) excluding federal holidays.
+                Possible school days are weekdays (Monday–Friday). Federal holiday names may appear on the calendar, but those days stay as school days unless you mark them as holiday, sick, or off.
             </p>
             {% else %}
             <p class="section-hint possible-days-hint">
-                Select first and last day of school to see possible school days (Monday–Friday, excluding holidays).
+                Select first and last day of school to see possible school days (Monday–Friday).
             </p>
             {% endif %}
             <div id="school-day-complete-banner"
@@ -136,7 +132,7 @@
                 {% for cell in week %}
                 {% if cell.day %}
                     {% if cell.in_range %}
-                    {% set display_day_type = 'actual_school' if cell.day_type.value == 'holiday' else cell.day_type.value %}
+                    {% set display_day_type = 'actual_school' if cell.day_type.value == 'holiday' else ('school_off' if cell.day_type.value == 'sick' else cell.day_type.value) %}
                     <button type="button"
                             class="school-day-cell school-day-edit-btn day-type-{{ display_day_type }}{% if cell.is_completed and cell.day_type.value == 'actual_school' %} completed{% endif %}{% if cell.is_today %} today{% endif %}"
                             data-day-date="{{ cell.date.isoformat() }}"
@@ -175,7 +171,6 @@
             </span>
             <span class="legend-item"><span class="legend-swatch day-type-school_off"></span> Planned school days off</span>
             <span class="legend-item"><span class="legend-swatch day-type-sick"></span> Sick days</span>
-            <span class="legend-item"><span class="legend-swatch day-type-skip"></span> Skip days</span>
             <span class="legend-item"><span class="legend-swatch day-type-weekend"></span> Weekends</span>
         </div>
 
@@ -204,11 +199,6 @@
                         Sick day
                     </label>
                     <label class="school-day-type-option">
-                        <input type="radio" name="day_type" value="skip">
-                        <span class="legend-swatch day-type-skip"></span>
-                        Skip day
-                    </label>
-                    <label class="school-day-type-option">
                         <input type="radio" name="day_type" value="holiday">
                         <span class="legend-swatch day-type-holiday"></span>
                         Holiday
@@ -220,8 +210,8 @@
                     </label>
                 </fieldset>
                 <p class="section-hint">
-                    Sick or skip days move unfinished subject lessons to later matching days.
-                    Lessons that no longer fit the school year are dropped.
+                    Sick days behave like planned days off: unfinished subject lessons move to later matching days,
+                    and lessons that no longer fit are dropped. Holidays only affect lessons when you set a day to Holiday here.
                 </p>
                 <label class="school-day-completed-option" id="school-day-completed-wrap" hidden>
                     <input type="checkbox" name="is_completed" id="school-day-completed">

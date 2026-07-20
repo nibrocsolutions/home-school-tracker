@@ -309,7 +309,7 @@ def reschedule_lessons_after_day_type_change(
     teacher_id: int,
     school_year: SchoolDayYear,
 ) -> int:
-    """Rebuild subject lessons after sick/skip/off changes, keeping completed work in place.
+    """Rebuild subject lessons after sick/off changes, keeping completed work in place.
 
     Unfinished lessons shift onto later available matching days. Lessons that no longer fit
     the remaining range are dropped.

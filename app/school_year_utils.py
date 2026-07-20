@@ -9,7 +9,6 @@ DAY_TYPE_CYCLE = (
     SchoolDayType.holiday,
     SchoolDayType.school_off,
     SchoolDayType.sick,
-    SchoolDayType.skip,
     SchoolDayType.actual_school,
 )
 
@@ -87,20 +86,24 @@ def holidays_in_range(start: date, end: date) -> set[date]:
     return {d for d in holidays if start <= d <= end}
 
 
-def default_day_type(d: date, holiday_dates: set[date]) -> SchoolDayType:
+def default_day_type(d: date, holiday_dates: set[date] | None = None) -> SchoolDayType:
+    """Default day type for newly created planned days.
+
+    Federal holidays are NOT auto-marked as holiday — they stay actual school days
+    unless the teacher manually edits the day to holiday. Holiday names can still
+    be shown as labels on the calendar.
+    """
     if is_weekend(d):
         return SchoolDayType.weekend
-    if d in holiday_dates:
-        return SchoolDayType.holiday
     return SchoolDayType.actual_school
 
 
 def count_possible_school_days(start: date, end: date) -> int:
-    holidays = holidays_in_range(start, end)
+    """Count weekdays in range. Federal holidays count unless marked off manually later."""
     count = 0
     current = start
     while current <= end:
-        if current.weekday() < 5 and current not in holidays:
+        if current.weekday() < 5:
             count += 1
         current += timedelta(days=1)
     return count
@@ -114,7 +117,6 @@ def iter_dates_in_range(start: date, end: date):
 
 
 def ensure_planned_days(db: Session, school_year: SchoolDayYear) -> None:
-    holidays = holidays_in_range(school_year.start_date, school_year.end_date)
     existing = {day.day_date: day for day in school_year.planned_days}
 
     for day_date in iter_dates_in_range(school_year.start_date, school_year.end_date):
@@ -123,7 +125,7 @@ def ensure_planned_days(db: Session, school_year: SchoolDayYear) -> None:
                 PlannedSchoolDay(
                     school_day_year_id=school_year.id,
                     day_date=day_date,
-                    day_type=default_day_type(day_date, holidays),
+                    day_type=default_day_type(day_date),
                     is_completed=False,
                 )
             )
@@ -168,7 +170,7 @@ def collect_school_day_attendance(school_year: SchoolDayYear) -> dict:
             day_type = planned.day_type
             is_completed = planned.is_completed
         else:
-            day_type = default_day_type(day_date, holidays)
+            day_type = default_day_type(day_date)
             is_completed = False
 
         entry = {
@@ -209,13 +211,11 @@ def planned_day_counts(school_year: SchoolDayYear) -> dict[str, int]:
     actual_school = [day for day in planned if day.day_type == SchoolDayType.actual_school]
     school_off = [day for day in planned if day.day_type == SchoolDayType.school_off]
     sick = [day for day in planned if day.day_type == SchoolDayType.sick]
-    skip = [day for day in planned if day.day_type == SchoolDayType.skip]
     completed = [day for day in actual_school if day.is_completed]
     return {
         "planned_actual_count": len(actual_school),
         "planned_school_off_count": len(school_off),
         "planned_sick_count": len(sick),
-        "planned_skip_count": len(skip),
         "completed_count": len(completed),
         "possible_days": count_possible_school_days(
             school_year.start_date, school_year.end_date

@@ -95,10 +95,11 @@ def run_schema_migrations(db: Session) -> None:
     _migrate_weekly_schedule_item_students(db, inspector)
     _migrate_planned_school_days(db, inspector)
     _migrate_school_day_type_enum(db)
+    _migrate_remove_skip_and_auto_holidays(db, inspector)
 
 
 def _migrate_school_day_type_enum(db: Session) -> None:
-    """Ensure sick/skip values exist for PostgreSQL native enums."""
+    """Ensure sick value exists for PostgreSQL native enums."""
     bind = db.get_bind()
     if bind.dialect.name != "postgresql":
         return
@@ -119,7 +120,7 @@ def _migrate_school_day_type_enum(db: Session) -> None:
     raw = bind.execution_options(isolation_level="AUTOCOMMIT")
     with raw.connect() as conn:
         for type_name in type_names:
-            for value in ("sick", "skip"):
+            for value in ("sick",):
                 exists = conn.execute(
                     text(
                         "SELECT 1 FROM pg_enum e "
@@ -131,6 +132,59 @@ def _migrate_school_day_type_enum(db: Session) -> None:
                 if exists:
                     continue
                 conn.execute(text(f"ALTER TYPE {type_name} ADD VALUE '{value}'"))
+
+
+def _migrate_remove_skip_and_auto_holidays(db: Session, inspector) -> None:
+    """Convert skip days to school_off; one-time reset of auto-applied holidays."""
+    if not _table_exists(inspector, "planned_school_days"):
+        return
+
+    db.execute(
+        text(
+            "UPDATE planned_school_days "
+            "SET day_type = 'school_off' "
+            "WHERE day_type = 'skip'"
+        )
+    )
+    db.commit()
+
+    if not _table_exists(inspector, "app_settings"):
+        return
+
+    if not _column_exists(inspector, "app_settings", "cleared_auto_holidays"):
+        db.execute(
+            text(
+                "ALTER TABLE app_settings "
+                "ADD COLUMN cleared_auto_holidays BOOLEAN NOT NULL DEFAULT FALSE"
+            )
+        )
+        db.commit()
+        inspector = inspect(db.get_bind())
+
+    settings = db.query(AppSetting).first()
+    if settings is None:
+        settings = AppSetting(
+            sample_lesson_plans_enabled=False,
+            sample_data_enabled=False,
+            cleared_auto_holidays=False,
+        )
+        db.add(settings)
+        db.flush()
+
+    if settings.cleared_auto_holidays:
+        return
+
+    # Federal holidays were previously auto-marked; reset once so lessons can use them
+    # unless the teacher later marks a day as holiday manually.
+    db.execute(
+        text(
+            "UPDATE planned_school_days "
+            "SET day_type = 'actual_school' "
+            "WHERE day_type = 'holiday'"
+        )
+    )
+    settings.cleared_auto_holidays = True
+    db.commit()
 
 
 def _migrate_weekly_schedule_item_students(db: Session, inspector) -> None:

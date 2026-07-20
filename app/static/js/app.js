@@ -69,12 +69,9 @@ function formatSchoolDayDate(isoDate) {
 
 function displaySchoolDayType(dayType) {
     // Holidays keep holiday metadata/text but look like normal school days on the calendar.
-    // Sick days use the same red styling as planned school days off.
+    // Sick days keep day-type-sick (styled red like planned school days off).
     if (dayType === 'holiday') {
         return 'actual_school';
-    }
-    if (dayType === 'sick') {
-        return 'school_off';
     }
     return dayType;
 }
@@ -165,32 +162,24 @@ function updateSubjectsProgress(rows) {
 }
 
 function updateSchoolDayCounters(data) {
-    const plannedActualEl = document.querySelector('.counter-planned-actual');
-    const plannedOffEl = document.querySelector('.counter-planned-off');
-    const plannedSickEl = document.querySelector('.counter-planned-sick');
-    const completedEl = document.querySelector('.counter-completed');
-    const remainingEl = document.querySelector('.counter-remaining');
-    const requiredEl = document.querySelector('.counter-required');
     const completeBanner = document.getElementById('school-day-complete-banner');
 
-    if (plannedActualEl) {
-        plannedActualEl.textContent = data.planned_actual_count;
+    function setCounter(selector, value) {
+        if (value === undefined || value === null) {
+            return;
+        }
+        document.querySelectorAll(selector).forEach(function (el) {
+            el.textContent = value;
+        });
     }
-    if (plannedOffEl) {
-        plannedOffEl.textContent = data.planned_school_off_count;
-    }
-    if (plannedSickEl && data.planned_sick_count != null) {
-        plannedSickEl.textContent = data.planned_sick_count;
-    }
-    if (completedEl) {
-        completedEl.textContent = data.completed_count;
-    }
-    if (remainingEl) {
-        remainingEl.textContent = data.remaining_days;
-    }
-    if (requiredEl) {
-        requiredEl.textContent = data.required_days;
-    }
+
+    setCounter('.counter-planned-actual', data.planned_actual_count);
+    setCounter('.counter-planned-off', data.planned_school_off_count);
+    setCounter('.counter-planned-sick', data.planned_sick_count);
+    setCounter('.counter-completed', data.completed_count);
+    setCounter('.counter-remaining', data.remaining_days);
+    setCounter('.counter-required', data.required_days);
+
     if (completeBanner) {
         completeBanner.hidden = !data.complete;
     }

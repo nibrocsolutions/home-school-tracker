@@ -202,15 +202,27 @@ def collect_school_day_attendance(school_year: SchoolDayYear) -> dict:
     }
 
 
+def _day_type_value(day_type: SchoolDayType | str | None) -> str:
+    if day_type is None:
+        return ""
+    if isinstance(day_type, SchoolDayType):
+        return day_type.value
+    return str(getattr(day_type, "value", day_type))
+
+
 def planned_day_counts(school_year: SchoolDayYear) -> dict[str, int]:
     planned = [
         day
         for day in school_year.planned_days
         if school_year.start_date <= day.day_date <= school_year.end_date
     ]
-    actual_school = [day for day in planned if day.day_type == SchoolDayType.actual_school]
-    school_off = [day for day in planned if day.day_type == SchoolDayType.school_off]
-    sick = [day for day in planned if day.day_type == SchoolDayType.sick]
+    actual_school = [
+        day for day in planned if _day_type_value(day.day_type) == SchoolDayType.actual_school.value
+    ]
+    school_off = [
+        day for day in planned if _day_type_value(day.day_type) == SchoolDayType.school_off.value
+    ]
+    sick = [day for day in planned if _day_type_value(day.day_type) == SchoolDayType.sick.value]
     completed = [day for day in actual_school if day.is_completed]
     return {
         "planned_actual_count": len(actual_school),

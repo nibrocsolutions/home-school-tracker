@@ -464,6 +464,7 @@ def _fetch_school_day_year(db: Session, teacher_id: int) -> SchoolDayYear | None
         db.query(SchoolDayYear)
         .options(joinedload(SchoolDayYear.planned_days))
         .filter(SchoolDayYear.teacher_id == teacher_id)
+        .execution_options(populate_existing=True)
         .first()
     )
 
@@ -1498,6 +1499,8 @@ async def update_school_day(
     db.commit()
 
     if ajax:
+        # Lesson reschedule calls expire_all(); force a clean reload before recounting.
+        db.expire_all()
         school_year = _fetch_school_day_year(db, current_user.id)
         counts = planned_day_counts(school_year)
         required_days = school_year.required_days
@@ -1518,7 +1521,7 @@ async def update_school_day(
                 "holiday_name": holiday_name,
                 "planned_actual_count": counts["planned_actual_count"],
                 "planned_school_off_count": counts["planned_school_off_count"],
-                "planned_sick_count": counts.get("planned_sick_count", 0),
+                "planned_sick_count": counts["planned_sick_count"],
                 "completed_count": completed_count,
                 "required_days": required_days,
                 "remaining_days": max(required_days - completed_count, 0),

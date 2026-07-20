@@ -39,7 +39,7 @@
             {% for cell in week %}
             {% if cell.day %}
                 {% if cell.in_range %}
-                {% set display_day_type = 'actual_school' if cell.day_type.value == 'holiday' else ('school_off' if cell.day_type.value == 'sick' else cell.day_type.value) %}
+                {% set display_day_type = 'actual_school' if cell.day_type.value == 'holiday' else cell.day_type.value %}
                 <a href="/teacher/lesson-planning?cal_month={{ cal_month_param }}&plan_date={{ cell.date.isoformat() }}"
                    class="school-day-cell lesson-plan-day-link day-type-{{ display_day_type }}{% if cell.is_completed and display_day_type == 'actual_school' %} completed{% endif %}{% if cell.is_today %} today{% endif %}{% if cell.has_plans %} has-plans{% endif %}"
                    aria-label="{{ cell.date.strftime('%B %d, %Y') }}{% if cell.holiday_name %}, {{ cell.holiday_name }}{% else %}, {{ display_day_type | replace('_', ' ') }}{% endif %}{% if cell.has_plans %}, has lesson plan{% endif %}"

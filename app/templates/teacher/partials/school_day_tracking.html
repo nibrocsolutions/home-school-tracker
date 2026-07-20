@@ -47,11 +47,21 @@
                         <td><strong class="counter-planned-actual">{{ planned_actual_count }}</strong></td>
                     </tr>
                     <tr>
-                        <td>Planned School Days Off</td>
+                        <td>
+                            <span class="progress-metric-label">
+                                <span class="legend-swatch day-type-school_off" aria-hidden="true"></span>
+                                Planned School Days Off
+                            </span>
+                        </td>
                         <td><strong class="counter-planned-off">{{ planned_school_off_count }}</strong></td>
                     </tr>
                     <tr>
-                        <td>Sick Days</td>
+                        <td>
+                            <span class="progress-metric-label">
+                                <span class="legend-swatch day-type-sick" aria-hidden="true"></span>
+                                Sick Days
+                            </span>
+                        </td>
                         <td><strong class="counter-planned-sick">{{ planned_sick_count }}</strong></td>
                     </tr>
                     <tr>
@@ -132,7 +142,7 @@
                 {% for cell in week %}
                 {% if cell.day %}
                     {% if cell.in_range %}
-                    {% set display_day_type = 'actual_school' if cell.day_type.value == 'holiday' else ('school_off' if cell.day_type.value == 'sick' else cell.day_type.value) %}
+                    {% set display_day_type = 'actual_school' if cell.day_type.value == 'holiday' else cell.day_type.value %}
                     <button type="button"
                             class="school-day-cell school-day-edit-btn day-type-{{ display_day_type }}{% if cell.is_completed and cell.day_type.value == 'actual_school' %} completed{% endif %}{% if cell.is_today %} today{% endif %}"
                             data-day-date="{{ cell.date.isoformat() }}"

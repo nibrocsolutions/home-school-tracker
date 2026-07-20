@@ -10,17 +10,6 @@ from app.weekly_schedule import (
     schedule_item_to_activity,
 )
 
-# Day types that remove a date from the schedulable school-day pool.
-NON_INSTRUCTIONAL_DAY_TYPES = frozenset(
-    {
-        SchoolDayType.school_off,
-        SchoolDayType.holiday,
-        SchoolDayType.weekend,
-        SchoolDayType.sick,
-        SchoolDayType.skip,
-    }
-)
-
 
 def distribute_lesson_dates(matching_days: list[date], lesson_amount: int) -> list[date]:
     """Fill consecutively from the start of matching days; stop when amount is reached."""

@@ -9,49 +9,6 @@
     <h2>Yearly Subjects &amp; Activities</h2>
     <p class="section-hint">Choose a subject or activity to view and edit its schedule for the school year.</p>
 
-    {% if school_year and subjects_progress %}
-    <div class="panel subjects-progress-panel" id="subjects-progress-panel">
-        <h3>Subjects Progress</h3>
-        <p class="section-hint">
-            Available days use the school year range, actual school days, and each subject's weekdays.
-            A negative balance means there are not enough matching days for the lessons-per-year target
-            (adjust weekdays, lesson count, or days off).
-        </p>
-        <table class="counter-table subjects-progress-table" aria-label="Subjects progress">
-            <thead>
-                <tr>
-                    <th>Subject</th>
-                    <th>Lessons / Year</th>
-                    <th>Available Days</th>
-                    <th>Balance</th>
-                    <th>Scheduled</th>
-                    <th>Dropped</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in subjects_progress %}
-                <tr data-subject-progress-id="{{ row.id }}">
-                    <td>{{ row.name }}</td>
-                    <td><strong class="subject-lessons-requested">{{ row.lessons_per_year }}</strong></td>
-                    <td><strong class="subject-available-days">{{ row.available_days }}</strong></td>
-                    <td>
-                        <strong class="subject-balance {% if row.balance < 0 %}count-negative{% endif %}">
-                            {{ row.balance }}
-                        </strong>
-                    </td>
-                    <td><strong class="subject-scheduled">{{ row.scheduled }}</strong></td>
-                    <td>
-                        <strong class="subject-dropped {% if row.dropped > 0 %}count-negative{% endif %}">
-                            {{ row.dropped }}
-                        </strong>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
-
     {% if yearly_subjects %}
     <div class="subjects-button-table-wrap">
         <table class="subjects-button-table" aria-label="Yearly subjects and activities">

@@ -4,6 +4,9 @@ from app.models import ScheduleItemKind, SpecialActivityKind, WeeklyScheduleItem
 from app.sample_plans import CLASSICAL_CONVERSATIONS_URL, HISTORY_AUDIO_URL
 
 WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+# Subjects schedule on school days only; weekend choices are omitted from subject editors.
+SCHOOL_WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+SCHOOL_WEEKDAY_INDEXES = frozenset(range(5))
 
 DEFAULT_SCHEDULE_ITEMS = [
     {
@@ -68,6 +71,12 @@ def parse_weekdays(value: str) -> set[int]:
 def format_weekdays(value: str) -> str:
     days = sorted(parse_weekdays(value))
     return ", ".join(WEEKDAY_LABELS[d] for d in days if 0 <= d <= 6)
+
+
+def normalize_school_weekdays(value: str) -> str:
+    """Keep Mon–Fri only, preserving ascending order for subject schedules."""
+    days = sorted(d for d in parse_weekdays(value) if d in SCHOOL_WEEKDAY_INDEXES)
+    return ",".join(str(day) for day in days)
 
 
 def weekday_index(plan_date: date) -> int:

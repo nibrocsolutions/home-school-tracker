@@ -56,8 +56,10 @@ from app.pdf_export import (
     pdf_response_headers,
 )
 from app.weekly_schedule import (
+    SCHOOL_WEEKDAY_LABELS,
     WEEKDAY_LABELS,
     format_weekdays,
+    normalize_school_weekdays,
     schedule_item_to_activity,
     schedule_items_for_date,
 )
@@ -984,7 +986,7 @@ async def save_school_day_subject(
         subject.name = item_name.strip()
         subject.item_kind = kind
         subject.special_type = parsed_special
-        subject.weekdays = weekdays_list.strip()
+        subject.weekdays = normalize_school_weekdays(weekdays_list)
         subject.description = item_description.strip() or None
         subject.external_link = external_link.strip() or None
         subject.audio_url = audio_url.strip() or None
@@ -1002,7 +1004,7 @@ async def save_school_day_subject(
             name=item_name.strip(),
             item_kind=kind,
             special_type=parsed_special,
-            weekdays=weekdays_list.strip(),
+            weekdays=normalize_school_weekdays(weekdays_list),
             description=item_description.strip() or None,
             external_link=external_link.strip() or None,
             audio_url=audio_url.strip() or None,
@@ -1129,7 +1131,7 @@ async def teacher_school_days_page(
             ),
             "students": students,
             "subject_student_ids": subject_student_ids,
-            "weekday_labels": WEEKDAY_LABELS,
+            "weekday_labels": SCHOOL_WEEKDAY_LABELS,
             "format_weekdays": format_weekdays,
             **school_days,
         },

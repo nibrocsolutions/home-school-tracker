@@ -45,15 +45,13 @@ const DAY_TYPE_CLASSES = [
     'day-type-school_off',
     'day-type-holiday',
     'day-type-weekend',
-    'day-type-sick',
 ];
 
 const DAY_TYPE_LABELS = {
     actual_school: 'planned actual school day',
-    school_off: 'planned school day off',
+    school_off: 'day off',
     holiday: 'holiday',
     weekend: 'weekend',
-    sick: 'sick day',
 };
 
 function formatSchoolDayDate(isoDate) {
@@ -69,7 +67,6 @@ function formatSchoolDayDate(isoDate) {
 
 function displaySchoolDayType(dayType) {
     // Holidays keep holiday metadata/text but look like normal school days on the calendar.
-    // Sick days keep day-type-sick (styled red like planned school days off).
     if (dayType === 'holiday') {
         return 'actual_school';
     }
@@ -175,7 +172,6 @@ function updateSchoolDayCounters(data) {
 
     setCounter('.counter-planned-actual', data.planned_actual_count);
     setCounter('.counter-planned-off', data.planned_school_off_count);
-    setCounter('.counter-planned-sick', data.planned_sick_count);
     setCounter('.counter-completed', data.completed_count);
     setCounter('.counter-remaining', data.remaining_days);
     setCounter('.counter-required', data.required_days);

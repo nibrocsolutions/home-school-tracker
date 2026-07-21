@@ -207,7 +207,6 @@ class SchoolDayType(str, enum.Enum):
     school_off = "school_off"
     holiday = "holiday"
     weekend = "weekend"
-    sick = "sick"
 
 
 class SchoolDayYear(Base):

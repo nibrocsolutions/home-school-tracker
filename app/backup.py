@@ -309,7 +309,7 @@ def import_database(db: Session, raw: bytes) -> None:
 
     for row in planned_rows:
         day_type_raw = row.get("day_type", "actual_school")
-        if day_type_raw == "skip":
+        if day_type_raw in ("skip", "sick"):
             day_type_raw = "school_off"
         try:
             day_type = SchoolDayType(day_type_raw)

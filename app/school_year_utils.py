@@ -8,7 +8,6 @@ DAY_TYPE_CYCLE = (
     SchoolDayType.weekend,
     SchoolDayType.holiday,
     SchoolDayType.school_off,
-    SchoolDayType.sick,
     SchoolDayType.actual_school,
 )
 
@@ -121,17 +120,18 @@ def ensure_planned_days(db: Session, school_year: SchoolDayYear) -> None:
 
     for day_date in iter_dates_in_range(school_year.start_date, school_year.end_date):
         if day_date not in existing:
-            db.add(
-                PlannedSchoolDay(
-                    school_day_year_id=school_year.id,
-                    day_date=day_date,
-                    day_type=default_day_type(day_date),
-                    is_completed=False,
-                )
+            planned = PlannedSchoolDay(
+                school_day_year_id=school_year.id,
+                day_date=day_date,
+                day_type=default_day_type(day_date),
+                is_completed=False,
             )
+            db.add(planned)
+            school_year.planned_days.append(planned)
 
-    for day_date, planned in existing.items():
+    for day_date, planned in list(existing.items()):
         if day_date < school_year.start_date or day_date > school_year.end_date:
+            school_year.planned_days.remove(planned)
             db.delete(planned)
 
 
@@ -222,12 +222,10 @@ def planned_day_counts(school_year: SchoolDayYear) -> dict[str, int]:
     school_off = [
         day for day in planned if _day_type_value(day.day_type) == SchoolDayType.school_off.value
     ]
-    sick = [day for day in planned if _day_type_value(day.day_type) == SchoolDayType.sick.value]
     completed = [day for day in actual_school if day.is_completed]
     return {
         "planned_actual_count": len(actual_school),
         "planned_school_off_count": len(school_off),
-        "planned_sick_count": len(sick),
         "completed_count": len(completed),
         "possible_days": count_possible_school_days(
             school_year.start_date, school_year.end_date

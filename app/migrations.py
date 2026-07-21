@@ -96,10 +96,11 @@ def run_schema_migrations(db: Session) -> None:
     _migrate_planned_school_days(db, inspector)
     _migrate_school_day_type_enum(db)
     _migrate_remove_skip_and_auto_holidays(db, inspector)
+    _migrate_remove_sick_days(db, inspector)
 
 
 def _migrate_school_day_type_enum(db: Session) -> None:
-    """Ensure sick value exists for PostgreSQL native enums."""
+    """Ensure legacy sick label exists on PostgreSQL enums so rows can be rewritten."""
     bind = db.get_bind()
     if bind.dialect.name != "postgresql":
         return
@@ -132,6 +133,26 @@ def _migrate_school_day_type_enum(db: Session) -> None:
                 if exists:
                     continue
                 conn.execute(text(f"ALTER TYPE {type_name} ADD VALUE '{value}'"))
+
+
+def _migrate_remove_sick_days(db: Session, inspector) -> None:
+    """Convert any remaining sick days to school_off (days off)."""
+    if not _table_exists(inspector, "planned_school_days"):
+        return
+
+    bind = db.get_bind()
+    # On PostgreSQL, comparing to a missing enum label raises InvalidTextRepresentation.
+    if bind.dialect.name == "postgresql" and not _enum_has_label(db, "sick"):
+        return
+
+    db.execute(
+        text(
+            "UPDATE planned_school_days "
+            "SET day_type = 'school_off' "
+            "WHERE day_type = 'sick'"
+        )
+    )
+    db.commit()
 
 
 def _enum_has_label(db: Session, label: str) -> bool:

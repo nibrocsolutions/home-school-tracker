@@ -50,19 +50,10 @@
                         <td>
                             <span class="progress-metric-label">
                                 <span class="legend-swatch day-type-school_off" aria-hidden="true"></span>
-                                Planned School Days Off
+                                Days Off
                             </span>
                         </td>
                         <td><strong class="counter-planned-off">{{ planned_school_off_count }}</strong></td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <span class="progress-metric-label">
-                                <span class="legend-swatch day-type-sick" aria-hidden="true"></span>
-                                Sick Days
-                            </span>
-                        </td>
-                        <td><strong class="counter-planned-sick">{{ planned_sick_count }}</strong></td>
                     </tr>
                     <tr>
                         <td>Completed Actual School Days</td>
@@ -80,7 +71,7 @@
             </table>
             {% if school_year %}
             <p class="section-hint progress-footnote">
-                Possible school days are weekdays (Monday–Friday). Federal holiday names may appear on the calendar, but those days stay as school days unless you mark them as holiday, sick, or off.
+                Possible school days are weekdays (Monday–Friday). Federal holiday names may appear on the calendar, but those days stay as school days unless you mark them as holiday or day off.
             </p>
             {% else %}
             <p class="section-hint possible-days-hint">
@@ -179,8 +170,7 @@
                 <span class="legend-check-only" aria-hidden="true">✓</span>
                 Completed actual school days
             </span>
-            <span class="legend-item"><span class="legend-swatch day-type-school_off"></span> Planned school days off</span>
-            <span class="legend-item"><span class="legend-swatch day-type-sick"></span> Sick days</span>
+            <span class="legend-item"><span class="legend-swatch day-type-school_off"></span> Days off</span>
             <span class="legend-item"><span class="legend-swatch day-type-weekend"></span> Weekends</span>
         </div>
 
@@ -201,12 +191,7 @@
                     <label class="school-day-type-option">
                         <input type="radio" name="day_type" value="school_off">
                         <span class="legend-swatch day-type-school_off"></span>
-                        Planned school day off
-                    </label>
-                    <label class="school-day-type-option">
-                        <input type="radio" name="day_type" value="sick">
-                        <span class="legend-swatch day-type-sick"></span>
-                        Sick day
+                        Day off
                     </label>
                     <label class="school-day-type-option">
                         <input type="radio" name="day_type" value="holiday">
@@ -220,8 +205,9 @@
                     </label>
                 </fieldset>
                 <p class="section-hint">
-                    Sick days behave like planned days off: unfinished subject lessons move to later matching days,
-                    and lessons that no longer fit are dropped. Holidays only affect lessons when you set a day to Holiday here.
+                    Days off move unfinished subject lessons to later matching school days
+                    (based on each subject's weekday picker). Lessons that no longer fit are dropped.
+                    Holidays only affect lessons when you set a day to Holiday here.
                 </p>
                 <label class="school-day-completed-option" id="school-day-completed-wrap" hidden>
                     <input type="checkbox" name="is_completed" id="school-day-completed">

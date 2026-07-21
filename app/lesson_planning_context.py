@@ -167,8 +167,7 @@ def build_lesson_planning_context(
         "pdf_ref_date": cal_month.isoformat(),
         "school_day_type_labels": {
             SchoolDayType.actual_school: "Planned actual school days",
-            SchoolDayType.school_off: "Planned school days off",
-            SchoolDayType.sick: "Sick days",
+            SchoolDayType.school_off: "Days off",
             SchoolDayType.holiday: "Holidays",
             SchoolDayType.weekend: "Weekends",
         },

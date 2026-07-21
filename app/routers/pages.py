@@ -1379,18 +1379,13 @@ async def save_school_day_config(
         return _school_days_redirect(cal_month=cal_month, error="required")
 
     school_year = _fetch_school_day_year(db, current_user.id)
+    day_delta = 0
+    old_start = None
+    old_end = None
     if school_year:
         old_start = school_year.start_date
         old_end = school_year.end_date
         day_delta = (parsed_start - old_start).days
-        if day_delta != 0:
-            shift_lesson_plans_by_days(
-                db,
-                current_user.id,
-                old_start,
-                old_end,
-                day_delta,
-            )
         school_year.start_date = parsed_start
         school_year.end_date = parsed_end
         school_year.required_days = required_days
@@ -1406,6 +1401,22 @@ async def save_school_day_config(
         db.flush()
 
     ensure_planned_days(db, school_year)
+    db.flush()
+
+    # Shift existing plans with the school-year start, then snap off weekends/days off
+    # and rebuild auto-populated subjects onto matching actual school days only.
+    if day_delta != 0 and old_start is not None and old_end is not None:
+        school_year = _fetch_school_day_year(db, current_user.id)
+        shift_lesson_plans_by_days(
+            db,
+            current_user.id,
+            old_start,
+            old_end,
+            day_delta,
+            school_year=school_year,
+        )
+    school_year = _fetch_school_day_year(db, current_user.id)
+    reschedule_lessons_after_day_type_change(db, current_user.id, school_year)
     db.commit()
 
     start_month = parsed_start.strftime("%Y-%m")
@@ -1478,17 +1489,15 @@ async def update_school_day(
     planned.updated_at = datetime.utcnow()
     db.flush()
 
-    # Sick/off/holiday (or restore to actual school) shifts unfinished subject lessons.
+    # Day off/holiday (or restore to actual school) shifts unfinished subject lessons.
     if previous_type != parsed_type and (
         previous_type == SchoolDayType.actual_school
         or parsed_type == SchoolDayType.actual_school
         or parsed_type in (
-            SchoolDayType.sick,
             SchoolDayType.school_off,
             SchoolDayType.holiday,
         )
         or previous_type in (
-            SchoolDayType.sick,
             SchoolDayType.school_off,
             SchoolDayType.holiday,
         )
@@ -1521,7 +1530,6 @@ async def update_school_day(
                 "holiday_name": holiday_name,
                 "planned_actual_count": counts["planned_actual_count"],
                 "planned_school_off_count": counts["planned_school_off_count"],
-                "planned_sick_count": counts["planned_sick_count"],
                 "completed_count": completed_count,
                 "required_days": required_days,
                 "remaining_days": max(required_days - completed_count, 0),

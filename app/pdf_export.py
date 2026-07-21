@@ -387,7 +387,7 @@ def build_attendance_report_pdf(attendance: dict, *, subtitle: str) -> bytes:
     summary_rows = [
         ("Possible School Days", str(counts["possible_days"])),
         ("Planned Actual School Days", str(counts["planned_actual_count"])),
-        ("Planned School Days Off", str(counts["planned_school_off_count"])),
+        ("Days Off", str(counts["planned_school_off_count"])),
         ("Completed Actual School Days", str(counts["completed_count"])),
         ("Required Full Days", str(attendance["required_days"])),
         ("School Days Remaining", str(attendance["remaining_days"])),
@@ -412,16 +412,9 @@ def build_attendance_report_pdf(attendance: dict, *, subtitle: str) -> bytes:
     )
     _render_date_block(
         pdf,
-        "Planned School Days Off",
+        "Days Off",
         _format_date_list(
             [entry["date"] for entry in by_type.get(SchoolDayType.school_off, [])]
-        ),
-    )
-    _render_date_block(
-        pdf,
-        "Sick Days",
-        _format_date_list(
-            [entry["date"] for entry in by_type.get(SchoolDayType.sick, [])]
         ),
     )
     _render_date_block(

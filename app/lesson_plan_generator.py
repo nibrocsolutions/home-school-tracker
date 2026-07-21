@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import Activity, ActivityType, LessonPlan, SchoolDayType, SchoolDayYear, WeeklyScheduleItem
-from app.school_year_utils import iter_dates_in_range
+from app.school_year_utils import _day_type_value, iter_dates_in_range
 from app.weekly_schedule import (
     activity_matches_schedule_item,
     parse_weekdays,
@@ -18,14 +18,19 @@ def distribute_lesson_dates(matching_days: list[date], lesson_amount: int) -> li
     return matching_days[:lesson_amount]
 
 
+def _is_actual_school_day_type(day_type: SchoolDayType | str | None) -> bool:
+    return _day_type_value(day_type) == SchoolDayType.actual_school.value
+
+
 def actual_school_days_in_year(school_year: SchoolDayYear) -> list[date]:
+    """Return planned actual school days only (never weekends, days off, or holidays)."""
     planned_map = {day.day_date: day for day in school_year.planned_days}
     days: list[date] = []
     for day_date in iter_dates_in_range(school_year.start_date, school_year.end_date):
         planned = planned_map.get(day_date)
         if planned is None:
             continue
-        if planned.day_type == SchoolDayType.actual_school:
+        if _is_actual_school_day_type(planned.day_type):
             days.append(day_date)
     return days
 
@@ -33,6 +38,7 @@ def actual_school_days_in_year(school_year: SchoolDayYear) -> list[date]:
 def matching_available_days(
     school_year: SchoolDayYear, weekdays: set[int]
 ) -> list[date]:
+    """Actual school days that also match the subject's weekday picker."""
     if not weekdays:
         return []
     return [d for d in actual_school_days_in_year(school_year) if d.weekday() in weekdays]
@@ -120,14 +126,92 @@ def _clear_schedule_item_activities(
     db.expire_all()
 
 
+def _auto_plan_title(plan_date: date) -> str:
+    return plan_date.strftime("%A, %B %d, %Y")
+
+
+def _merge_plan_into(db: Session, source: LessonPlan, target: LessonPlan) -> None:
+    """Move activities from source into target, then delete source."""
+    next_sort = max((activity.sort_order for activity in target.activities), default=0)
+    for activity in list(source.activities):
+        if _activity_exists(target, activity.title):
+            db.delete(activity)
+            continue
+        next_sort += 1
+        activity.lesson_plan_id = target.id
+        activity.sort_order = next_sort
+    db.flush()
+    db.delete(source)
+
+
+def snap_lesson_plans_to_actual_school_days(
+    db: Session,
+    teacher_id: int,
+    school_year: SchoolDayYear,
+) -> int:
+    """Move any in-range lesson plans off weekends/days off onto planned actual school days."""
+    actual_days = actual_school_days_in_year(school_year)
+    if not actual_days:
+        return 0
+    actual_set = set(actual_days)
+
+    plans = (
+        db.query(LessonPlan)
+        .options(joinedload(LessonPlan.activities))
+        .filter(
+            LessonPlan.teacher_id == teacher_id,
+            LessonPlan.plan_date >= school_year.start_date,
+            LessonPlan.plan_date <= school_year.end_date,
+        )
+        .order_by(LessonPlan.plan_date, LessonPlan.id)
+        .all()
+    )
+
+    plans_by_key: dict[tuple[date, int], LessonPlan] = {
+        (plan.plan_date, plan.student_id): plan for plan in plans
+    }
+
+    moved = 0
+    for plan in list(plans):
+        if plan.plan_date in actual_set:
+            continue
+
+        target = next((day for day in actual_days if day >= plan.plan_date), None)
+        if target is None:
+            target = next((day for day in reversed(actual_days) if day <= plan.plan_date), None)
+        if target is None or target == plan.plan_date:
+            continue
+
+        existing = plans_by_key.get((target, plan.student_id))
+        old_key = (plan.plan_date, plan.student_id)
+        if existing is not None and existing.id != plan.id:
+            _merge_plan_into(db, plan, existing)
+            plans_by_key.pop(old_key, None)
+        else:
+            if plan.title == _auto_plan_title(plan.plan_date):
+                plan.title = _auto_plan_title(target)
+            plan.plan_date = target
+            plans_by_key.pop(old_key, None)
+            plans_by_key[(target, plan.student_id)] = plan
+        moved += 1
+
+    db.flush()
+    return moved
+
+
 def shift_lesson_plans_by_days(
     db: Session,
     teacher_id: int,
     old_start: date,
     old_end: date,
     day_delta: int,
+    school_year: SchoolDayYear | None = None,
 ) -> int:
-    """Move lesson plans within the previous school-year range by day_delta days."""
+    """Move lesson plans within the previous school-year range by day_delta days.
+
+    When school_year is provided (with updated dates and planned days), plans that
+    land on weekends or days off are snapped onto the next planned actual school day.
+    """
     if day_delta == 0:
         return 0
 
@@ -146,13 +230,16 @@ def shift_lesson_plans_by_days(
     for plan in plans:
         old_date = plan.plan_date
         new_date = old_date + delta
-        auto_title = old_date.strftime("%A, %B %d, %Y")
-        if plan.title == auto_title:
-            plan.title = new_date.strftime("%A, %B %d, %Y")
+        if plan.title == _auto_plan_title(old_date):
+            plan.title = _auto_plan_title(new_date)
         plan.plan_date = new_date
         shifted += 1
 
     db.flush()
+
+    if school_year is not None:
+        snap_lesson_plans_to_actual_school_days(db, teacher_id, school_year)
+
     return shifted
 
 
@@ -192,7 +279,7 @@ def _get_or_create_plan(
     if plan is not None:
         return plan
     plan = LessonPlan(
-        title=plan_date.strftime("%A, %B %d, %Y"),
+        title=_auto_plan_title(plan_date),
         description=None,
         plan_date=plan_date,
         teacher_id=teacher_id,
@@ -246,6 +333,7 @@ def populate_lesson_plans_from_subjects(
             continue
 
         weekdays = parse_weekdays(item.weekdays)
+        # Only planned actual school days that match the subject's weekday picker.
         matching = matching_available_days(school_year, weekdays)
         desired = item.lesson_amount or 0
 
@@ -283,6 +371,8 @@ def populate_lesson_plans_from_subjects(
                     activity.title = numbered["title"]
 
             for plan_date in place_dates:
+                if plan_date not in matching:
+                    continue
                 plan = _get_or_create_plan(
                     db,
                     plans_by_date_student,
@@ -309,11 +399,14 @@ def reschedule_lessons_after_day_type_change(
     teacher_id: int,
     school_year: SchoolDayYear,
 ) -> int:
-    """Rebuild subject lessons after sick/off changes, keeping completed work in place.
+    """Rebuild subject lessons after day-off/holiday changes, keeping completed work in place.
 
-    Unfinished lessons shift onto later available matching days. Lessons that no longer fit
-    the remaining range are dropped.
+    Unfinished lessons shift onto later available matching actual school days (respecting
+    each subject's weekday picker). Lessons that no longer fit the remaining range are dropped.
     """
+    # Clear any leftover plans that somehow landed on non-school days first.
+    snap_lesson_plans_to_actual_school_days(db, teacher_id, school_year)
+
     items = (
         db.query(WeeklyScheduleItem)
         .options(joinedload(WeeklyScheduleItem.assigned_students))

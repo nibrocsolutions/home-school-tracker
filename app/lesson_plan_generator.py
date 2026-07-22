@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -17,6 +17,8 @@ from app.weekly_schedule import (
     parse_weekdays,
     schedule_item_to_activity,
 )
+
+MOVED_LESSONS_PLACEHOLDER_TITLE = "Lessons moved"
 
 
 def distribute_lesson_dates(matching_days: list[date], lesson_amount: int) -> list[date]:
@@ -381,7 +383,8 @@ def _add_activity_to_plan(
             sort_order=sort_order,
             activity_type=activity_type,
             teacher_notes=activity_data.get("teacher_notes") or None,
-            external_link=activity_data["external_link"] or None,
+            external_link=activity_data.get("external_link") or None,
+            audio_url=activity_data.get("audio_url") or None,
         )
     )
 
@@ -641,6 +644,161 @@ def days_off_in_year(school_year: SchoolDayYear) -> list[date]:
     return days
 
 
+def _is_moved_lessons_placeholder(activity: Activity) -> bool:
+    return activity.title == MOVED_LESSONS_PLACEHOLDER_TITLE
+
+
+def _unfinished_move_message(lesson_title: str, from_date: date, to_date: date) -> str:
+    return (
+        f'Lesson unfinished: "{lesson_title}" was moved from '
+        f"{from_date.strftime('%A, %B %d, %Y')} to {to_date.strftime('%A, %B %d, %Y')}."
+    )
+
+
+def _set_teacher_message_on_activity(
+    db: Session,
+    activity: Activity,
+    student_id: int,
+    message: str,
+    *,
+    append: bool = False,
+) -> None:
+    completion = (
+        db.query(ActivityCompletion)
+        .filter(
+            ActivityCompletion.activity_id == activity.id,
+            ActivityCompletion.student_id == student_id,
+        )
+        .first()
+    )
+    if completion is None:
+        db.add(
+            ActivityCompletion(
+                activity_id=activity.id,
+                student_id=student_id,
+                completed=True,
+                completed_at=datetime.utcnow(),
+                student_message=message,
+                message_read_at=None,
+            )
+        )
+        return
+
+    if append and completion.student_message and message not in completion.student_message:
+        completion.student_message = f"{completion.student_message.strip()}\n\n{message}"
+    else:
+        completion.student_message = message
+    completion.message_read_at = None
+    completion.completed = True
+    if completion.completed_at is None:
+        completion.completed_at = datetime.utcnow()
+
+
+def _ensure_moved_lessons_placeholder(
+    db: Session,
+    *,
+    teacher_id: int,
+    student_id: int,
+    plan_date: date,
+    lesson_title: str,
+    from_date: date,
+    to_date: date,
+) -> Activity:
+    """Keep an emptied (or partially cleared) school day present with a notice lesson."""
+    plan = (
+        db.query(LessonPlan)
+        .options(joinedload(LessonPlan.activities))
+        .filter(
+            LessonPlan.teacher_id == teacher_id,
+            LessonPlan.student_id == student_id,
+            LessonPlan.plan_date == plan_date,
+        )
+        .first()
+    )
+    if plan is None:
+        plan = LessonPlan(
+            title=_auto_plan_title(plan_date),
+            description=None,
+            plan_date=plan_date,
+            teacher_id=teacher_id,
+            student_id=student_id,
+        )
+        db.add(plan)
+        db.flush()
+
+    placeholder = next(
+        (act for act in plan.activities if _is_moved_lessons_placeholder(act)),
+        None,
+    )
+    real_left = _count_real_activities(plan)
+    if real_left == 0:
+        description = (
+            "Lessons were planned for this day, but they were moved to a later school day "
+            f'because "{lesson_title}" was marked unfinished.'
+        )
+    else:
+        description = (
+            f'"{lesson_title}" was marked unfinished and moved to '
+            f"{to_date.strftime('%A, %B %d, %Y')}."
+        )
+    if placeholder is None:
+        next_sort = max((act.sort_order for act in plan.activities), default=0) + 1
+        placeholder = Activity(
+            lesson_plan_id=plan.id,
+            title=MOVED_LESSONS_PLACEHOLDER_TITLE,
+            description=description,
+            sort_order=next_sort,
+            activity_type=ActivityType.regular,
+            is_required=False,
+        )
+        db.add(placeholder)
+        db.flush()
+    else:
+        placeholder.description = description
+        placeholder.is_required = False
+
+    _set_teacher_message_on_activity(
+        db,
+        placeholder,
+        student_id,
+        _unfinished_move_message(lesson_title, from_date, to_date),
+        append=True,
+    )
+    db.flush()
+    return placeholder
+
+
+def _count_real_activities(plan: LessonPlan | None) -> int:
+    if plan is None:
+        return 0
+    return sum(1 for act in plan.activities if not _is_moved_lessons_placeholder(act))
+
+
+def _notify_unfinished_move(
+    db: Session,
+    *,
+    teacher_id: int,
+    student_id: int,
+    source_date: date,
+    target_date: date,
+    lesson_title: str,
+) -> None:
+    """Create a separate teacher message for an unfinished move on the source day.
+
+    When the source day has no remaining real lessons, the notice doubles as a
+    placeholder so the day still appears as a planned school day.
+    """
+    _ensure_moved_lessons_placeholder(
+        db,
+        teacher_id=teacher_id,
+        student_id=student_id,
+        plan_date=source_date,
+        lesson_title=lesson_title,
+        from_date=source_date,
+        to_date=target_date,
+    )
+
+
 def _capture_activity_message(
     db: Session, activity_id: int, student_id: int
 ) -> dict | None:
@@ -740,6 +898,8 @@ def shift_unfinished_activity_like_day_off(
     later lessons onto the next matching school days. Student messages move with the lesson.
 
     For non-subject lessons, the activity moves onto the next actual school day.
+    Creates a separate teacher message with from/to dates. If the source day ends with
+    no real lessons, a placeholder keeps it as a school day in lesson views.
     Returns True when a shift was applied.
     """
     if school_year is None:
@@ -757,6 +917,7 @@ def shift_unfinished_activity_like_day_off(
     blocked_date = plan.plan_date
     student_id = plan.student_id
     teacher_id = plan.teacher_id
+    lesson_title = activity.title
     saved_message = _capture_activity_message(db, activity.id, student_id)
 
     if matching_item is not None:
@@ -806,19 +967,33 @@ def shift_unfinished_activity_like_day_off(
             if item.weekdays != original_weekdays:
                 item.weekdays = original_weekdays
 
-        if saved_message:
-            after_rows = _unfinished_matching_activities(
-                db,
-                teacher_id=teacher_id,
-                student_id=student_id,
-                school_year=school_year,
-                item=item,
-            )
-            if after_rows:
-                target_idx = min(shift_index, len(after_rows) - 1)
-                _apply_message_to_activity(
-                    db, after_rows[target_idx][1], student_id, saved_message
-                )
+        after_rows = _unfinished_matching_activities(
+            db,
+            teacher_id=teacher_id,
+            student_id=student_id,
+            school_year=school_year,
+            item=item,
+        )
+        if after_rows:
+            target_idx = min(shift_index, len(after_rows) - 1)
+            host_plan, host_activity = after_rows[target_idx]
+            target_date = host_plan.plan_date
+            if saved_message:
+                _apply_message_to_activity(db, host_activity, student_id, saved_message)
+        else:
+            later_days = [
+                day for day in actual_school_days_in_year(school_year) if day > blocked_date
+            ]
+            target_date = later_days[0] if later_days else blocked_date
+
+        _notify_unfinished_move(
+            db,
+            teacher_id=teacher_id,
+            student_id=student_id,
+            source_date=blocked_date,
+            target_date=target_date,
+            lesson_title=lesson_title,
+        )
         db.flush()
         return True
 
@@ -867,8 +1042,14 @@ def shift_unfinished_activity_like_day_off(
     if saved_message:
         _apply_message_to_activity(db, activity, student_id, saved_message)
 
-    remaining = db.query(Activity).filter(Activity.lesson_plan_id == plan.id).count()
-    if remaining == 0:
-        db.delete(plan)
+    # Do not delete an emptied source plan — placeholder + teacher notice keeps the day.
+    _notify_unfinished_move(
+        db,
+        teacher_id=teacher_id,
+        student_id=student_id,
+        source_date=blocked_date,
+        target_date=target.plan_date,
+        lesson_title=lesson_title,
+    )
     db.flush()
     return True

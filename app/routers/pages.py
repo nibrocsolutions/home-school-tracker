@@ -34,6 +34,7 @@ from app.models import (
     WeeklyScheduleItem,
 )
 from app.lesson_plan_generator import (
+    MOVED_LESSONS_PLACEHOLDER_TITLE,
     build_subjects_progress_report,
     days_off_in_year,
     populate_lesson_plans_from_subjects,
@@ -61,6 +62,7 @@ from app.pdf_export import (
 from app.weekly_schedule import (
     SCHOOL_WEEKDAY_LABELS,
     WEEKDAY_LABELS,
+    activity_matches_schedule_item,
     format_weekdays,
     normalize_school_weekdays,
     schedule_item_to_activity,
@@ -98,6 +100,32 @@ def load_completions_for_plans(
             }
         result[plan.id] = activity_map
     return result
+
+
+def _enrich_activities_with_subject_links(
+    activities: list[Activity],
+    schedule_items: list,
+) -> None:
+    """Fill missing activity links from matching yearly subject / schedule items."""
+    if not activities or not schedule_items:
+        return
+    for activity in activities:
+        if activity.title == MOVED_LESSONS_PLACEHOLDER_TITLE:
+            continue
+        matched = next(
+            (
+                item
+                for item in schedule_items
+                if activity_matches_schedule_item(activity.title, item)
+            ),
+            None,
+        )
+        if matched is None:
+            continue
+        if not activity.external_link and matched.external_link:
+            activity.external_link = matched.external_link
+        if not activity.audio_url and matched.audio_url:
+            activity.audio_url = matched.audio_url
 
 
 def _fetch_student_responses(db: Session, teacher_id: int) -> list[dict]:
@@ -738,6 +766,7 @@ def _save_lesson_plans_for_date(
                     activity_type=activity["activity_type"],
                     teacher_notes=activity.get("teacher_notes"),
                     external_link=activity.get("external_link"),
+                    audio_url=activity.get("audio_url"),
                 )
             )
     return len(student_plans)
@@ -1699,10 +1728,25 @@ async def student_dashboard(
 
     if show_interactive:
         lesson_plan = calendar["lesson_plans"][0]
+        schedule_items = (
+            db.query(WeeklyScheduleItem)
+            .filter(WeeklyScheduleItem.teacher_id == lesson_plan.teacher_id)
+            .all()
+        )
+        _enrich_activities_with_subject_links(lesson_plan.activities, schedule_items)
         plan_completions = load_completions_for_plans(db, current_user.id, [lesson_plan])
         completions = plan_completions.get(lesson_plan.id, {})
-        total_count = len(lesson_plan.activities)
-        done_count = sum(1 for v in completions.values() if v.get("completed"))
+        trackable = [
+            act
+            for act in lesson_plan.activities
+            if act.title != MOVED_LESSONS_PLACEHOLDER_TITLE
+        ]
+        total_count = len(trackable)
+        done_count = sum(
+            1
+            for act in trackable
+            if completions.get(act.id, {}).get("completed")
+        )
         progress = int((done_count / total_count) * 100) if total_count else 0
 
     all_completions = load_completions_for_plans(db, current_user.id, calendar["lesson_plans"])

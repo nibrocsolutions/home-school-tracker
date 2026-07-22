@@ -52,6 +52,18 @@
         <div class="checklist">
             {% for act in lesson_plan.activities | sort(attribute='sort_order') %}
             {% set act_data = completions.get(act.id, {}) %}
+            {% if act.title == 'Lessons moved' %}
+            <div class="checklist-item-wrap moved-lessons-notice">
+                <div class="checklist-item">
+                    <div class="checklist-content">
+                        <strong>{{ act.title }}</strong>
+                        {% if act.description %}
+                        <p>{{ act.description }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
             <div class="checklist-item-wrap {% if act_data.get('completed') %}completed{% endif %}">
                 <div class="checklist-item">
                     <div class="checklist-actions">
@@ -88,7 +100,12 @@
                         {% endif %}
                         {% if act.external_link %}
                         <p class="activity-external-link">
-                            <a href="{{ act.external_link }}" target="_blank" rel="noopener noreferrer">🔗 Open Resource</a>
+                            <a href="{{ act.external_link }}" target="_blank" rel="noopener noreferrer">Open resource link</a>
+                        </p>
+                        {% endif %}
+                        {% if act.audio_url %}
+                        <p class="activity-audio-link">
+                            <a href="{{ act.audio_url }}" target="_blank" rel="noopener noreferrer">Open audio link</a>
                         </p>
                         {% endif %}
                         {% if not act.is_required %}
@@ -112,6 +129,7 @@
                     </form>
                 </div>
             </div>
+            {% endif %}
             {% endfor %}
         </div>
 

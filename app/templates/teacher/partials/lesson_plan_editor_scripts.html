@@ -33,11 +33,15 @@
                 <option value="subject" ${type === 'subject' ? 'selected' : ''}>Subject</option>
                 <option value="history" ${type === 'history' ? 'selected' : ''}>History</option>
             </select>
-            <input type="text" name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field" value="${escapeHtml(activity.teacher_notes || '')}">
             <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field" value="${escapeHtml(activity.external_link || '')}">
+            <textarea name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field" rows="3">${escapeHtml(activity.teacher_notes || '')}</textarea>
             <button type="button" class="btn btn-danger btn-sm btn-remove" aria-label="Remove lesson">Remove Lesson</button>
         `;
-        row.querySelector('.btn-remove').addEventListener('click', () => row.remove());
+        row.querySelector('.btn-remove').addEventListener('click', () => {
+            if (confirm('Remove this lesson? This cannot be undone from the editor until you save.')) {
+                row.remove();
+            }
+        });
         return row;
     }
 
@@ -175,7 +179,11 @@
     });
 
     sections?.querySelectorAll('[data-activity-row] .btn-remove').forEach((btn) => {
-        btn.addEventListener('click', () => btn.closest('[data-activity-row]')?.remove());
+        btn.addEventListener('click', () => {
+            if (confirm('Remove this lesson? This cannot be undone from the editor until you save.')) {
+                btn.closest('[data-activity-row]')?.remove();
+            }
+        });
     });
 
     form?.addEventListener('submit', (e) => {

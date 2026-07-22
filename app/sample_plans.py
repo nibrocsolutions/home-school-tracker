@@ -40,6 +40,7 @@ SAMPLE_LESSON_PLANS: list[dict] = [
                 "description": "Listen to the history lesson audio, then tell your teacher what you learned.",
                 "activity_type": "history",
                 "teacher_notes": "History audio is available from the subject resource link.",
+                "external_link": HISTORY_AUDIO_URL,
             },
             {
                 "title": "Timeline Work",

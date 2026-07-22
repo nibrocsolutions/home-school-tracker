@@ -1146,6 +1146,25 @@ body {
 }
 
 /* Student checklist */
+.student-day-heading {
+    margin-bottom: 1rem;
+}
+
+.student-day-heading .section-title {
+    margin-bottom: 0.15rem;
+}
+
+.student-day-teacher {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.checklist-heading {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+}
+
 .progress-section {
     margin-bottom: 1.5rem;
 }
@@ -2245,6 +2264,7 @@ button.school-day-cell:hover {
     color: var(--primary);
     font-weight: 600;
     font-size: 0.9rem;
+    word-break: break-all;
 }
 
 .moved-lessons-notice {

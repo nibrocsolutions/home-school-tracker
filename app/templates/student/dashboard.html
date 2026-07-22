@@ -32,7 +32,10 @@
     {% elif show_interactive and lesson_plan %}
     <section class="checklist-section">
         <div class="student-day-heading">
+            {% set date_title = lesson_plan.plan_date.strftime('%A, %B %d, %Y') %}
+            {% if lesson_plan.title and lesson_plan.title != date_title %}
             <h2 class="section-title">{{ lesson_plan.title }}</h2>
+            {% endif %}
             <p class="student-day-teacher">Teacher: {{ lesson_plan.teacher.full_name }}</p>
             {% if lesson_plan.description %}
             <p class="plan-desc">{{ lesson_plan.description }}</p>

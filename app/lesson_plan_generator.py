@@ -384,7 +384,6 @@ def _add_activity_to_plan(
             activity_type=activity_type,
             teacher_notes=activity_data.get("teacher_notes") or None,
             external_link=activity_data.get("external_link") or None,
-            audio_url=activity_data.get("audio_url") or None,
         )
     )
 
@@ -475,6 +474,13 @@ def populate_lesson_plans_from_subjects(
             occupied = set(completed_dates)
             if extra_occupied:
                 occupied |= extra_occupied.get(student.id, set())
+            # Days kept as placeholders after "Not finished" must stay blocked so
+            # later rebuilds do not place the lesson back on the original day.
+            for plan in existing_plans:
+                if plan.student_id != student.id:
+                    continue
+                if any(_is_moved_lessons_placeholder(activity) for activity in plan.activities):
+                    occupied.add(plan.plan_date)
             free_days = [d for d in matching if d not in occupied]
             still_needed = max(desired - completed_count, 0)
             place_dates = distribute_lesson_dates(free_days, still_needed)
@@ -1035,9 +1041,13 @@ def shift_unfinished_activity_like_day_off(
         return False
 
     next_sort = max((act.sort_order for act in target.activities), default=0) + 1
-    activity.lesson_plan_id = target.id
+    # Assign via relationship so SQLAlchemy syncs both collections (avoid stale
+    # source-plan collections writing the activity back onto the original day).
+    activity.lesson_plan = target
     activity.sort_order = next_sort
     db.flush()
+    db.expire(plan, ["activities"])
+    db.expire(target, ["activities"])
 
     if saved_message:
         _apply_message_to_activity(db, activity, student_id, saved_message)

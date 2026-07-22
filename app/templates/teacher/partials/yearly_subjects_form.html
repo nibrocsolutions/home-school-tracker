@@ -25,7 +25,6 @@
                         <th scope="col">Lessons / Year</th>
                         <th scope="col">Description</th>
                         <th scope="col">External Link</th>
-                        <th scope="col">Audio Link</th>
                         <th scope="col"><span class="sr-only">Remove</span></th>
                     </tr>
                 </thead>
@@ -68,10 +67,7 @@
                             <input type="text" name="item_descriptions" value="{{ item.description or '' }}" placeholder="Description">
                         </td>
                         <td>
-                            <input type="url" name="external_links" value="{{ item.external_link or '' }}" placeholder="URL">
-                        </td>
-                        <td>
-                            <input type="url" name="audio_urls" value="{{ item.audio_url or '' }}" placeholder="URL">
+                            <input type="url" name="external_links" value="{{ item.external_link or item.audio_url or '' }}" placeholder="URL">
                         </td>
                         <td class="yearly-subject-actions">
                             <button type="button" class="btn-remove" aria-label="Remove subject or activity">&times;</button>

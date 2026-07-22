@@ -74,14 +74,7 @@
         <div class="form-row">
             <label for="external_link">External Link</label>
             <input type="url" id="external_link" name="external_link"
-                   value="{{ subject.external_link if subject and subject.external_link else '' }}"
-                   placeholder="https://">
-        </div>
-
-        <div class="form-row">
-            <label for="audio_url">Audio Link</label>
-            <input type="url" id="audio_url" name="audio_url"
-                   value="{{ subject.audio_url if subject and subject.audio_url else '' }}"
+                   value="{{ subject.external_link if subject and subject.external_link else (subject.audio_url if subject and subject.audio_url else '') }}"
                    placeholder="https://">
         </div>
 

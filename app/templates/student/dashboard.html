@@ -34,16 +34,11 @@
         <div class="progress-card">
             <div class="progress-header">
                 <h2>{{ lesson_plan.title }}</h2>
-                <span class="progress-pill">{{ done_count }}/{{ total_count }} done</span>
             </div>
             {% if lesson_plan.description %}
             <p class="plan-desc">{{ lesson_plan.description }}</p>
             {% endif %}
             <p class="plan-meta">Teacher: <strong>{{ lesson_plan.teacher.full_name }}</strong></p>
-            <div class="progress-bar-wrap">
-                <div class="progress-bar" style="width: {{ progress }}%"></div>
-            </div>
-            <span class="progress-label">{{ progress }}% complete</span>
         </div>
     </section>
 
@@ -52,6 +47,7 @@
         <div class="checklist">
             {% for act in lesson_plan.activities | sort(attribute='sort_order') %}
             {% set act_data = completions.get(act.id, {}) %}
+            {% set resource_link = act.external_link or act.audio_url %}
             {% if act.title == 'Lessons moved' %}
             <div class="checklist-item-wrap moved-lessons-notice">
                 <div class="checklist-item">
@@ -98,14 +94,9 @@
                         {% if act.description %}
                         <p>{{ act.description }}</p>
                         {% endif %}
-                        {% if act.external_link %}
+                        {% if resource_link %}
                         <p class="activity-external-link">
-                            <a href="{{ act.external_link }}" target="_blank" rel="noopener noreferrer">Open resource link</a>
-                        </p>
-                        {% endif %}
-                        {% if act.audio_url %}
-                        <p class="activity-audio-link">
-                            <a href="{{ act.audio_url }}" target="_blank" rel="noopener noreferrer">Open audio link</a>
+                            <a href="{{ resource_link }}" target="_blank" rel="noopener noreferrer">Open resource link</a>
                         </p>
                         {% endif %}
                         {% if not act.is_required %}
@@ -133,7 +124,7 @@
             {% endfor %}
         </div>
 
-        {% if progress == 100 %}
+        {% if trackable_total and trackable_done == trackable_total %}
         <div class="celebration-banner">
             <span>🎉</span>
             <div>

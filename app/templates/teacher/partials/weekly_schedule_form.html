@@ -30,8 +30,7 @@
                     <input type="hidden" name="weekdays_list" value="{{ item.weekdays }}">
                 </div>
                 <input type="text" name="item_descriptions" value="{{ item.description or '' }}" placeholder="Description">
-                <input type="url" name="external_links" value="{{ item.external_link or '' }}" placeholder="External link (optional)">
-                <input type="url" name="audio_urls" value="{{ item.audio_url or '' }}" placeholder="Audio link for history (optional)">
+                <input type="url" name="external_links" value="{{ item.external_link or item.audio_url or '' }}" placeholder="External link (optional)">
                 <button type="button" class="btn-remove" aria-label="Remove schedule item">&times;</button>
             </div>
             {% endfor %}

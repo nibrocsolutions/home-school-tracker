@@ -21,6 +21,10 @@ from app.weekly_schedule import (
 MOVED_LESSONS_PLACEHOLDER_TITLE = "Lessons moved"
 
 
+def _is_moved_lessons_placeholder(activity: Activity) -> bool:
+    return activity.title == MOVED_LESSONS_PLACEHOLDER_TITLE
+
+
 def distribute_lesson_dates(matching_days: list[date], lesson_amount: int) -> list[date]:
     """Fill consecutively from the start of matching days; stop when amount is reached."""
     if lesson_amount <= 0 or not matching_days:
@@ -175,6 +179,80 @@ def _clear_schedule_item_activities(
     return preserved
 
 
+def _transfer_messages_to_activity(
+    db: Session,
+    source: Activity,
+    target: Activity,
+) -> None:
+    """Copy student/teacher messages from source onto target before source is deleted."""
+    for src_completion in list(source.completions):
+        message = (src_completion.student_message or "").strip()
+        if not message:
+            continue
+        dest = next(
+            (
+                entry
+                for entry in target.completions
+                if entry.student_id == src_completion.student_id
+            ),
+            None,
+        )
+        if dest is None:
+            db.add(
+                ActivityCompletion(
+                    activity_id=target.id,
+                    student_id=src_completion.student_id,
+                    completed=bool(src_completion.completed),
+                    completed_at=src_completion.completed_at,
+                    student_message=message,
+                    message_read_at=src_completion.message_read_at,
+                )
+            )
+            continue
+        existing = (dest.student_message or "").strip()
+        if not existing:
+            dest.student_message = message
+            dest.message_read_at = src_completion.message_read_at
+        elif message not in existing:
+            dest.student_message = f"{existing}\n\n{message}"
+            if src_completion.message_read_at is None:
+                dest.message_read_at = None
+
+
+def _attach_message_payload(
+    db: Session,
+    activity: Activity,
+    student_id: int,
+    payload: dict,
+) -> None:
+    message = (payload.get("student_message") or "").strip()
+    if not message:
+        return
+    completion = next(
+        (entry for entry in activity.completions if entry.student_id == student_id),
+        None,
+    )
+    if completion is None:
+        db.add(
+            ActivityCompletion(
+                activity_id=activity.id,
+                student_id=student_id,
+                completed=False,
+                student_message=message,
+                message_read_at=payload.get("message_read_at"),
+            )
+        )
+        return
+    existing = (completion.student_message or "").strip()
+    if not existing:
+        completion.student_message = message
+        completion.message_read_at = payload.get("message_read_at")
+    elif message not in existing:
+        completion.student_message = f"{existing}\n\n{message}"
+        if payload.get("message_read_at") is None:
+            completion.message_read_at = None
+
+
 def _restore_preserved_messages(
     db: Session,
     teacher_id: int,
@@ -185,6 +263,9 @@ def _restore_preserved_messages(
     """Re-attach preserved student messages onto rebuilt unfinished activities by date order."""
     if not preserved:
         return
+
+    # Newly added activities are written by FK only; expire so joinedload sees them.
+    db.expire_all()
 
     plans = (
         db.query(LessonPlan)
@@ -216,34 +297,58 @@ def _restore_preserved_messages(
                     if _activity_is_completed(activity, student_id):
                         continue
                     rebuilt.append(activity)
-            for activity, payload in zip(rebuilt, payloads):
+
+            paired = list(zip(rebuilt, payloads))
+            for activity, payload in paired:
                 if not payload:
                     continue
-                message = (payload.get("student_message") or "").strip()
-                if not message:
-                    continue
-                completion = next(
+                _attach_message_payload(db, activity, student_id, payload)
+
+            # Never drop messages when fewer lessons remain after a day-off rebuild.
+            leftovers = [
+                payload
+                for payload in payloads[len(rebuilt) :]
+                if payload and (payload.get("student_message") or "").strip()
+            ]
+            if leftovers and rebuilt:
+                for payload in leftovers:
+                    _attach_message_payload(db, rebuilt[-1], student_id, payload)
+            elif leftovers:
+                host = next(
                     (
-                        entry
-                        for entry in activity.completions
-                        if entry.student_id == student_id
+                        activity
+                        for plan in plans
+                        if plan.student_id == student_id
+                        for activity in plan.activities
+                        if _is_moved_lessons_placeholder(activity)
                     ),
                     None,
                 )
-                if completion is None:
-                    completion = ActivityCompletion(
-                        activity_id=activity.id,
-                        student_id=student_id,
-                        completed=False,
-                        student_message=message,
-                        message_read_at=payload.get("message_read_at"),
+                if host is None:
+                    plan = next((p for p in plans if p.student_id == student_id), None)
+                    if plan is None:
+                        plan = LessonPlan(
+                            title=_auto_plan_title(school_year.start_date),
+                            description=None,
+                            plan_date=school_year.start_date,
+                            teacher_id=teacher_id,
+                            student_id=student_id,
+                        )
+                        db.add(plan)
+                        db.flush()
+                        plans.append(plan)
+                    host = Activity(
+                        lesson_plan_id=plan.id,
+                        title=MOVED_LESSONS_PLACEHOLDER_TITLE,
+                        description="Preserved messages from lessons that were rescheduled.",
+                        sort_order=max((a.sort_order for a in plan.activities), default=0) + 1,
+                        activity_type=ActivityType.regular,
+                        is_required=False,
                     )
-                    db.add(completion)
-                else:
-                    # Keep an existing message if somehow present; otherwise restore.
-                    if not (completion.student_message and completion.student_message.strip()):
-                        completion.student_message = message
-                        completion.message_read_at = payload.get("message_read_at")
+                    db.add(host)
+                    db.flush()
+                for payload in leftovers:
+                    _attach_message_payload(db, host, student_id, payload)
     db.flush()
 
 
@@ -255,11 +360,16 @@ def _merge_plan_into(db: Session, source: LessonPlan, target: LessonPlan) -> Non
     """Move activities from source into target, then delete source."""
     next_sort = max((activity.sort_order for activity in target.activities), default=0)
     for activity in list(source.activities):
-        if _activity_exists(target, activity.title):
+        existing = next(
+            (entry for entry in target.activities if entry.title == activity.title),
+            None,
+        )
+        if existing is not None:
+            _transfer_messages_to_activity(db, activity, existing)
             db.delete(activity)
             continue
         next_sort += 1
-        activity.lesson_plan_id = target.id
+        activity.lesson_plan = target
         activity.sort_order = next_sort
     db.flush()
     db.delete(source)
@@ -648,10 +758,6 @@ def days_off_in_year(school_year: SchoolDayYear) -> list[date]:
         ):
             days.append(day_date)
     return days
-
-
-def _is_moved_lessons_placeholder(activity: Activity) -> bool:
-    return activity.title == MOVED_LESSONS_PLACEHOLDER_TITLE
 
 
 def _unfinished_move_message(lesson_title: str, from_date: date, to_date: date) -> str:

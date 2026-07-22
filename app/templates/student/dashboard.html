@@ -30,20 +30,15 @@
         {% endif %}
     </section>
     {% elif show_interactive and lesson_plan %}
-    <section class="progress-section">
-        <div class="progress-card">
-            <div class="progress-header">
-                <h2>{{ lesson_plan.title }}</h2>
-            </div>
+    <section class="checklist-section">
+        <div class="student-day-heading">
+            <h2 class="section-title">{{ lesson_plan.title }}</h2>
+            <p class="student-day-teacher">Teacher: {{ lesson_plan.teacher.full_name }}</p>
             {% if lesson_plan.description %}
             <p class="plan-desc">{{ lesson_plan.description }}</p>
             {% endif %}
-            <p class="plan-meta">Teacher: <strong>{{ lesson_plan.teacher.full_name }}</strong></p>
         </div>
-    </section>
-
-    <section class="checklist-section">
-        <h2 class="section-title">Your Checklist</h2>
+        <h3 class="section-title checklist-heading">Your Checklist</h3>
         <div class="checklist">
             {% for act in lesson_plan.activities | sort(attribute='sort_order') %}
             {% set act_data = completions.get(act.id, {}) %}
@@ -96,7 +91,7 @@
                         {% endif %}
                         {% if resource_link %}
                         <p class="activity-external-link">
-                            <a href="{{ resource_link }}" target="_blank" rel="noopener noreferrer">Open resource link</a>
+                            <a href="{{ resource_link }}" target="_blank" rel="noopener noreferrer">{{ resource_link }}</a>
                         </p>
                         {% endif %}
                         {% if not act.is_required %}

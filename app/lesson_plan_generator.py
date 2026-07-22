@@ -641,6 +641,91 @@ def days_off_in_year(school_year: SchoolDayYear) -> list[date]:
     return days
 
 
+def _capture_activity_message(
+    db: Session, activity_id: int, student_id: int
+) -> dict | None:
+    completion = (
+        db.query(ActivityCompletion)
+        .filter(
+            ActivityCompletion.activity_id == activity_id,
+            ActivityCompletion.student_id == student_id,
+        )
+        .first()
+    )
+    if not completion:
+        return None
+    message = (completion.student_message or "").strip()
+    if not message:
+        return None
+    return {
+        "student_message": message,
+        "message_read_at": completion.message_read_at,
+    }
+
+
+def _apply_message_to_activity(
+    db: Session,
+    activity: Activity,
+    student_id: int,
+    payload: dict,
+) -> None:
+    message = (payload.get("student_message") or "").strip()
+    if not message:
+        return
+    completion = (
+        db.query(ActivityCompletion)
+        .filter(
+            ActivityCompletion.activity_id == activity.id,
+            ActivityCompletion.student_id == student_id,
+        )
+        .first()
+    )
+    if completion is None:
+        db.add(
+            ActivityCompletion(
+                activity_id=activity.id,
+                student_id=student_id,
+                completed=False,
+                student_message=message,
+                message_read_at=payload.get("message_read_at"),
+            )
+        )
+    else:
+        completion.student_message = message
+        completion.message_read_at = payload.get("message_read_at")
+
+
+def _unfinished_matching_activities(
+    db: Session,
+    *,
+    teacher_id: int,
+    student_id: int,
+    school_year: SchoolDayYear,
+    item: WeeklyScheduleItem,
+) -> list[tuple[LessonPlan, Activity]]:
+    plans = (
+        db.query(LessonPlan)
+        .options(joinedload(LessonPlan.activities).joinedload(Activity.completions))
+        .filter(
+            LessonPlan.teacher_id == teacher_id,
+            LessonPlan.student_id == student_id,
+            LessonPlan.plan_date >= school_year.start_date,
+            LessonPlan.plan_date <= school_year.end_date,
+        )
+        .order_by(LessonPlan.plan_date, LessonPlan.id)
+        .all()
+    )
+    rows: list[tuple[LessonPlan, Activity]] = []
+    for plan in plans:
+        for activity in sorted(plan.activities, key=lambda a: (a.sort_order, a.id)):
+            if not activity_matches_schedule_item(activity.title, item):
+                continue
+            if _activity_is_completed(activity, student_id):
+                continue
+            rows.append((plan, activity))
+    return rows
+
+
 def shift_unfinished_activity_like_day_off(
     db: Session,
     activity: Activity,
@@ -652,7 +737,7 @@ def shift_unfinished_activity_like_day_off(
 
     For subject-linked lessons, the current date is blocked for unfinished placement and
     the subject's unfinished lessons are rebuilt (completed work stays put), cascading
-    later lessons onto the next matching school days.
+    later lessons onto the next matching school days. Student messages move with the lesson.
 
     For non-subject lessons, the activity moves onto the next actual school day.
     Returns True when a shift was applied.
@@ -672,11 +757,28 @@ def shift_unfinished_activity_like_day_off(
     blocked_date = plan.plan_date
     student_id = plan.student_id
     teacher_id = plan.teacher_id
+    saved_message = _capture_activity_message(db, activity.id, student_id)
 
-    if matching_item is not None and parse_weekdays(matching_item.weekdays):
-        # Rebuild unfinished subject lessons with this date blocked so they cascade
-        # forward (same behavior as marking a day off). Messages are preserved by
-        # populate_lesson_plans_from_subjects.
+    if matching_item is not None:
+        weekdays = parse_weekdays(matching_item.weekdays) or set(range(5))
+        # Remember this lesson's position among unfinished matching lessons so the
+        # saved message can be reattached to the same logical lesson after rebuild.
+        before_rows = _unfinished_matching_activities(
+            db,
+            teacher_id=teacher_id,
+            student_id=student_id,
+            school_year=school_year,
+            item=matching_item,
+        )
+        shift_index = next(
+            (
+                idx
+                for idx, (_plan, act) in enumerate(before_rows)
+                if act.id == activity.id
+            ),
+            0,
+        )
+
         item = (
             db.query(WeeklyScheduleItem)
             .options(joinedload(WeeklyScheduleItem.assigned_students))
@@ -685,18 +787,43 @@ def shift_unfinished_activity_like_day_off(
         )
         if item is None:
             return False
-        populate_lesson_plans_from_subjects(
-            db,
-            teacher_id,
-            school_year,
-            [item],
-            preserve_completed=True,
-            extra_occupied={student_id: {blocked_date}},
-        )
+
+        # Ensure weekday matching works even when the subject picker is still empty.
+        original_weekdays = item.weekdays
+        if not parse_weekdays(item.weekdays):
+            item.weekdays = ",".join(str(day) for day in sorted(weekdays))
+
+        try:
+            populate_lesson_plans_from_subjects(
+                db,
+                teacher_id,
+                school_year,
+                [item],
+                preserve_completed=True,
+                extra_occupied={student_id: {blocked_date}},
+            )
+        finally:
+            if item.weekdays != original_weekdays:
+                item.weekdays = original_weekdays
+
+        if saved_message:
+            after_rows = _unfinished_matching_activities(
+                db,
+                teacher_id=teacher_id,
+                student_id=student_id,
+                school_year=school_year,
+                item=item,
+            )
+            if after_rows:
+                target_idx = min(shift_index, len(after_rows) - 1)
+                _apply_message_to_activity(
+                    db, after_rows[target_idx][1], student_id, saved_message
+                )
+        db.flush()
         return True
 
-    # Non-subject (or subject without weekdays): move onto the next actual school day
-    # that does not already have this activity title.
+    # Non-subject: move onto the next actual school day that does not already have
+    # this activity title. Completions stay on the same activity row.
     candidates = [
         day for day in actual_school_days_in_year(school_year) if day > blocked_date
     ]
@@ -736,6 +863,9 @@ def shift_unfinished_activity_like_day_off(
     activity.lesson_plan_id = target.id
     activity.sort_order = next_sort
     db.flush()
+
+    if saved_message:
+        _apply_message_to_activity(db, activity, student_id, saved_message)
 
     remaining = db.query(Activity).filter(Activity.lesson_plan_id == plan.id).count()
     if remaining == 0:

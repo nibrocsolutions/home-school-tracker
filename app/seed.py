@@ -7,6 +7,7 @@ from app.auth import hash_password
 from app.migrations import run_schema_migrations
 from app.models import (
     Activity,
+    ActivityCompletion,
     ActivityType,
     AppSetting,
     LessonPlan,
@@ -36,7 +37,6 @@ DEMO_PROFILES = {
 
 STUDENT_PROFILES = {
     "student": (10, "4th Grade"),
-    "student2": (12, "6th Grade"),
 }
 
 
@@ -59,6 +59,45 @@ def fix_lesson_plan_weekday_titles(db: Session) -> None:
     db.commit()
 
 
+def remove_extra_demo_students(db: Session) -> None:
+    """Keep only Ella Corbin (username=student) as the default demo student."""
+    extra = (
+        db.query(User)
+        .filter(User.username == "student2", User.role == UserRole.student)
+        .first()
+    )
+    if extra is None:
+        return
+
+    plan_ids = [
+        row[0]
+        for row in db.query(LessonPlan.id).filter(LessonPlan.student_id == extra.id).all()
+    ]
+    if plan_ids:
+        activity_ids = [
+            row[0]
+            for row in db.query(Activity.id).filter(Activity.lesson_plan_id.in_(plan_ids)).all()
+        ]
+        if activity_ids:
+            db.query(ActivityCompletion).filter(
+                ActivityCompletion.activity_id.in_(activity_ids)
+            ).delete(synchronize_session=False)
+            db.query(Activity).filter(Activity.id.in_(activity_ids)).delete(
+                synchronize_session=False
+            )
+        db.query(LessonPlan).filter(LessonPlan.id.in_(plan_ids)).delete(
+            synchronize_session=False
+        )
+
+    # Drop schedule assignments for the extra demo student.
+    db.execute(
+        text("DELETE FROM weekly_schedule_item_students WHERE student_id = :student_id"),
+        {"student_id": extra.id},
+    )
+    db.delete(extra)
+    db.commit()
+
+
 def update_demo_profiles(db: Session) -> None:
     changed = False
     for username, (first_name, last_name) in DEMO_PROFILES.items():
@@ -77,6 +116,7 @@ def update_demo_profiles(db: Session) -> None:
     if changed:
         db.commit()
     fix_lesson_plan_weekday_titles(db)
+    remove_extra_demo_students(db)
 
 
 def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
@@ -191,23 +231,12 @@ def seed_database(db: Session) -> None:
             age=10,
             grade="4th Grade",
         ),
-        User(
-            username="student2",
-            email="student2@homeschool.local",
-            password_hash=hash_password("student123"),
-            role=UserRole.student,
-            first_name="Morgan",
-            last_name="Patel",
-            age=12,
-            grade="6th Grade",
-        ),
     ]
     db.add_all(users)
     db.flush()
 
     teacher = next(u for u in users if u.role == UserRole.teacher)
     ella = next(u for u in users if u.username == "student")
-    morgan = next(u for u in users if u.username == "student2")
     today = date.today()
     tomorrow = today + timedelta(days=1)
     yesterday = today - timedelta(days=1)
@@ -255,7 +284,7 @@ def seed_database(db: Session) -> None:
             description="Stories from the past and words that paint pictures.",
             plan_date=today,
             teacher_id=teacher.id,
-            student_id=morgan.id,
+            student_id=ella.id,
             is_sample_data=True,
             activities=[
                 Activity(

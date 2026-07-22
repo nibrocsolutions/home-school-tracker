@@ -18,7 +18,7 @@ def _mark_existing_sample_lesson_plans(db: Session) -> None:
         return
     demo_student_ids = [
         user.id
-        for user in db.query(User).filter(User.username.in_(["student", "student2"])).all()
+        for user in db.query(User).filter(User.username.in_(["student"])).all()
     ]
     if not demo_student_ids:
         return

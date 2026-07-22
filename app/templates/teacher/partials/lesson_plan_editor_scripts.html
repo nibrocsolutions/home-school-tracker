@@ -35,7 +35,7 @@
             </select>
             <input type="text" name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field" value="${escapeHtml(activity.teacher_notes || '')}">
             <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field" value="${escapeHtml(activity.external_link || '')}">
-            <button type="button" class="btn btn-secondary btn-sm btn-remove" aria-label="Remove lesson">Remove Lesson</button>
+            <button type="button" class="btn btn-danger btn-sm btn-remove" aria-label="Remove lesson">Remove Lesson</button>
         `;
         row.querySelector('.btn-remove').addEventListener('click', () => row.remove());
         return row;

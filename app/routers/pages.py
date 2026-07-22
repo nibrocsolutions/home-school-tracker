@@ -36,10 +36,10 @@ from app.models import (
 from app.lesson_plan_generator import (
     build_subjects_progress_report,
     days_off_in_year,
-    move_activity_to_next_school_day,
     populate_lesson_plans_from_subjects,
     reschedule_lessons_after_day_type_change,
     shift_lesson_plans_by_days,
+    shift_unfinished_activity_like_day_off,
 )
 from app.lesson_planning_context import build_lesson_planning_context
 from app.sample_plans import SAMPLE_LESSON_PLANS
@@ -174,6 +174,11 @@ def _days_off_for_pdf_view(
     view: str,
     ref: date,
 ) -> list[date]:
+    school_year = _fetch_school_day_year(db, teacher_id)
+    if school_year is None:
+        return []
+    ensure_planned_days(db, school_year)
+    db.flush()
     school_year = _fetch_school_day_year(db, teacher_id)
     if school_year is None:
         return []
@@ -1534,7 +1539,8 @@ async def update_school_day(
     # Holiday is no longer a selectable day kind; treat it as a day off.
     if parsed_type == SchoolDayType.holiday:
         parsed_type = SchoolDayType.school_off
-
+    # Weekend is no longer selectable; keep existing weekend rows until changed.
+    # If posted somehow, accept it so calendar weekends remain valid.
     completed = is_completed.lower() in ("true", "1", "on")
     if parsed_type != SchoolDayType.actual_school:
         completed = False
@@ -1907,6 +1913,8 @@ async def mark_activity_not_finished(
     if not plan or plan.student_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not your activity")
 
+    original_date = plan.plan_date
+
     # Ensure the lesson is not marked completed before moving it.
     completion = (
         db.query(ActivityCompletion)
@@ -1923,21 +1931,19 @@ async def mark_activity_not_finished(
     school_year = _fetch_school_day_year(db, plan.teacher_id)
     schedule_items = (
         db.query(WeeklyScheduleItem)
+        .options(joinedload(WeeklyScheduleItem.assigned_students))
         .filter(WeeklyScheduleItem.teacher_id == plan.teacher_id)
         .order_by(WeeklyScheduleItem.sort_order, WeeklyScheduleItem.id)
         .all()
     )
-    new_date = move_activity_to_next_school_day(
+    shift_unfinished_activity_like_day_off(
         db, activity, plan, school_year, schedule_items
     )
     db.commit()
 
-    if new_date is not None:
-        return RedirectResponse(
-            url=_student_return_url(view="daily", ref_date=new_date.isoformat()),
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+    # Always return to the week that contained the original lesson day.
+    week_ref = week_start(original_date).isoformat()
     return RedirectResponse(
-        url=_student_return_url(view=view, ref_date=ref_date or None),
+        url=_student_return_url(view="weekly", ref_date=week_ref),
         status_code=status.HTTP_303_SEE_OTHER,
     )

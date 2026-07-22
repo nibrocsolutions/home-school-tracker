@@ -221,10 +221,11 @@ function initSchoolDayEditor() {
     function openEditor(button) {
         activeButton = button;
         const dayDate = button.dataset.dayDate;
-        // Holiday is no longer selectable; treat legacy holiday values as day off.
-        const dayType = button.dataset.dayType === 'holiday'
-            ? 'school_off'
-            : button.dataset.dayType;
+        // Holiday/weekend are no longer selectable day kinds in the editor.
+        let dayType = button.dataset.dayType;
+        if (dayType === 'holiday') {
+            dayType = 'school_off';
+        }
         const isCompleted = button.dataset.isCompleted === 'true';
 
         if (dateLabel) {
@@ -234,6 +235,7 @@ function initSchoolDayEditor() {
         typeInputs.forEach(function (input) {
             input.checked = input.value === dayType;
         });
+        // Weekend days have no matching radio; leave unselected until the teacher chooses.
         if (completedInput) {
             completedInput.checked = isCompleted;
         }

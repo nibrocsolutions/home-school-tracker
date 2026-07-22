@@ -298,6 +298,7 @@ def populate_lesson_plans_from_subjects(
     schedule_items: list[WeeklyScheduleItem],
     *,
     preserve_completed: bool = False,
+    extra_occupied: dict[int, set[date]] | None = None,
 ) -> int:
     if not schedule_items:
         return 0
@@ -350,6 +351,8 @@ def populate_lesson_plans_from_subjects(
 
             completed_count = len(completed_dates)
             occupied = set(completed_dates)
+            if extra_occupied:
+                occupied |= extra_occupied.get(student.id, set())
             free_days = [d for d in matching if d not in occupied]
             still_needed = max(desired - completed_count, 0)
             place_dates = distribute_lesson_dates(free_days, still_needed)
@@ -507,25 +510,33 @@ def days_off_in_year(school_year: SchoolDayYear) -> list[date]:
         planned = planned_map.get(day_date)
         if planned is None:
             continue
-        if _day_type_value(planned.day_type) == SchoolDayType.school_off.value:
+        day_type = _day_type_value(planned.day_type)
+        if day_type in (
+            SchoolDayType.school_off.value,
+            SchoolDayType.holiday.value,
+        ):
             days.append(day_date)
     return days
 
 
-def move_activity_to_next_school_day(
+def shift_unfinished_activity_like_day_off(
     db: Session,
     activity: Activity,
     plan: LessonPlan,
     school_year: SchoolDayYear | None,
     schedule_items: list[WeeklyScheduleItem],
-) -> date | None:
-    """Move an unfinished activity onto the next matching school day.
+) -> bool:
+    """Shift an unfinished lesson forward the same way a day off reschedules subjects.
 
-    Subject activities honor the subject's weekday picker when one is configured.
-    Returns the new plan date, or None when no later school day is available.
+    For subject-linked lessons, the current date is blocked for unfinished placement and
+    the subject's unfinished lessons are rebuilt (completed work stays put), cascading
+    later lessons onto the next matching school days.
+
+    For non-subject lessons, the activity moves onto the next actual school day.
+    Returns True when a shift was applied.
     """
     if school_year is None:
-        return None
+        return False
 
     matching_item = next(
         (
@@ -535,42 +546,13 @@ def move_activity_to_next_school_day(
         ),
         None,
     )
-    weekdays = parse_weekdays(matching_item.weekdays) if matching_item else set()
-    if weekdays:
-        candidates = [
-            day
-            for day in matching_available_days(school_year, weekdays)
-            if day > plan.plan_date
-        ]
-    else:
-        candidates = [
-            day for day in actual_school_days_in_year(school_year) if day > plan.plan_date
-        ]
-    if not candidates:
-        return None
 
-    target_date = candidates[0]
-    plans_by_key: dict[tuple[date, int], LessonPlan] = {
-        (existing.plan_date, existing.student_id): existing
-        for existing in db.query(LessonPlan)
-        .options(joinedload(LessonPlan.activities))
-        .filter(
-            LessonPlan.teacher_id == plan.teacher_id,
-            LessonPlan.student_id == plan.student_id,
-            LessonPlan.plan_date >= school_year.start_date,
-            LessonPlan.plan_date <= school_year.end_date,
-        )
-        .all()
-    }
-    target = _get_or_create_plan(
-        db,
-        plans_by_key,
-        teacher_id=plan.teacher_id,
-        plan_date=target_date,
-        student_id=plan.student_id,
-    )
-    if _activity_exists(target, activity.title) and target.id != plan.id:
-        # Avoid duplicate subject lessons on the target day; drop this unfinished one.
+    blocked_date = plan.plan_date
+    student_id = plan.student_id
+    teacher_id = plan.teacher_id
+
+    if matching_item is not None and parse_weekdays(matching_item.weekdays):
+        # Drop this unfinished occurrence; rebuild will place it on a later free day.
         db.delete(activity)
         db.flush()
         remaining = (
@@ -578,8 +560,63 @@ def move_activity_to_next_school_day(
         )
         if remaining == 0:
             db.delete(plan)
-        db.flush()
-        return target_date
+            db.flush()
+
+        # Ensure assigned students are available for rebuild.
+        item = (
+            db.query(WeeklyScheduleItem)
+            .options(joinedload(WeeklyScheduleItem.assigned_students))
+            .filter(WeeklyScheduleItem.id == matching_item.id)
+            .first()
+        )
+        if item is None:
+            return False
+        populate_lesson_plans_from_subjects(
+            db,
+            teacher_id,
+            school_year,
+            [item],
+            preserve_completed=True,
+            extra_occupied={student_id: {blocked_date}},
+        )
+        return True
+
+    # Non-subject (or subject without weekdays): move onto the next actual school day
+    # that does not already have this activity title.
+    candidates = [
+        day for day in actual_school_days_in_year(school_year) if day > blocked_date
+    ]
+    if not candidates:
+        return False
+
+    plans_by_key: dict[tuple[date, int], LessonPlan] = {
+        (existing.plan_date, existing.student_id): existing
+        for existing in db.query(LessonPlan)
+        .options(joinedload(LessonPlan.activities))
+        .filter(
+            LessonPlan.teacher_id == teacher_id,
+            LessonPlan.student_id == student_id,
+            LessonPlan.plan_date >= school_year.start_date,
+            LessonPlan.plan_date <= school_year.end_date,
+        )
+        .all()
+    }
+
+    target = None
+    for day in candidates:
+        existing = plans_by_key.get((day, student_id))
+        if existing is not None and _activity_exists(existing, activity.title):
+            continue
+        target = _get_or_create_plan(
+            db,
+            plans_by_key,
+            teacher_id=teacher_id,
+            plan_date=day,
+            student_id=student_id,
+        )
+        break
+    if target is None:
+        return False
 
     next_sort = max((act.sort_order for act in target.activities), default=0) + 1
     activity.lesson_plan_id = target.id
@@ -590,4 +627,4 @@ def move_activity_to_next_school_day(
     if remaining == 0:
         db.delete(plan)
     db.flush()
-    return target_date
+    return True

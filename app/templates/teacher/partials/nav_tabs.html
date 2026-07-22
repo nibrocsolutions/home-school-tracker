@@ -14,9 +14,8 @@
        role="tab" aria-selected="{{ 'true' if active_page == 'student-responses' else 'false' }}">
         <span class="chrome-tab-label">Student Responses</span>
         {% if unread_student_message_count %}
-        <span class="chrome-tab-badge" aria-label="{{ unread_student_message_count }} unread student messages">
-            {{ unread_student_message_count }}
-        </span>
+        <span class="chrome-tab-badge" title="{{ unread_student_message_count }} unread"
+              aria-label="{{ unread_student_message_count }} unread student messages">{{ unread_student_message_count }}</span>
         {% endif %}
     </a>
 </nav>

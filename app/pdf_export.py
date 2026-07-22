@@ -204,6 +204,30 @@ def _render_plan_block(
     _render_activity_table(pdf, plan, completions)
 
 
+def _render_days_off_summary(pdf: LessonPlanPDF, days_off: list[date]) -> None:
+    """Always list days off for the period, even when no lessons exist on those days."""
+    pdf._section_title("Days Off")
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(*COLORS["text"])
+    if not days_off:
+        pdf.cell(0, 5, "None", new_x="LMARGIN", new_y="NEXT")
+    else:
+        lines = [
+            f"{day.strftime('%A, %B %d, %Y')}"
+            for day in sorted(days_off)
+        ]
+        pdf.multi_cell(pdf._usable_width(), 5, _safe_text("\n".join(lines)), align="L")
+    pdf.ln(4)
+
+
+def _render_day_off_detail(pdf: LessonPlanPDF, day_off: date) -> None:
+    pdf._section_title(f"Day off - {day_off.strftime('%A, %B %d, %Y')}")
+    pdf.set_font("Helvetica", "I", 9)
+    pdf.set_text_color(*COLORS["muted"])
+    pdf.cell(0, 5, "No lesson plans scheduled (day off).", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+
 def _render_weekly_overview_table(
     pdf: LessonPlanPDF,
     plans: list[LessonPlan],
@@ -220,7 +244,8 @@ def _render_weekly_overview_table(
     row_idx = 0
     for plan_date in all_dates:
         day_plans = grouped.get(plan_date, [])
-        if not day_plans and plan_date in off_set:
+        if plan_date in off_set:
+            # Always show the day off row, even if lessons somehow remain.
             pdf._multi_line_table_row(
                 [
                     plan_date.strftime("%b %d"),
@@ -233,18 +258,14 @@ def _render_weekly_overview_table(
                 alt=row_idx % 2 == 0,
             )
             row_idx += 1
-            continue
         for plan in day_plans:
             student_name = plan.student.full_name if plan.student else "-"
-            title = plan.title
-            if plan_date in off_set:
-                title = f"{title} (day off)"
             pdf._multi_line_table_row(
                 [
                     plan_date.strftime("%b %d"),
                     plan_date.strftime("%a"),
                     student_name,
-                    title,
+                    plan.title,
                     _activities_summary(plan.activities),
                 ],
                 widths,
@@ -254,19 +275,22 @@ def _render_weekly_overview_table(
     pdf.ln(6)
 
 
-def _render_days_off_blocks(
+def _render_chronological_details(
     pdf: LessonPlanPDF,
-    days_off: list[date],
-    plan_dates: set[date],
+    plans: list[LessonPlan],
+    completions_by_plan: dict[int, dict[int, bool]] | None,
+    days_off: list[date] | None = None,
 ) -> None:
-    for day_off in sorted(days_off):
-        if day_off in plan_dates:
-            continue
-        pdf._section_title(f"Day off — {day_off.strftime('%A, %B %d, %Y')}")
-        pdf.set_font("Helvetica", "I", 9)
-        pdf.set_text_color(*COLORS["muted"])
-        pdf.cell(0, 5, "No lesson plans scheduled (day off).", new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(4)
+    """Render lesson plans and day-off markers in date order."""
+    grouped = group_plans_by_date(plans)
+    off_set = set(days_off or [])
+    all_dates = sorted(set(grouped.keys()) | off_set)
+    for plan_date in all_dates:
+        if plan_date in off_set:
+            _render_day_off_detail(pdf, plan_date)
+        for plan in grouped.get(plan_date, []):
+            plan_completions = completions_by_plan.get(plan.id) if completions_by_plan else None
+            _render_plan_block(pdf, plan, plan_completions, show_date=True)
 
 
 def _render_daily_view(
@@ -275,13 +299,7 @@ def _render_daily_view(
     completions_by_plan: dict[int, dict[int, bool]] | None,
     days_off: list[date] | None = None,
 ) -> None:
-    grouped = group_plans_by_date(plans)
-    for _, day_plans in sorted(grouped.items()):
-        for plan in day_plans:
-            plan_completions = completions_by_plan.get(plan.id) if completions_by_plan else None
-            _render_plan_block(pdf, plan, plan_completions, show_date=True)
-    if days_off:
-        _render_days_off_blocks(pdf, days_off, set(grouped.keys()))
+    _render_chronological_details(pdf, plans, completions_by_plan, days_off=days_off)
 
 
 def _render_weekly_view(
@@ -292,13 +310,7 @@ def _render_weekly_view(
 ) -> None:
     _render_weekly_overview_table(pdf, plans, days_off=days_off)
     pdf._section_title("Lesson Plan Details")
-    grouped = group_plans_by_date(plans)
-    for plan_date, day_plans in sorted(grouped.items()):
-        for plan in day_plans:
-            plan_completions = completions_by_plan.get(plan.id) if completions_by_plan else None
-            _render_plan_block(pdf, plan, plan_completions, show_date=True)
-    if days_off:
-        _render_days_off_blocks(pdf, days_off, set(grouped.keys()))
+    _render_chronological_details(pdf, plans, completions_by_plan, days_off=days_off)
 
 
 def _render_monthly_view(
@@ -308,7 +320,7 @@ def _render_monthly_view(
     completions_by_plan: dict[int, dict[int, bool]] | None,
     days_off: list[date] | None = None,
 ) -> None:
-    # Monthly PDF export includes only daily lesson details (no monthly calendar overview).
+    # Monthly PDF export includes daily lesson details with days off interleaved.
     _render_daily_view(pdf, plans, completions_by_plan, days_off=days_off)
 
 
@@ -332,16 +344,20 @@ def build_lesson_plan_pdf(
     pdf.cell(0, 6, _safe_text(subtitle), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)
 
-    if not plans and not days_off:
+    off_list = list(days_off or [])
+    # Always surface days off, even when the period has no lesson plans.
+    _render_days_off_summary(pdf, off_list)
+
+    if not plans and not off_list:
         pdf.set_font("Helvetica", "I", 11)
         pdf.set_text_color(120, 120, 120)
         pdf.cell(0, 8, "No lesson plans for this period.", new_x="LMARGIN", new_y="NEXT")
     elif view == "weekly":
-        _render_weekly_view(pdf, plans, completions_by_plan, days_off=days_off)
+        _render_weekly_view(pdf, plans, completions_by_plan, days_off=off_list)
     elif view == "monthly":
-        _render_monthly_view(pdf, plans, ref, completions_by_plan, days_off=days_off)
+        _render_monthly_view(pdf, plans, ref, completions_by_plan, days_off=off_list)
     else:
-        _render_daily_view(pdf, plans, completions_by_plan, days_off=days_off)
+        _render_daily_view(pdf, plans, completions_by_plan, days_off=off_list)
 
     buffer = BytesIO()
     pdf.output(buffer)

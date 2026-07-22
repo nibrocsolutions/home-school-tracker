@@ -20,6 +20,7 @@ COLORS = {
     "pink": (244, 114, 182),
     "white": (255, 255, 255),
     "row_alt": (248, 246, 242),
+    "red": (220, 38, 38),
 }
 
 
@@ -169,6 +170,9 @@ def _render_activity_table(
         desc = act.description or "-"
         if not act.is_required:
             desc = f"{desc} (optional)" if desc != "-" else "(optional)"
+        notes = (getattr(act, "teacher_notes", None) or "").strip()
+        if notes:
+            desc = f"{desc}\n\nTeacher Notes:\n{notes}" if desc != "-" else f"Teacher Notes:\n{notes}"
         cells = [str(idx), act.title, desc]
         if show_status:
             status = "Done" if _activity_completed(completions, act.id) else "Pending"
@@ -208,8 +212,9 @@ def _render_day_off_detail(pdf: LessonPlanPDF, day_off: date) -> None:
     """Render a day off like a normal day entry: date heading + short note."""
     pdf._section_title(day_off.strftime("%A, %B %d, %Y"))
     pdf.set_font("Helvetica", "I", 9)
-    pdf.set_text_color(*COLORS["muted"])
+    pdf.set_text_color(*COLORS["red"])
     pdf.cell(0, 5, "No lesson plans scheduled (day off).", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_text_color(*COLORS["text"])
     pdf.ln(4)
 
 
@@ -230,17 +235,33 @@ def _render_weekly_overview_table(
     for plan_date in all_dates:
         day_plans = grouped.get(plan_date, [])
         if plan_date in off_set:
-            pdf._multi_line_table_row(
-                [
-                    plan_date.strftime("%b %d"),
-                    plan_date.strftime("%a"),
-                    "-",
-                    plan_date.strftime("%A, %B %d, %Y"),
-                    "No lesson plans scheduled (day off).",
-                ],
-                widths,
-                alt=row_idx % 2 == 0,
-            )
+            # Draw day-off overview row with red note text in the activities column.
+            pdf.set_font("Helvetica", "", 8)
+            pdf.set_fill_color(*COLORS["row_alt"] if row_idx % 2 == 0 else COLORS["white"])
+            pdf.set_text_color(*COLORS["text"])
+            x_start = pdf.l_margin
+            y_start = pdf.get_y()
+            cells = [
+                plan_date.strftime("%b %d"),
+                plan_date.strftime("%a"),
+                "-",
+                plan_date.strftime("%A, %B %d, %Y"),
+                "No lesson plans scheduled (day off).",
+            ]
+            line_height = 5
+            max_height = line_height
+            for i, (text, width) in enumerate(zip(cells, widths)):
+                pdf.set_xy(x_start, y_start)
+                if i == len(cells) - 1:
+                    pdf.set_text_color(*COLORS["red"])
+                else:
+                    pdf.set_text_color(*COLORS["text"])
+                pdf.multi_cell(width, line_height, _safe_text(text), border=1, fill=True, align="L")
+                cell_height = pdf.get_y() - y_start
+                max_height = max(max_height, cell_height)
+                x_start += width
+            pdf.set_text_color(*COLORS["text"])
+            pdf.set_y(y_start + max_height)
             row_idx += 1
         for plan in day_plans:
             student_name = plan.student.full_name if plan.student else "-"
@@ -451,13 +472,6 @@ def build_attendance_report_pdf(attendance: dict, *, subtitle: str) -> bytes:
         _format_date_list(
             [entry["date"] for entry in by_type.get(SchoolDayType.school_off, [])]
             + [entry["date"] for entry in by_type.get(SchoolDayType.holiday, [])]
-        ),
-    )
-    _render_date_block(
-        pdf,
-        "Weekends",
-        _format_date_list(
-            [entry["date"] for entry in by_type.get(SchoolDayType.weekend, [])]
         ),
     )
 

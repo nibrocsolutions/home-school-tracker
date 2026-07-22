@@ -104,10 +104,10 @@
                                     <option value="subject" {% if activity.activity_type == 'subject' %}selected{% endif %}>Subject</option>
                                     <option value="history" {% if activity.activity_type == 'history' %}selected{% endif %}>History</option>
                                 </select>
-                                <input type="text" name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field"
-                                       value="{{ activity.teacher_notes }}">
                                 <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field"
                                        value="{{ activity.external_link }}">
+                                <textarea name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field"
+                                          rows="3">{{ activity.teacher_notes }}</textarea>
                                 <button type="button" class="btn btn-danger btn-sm btn-remove" aria-label="Remove lesson">Remove Lesson</button>
                             </div>
                             {% endfor %}
@@ -122,8 +122,8 @@
                                     <option value="subject">Subject</option>
                                     <option value="history">History</option>
                                 </select>
-                                <input type="text" name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field">
                                 <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field">
+                                <textarea name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field" rows="3"></textarea>
                                 <button type="button" class="btn btn-danger btn-sm btn-remove" aria-label="Remove lesson">Remove Lesson</button>
                             </div>
                         {% endif %}

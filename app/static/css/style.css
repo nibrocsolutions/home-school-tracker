@@ -1052,7 +1052,7 @@ body {
 
 .activity-row {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr 1fr;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
 }
@@ -2137,9 +2137,22 @@ button.school-day-cell:hover {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.5rem;
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
     border-bottom: 1px dashed var(--border);
+}
+
+.activity-row .activity-notes-field {
+    grid-column: 1 / -1;
+    min-height: 4.5rem;
+    resize: vertical;
+    line-height: 1.4;
+}
+
+.activity-row .btn.btn-remove {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-top: 0.15rem;
 }
 
 .activity-type-select,
@@ -2234,6 +2247,15 @@ button.school-day-cell:hover {
     font-size: 0.9rem;
 }
 
+.moved-lessons-notice {
+    border-left: 4px solid #d97706;
+    background: #fffbeb;
+}
+
+.moved-lessons-notice .checklist-item {
+    opacity: 1;
+}
+
 .response-list {
     display: flex;
     flex-direction: column;
@@ -2310,6 +2332,7 @@ button.school-day-cell:hover {
 }
 
 .teacher-notes-preview {
+    white-space: pre-wrap;
     margin-top: 0.35rem;
     font-size: 0.85rem;
     color: var(--text-muted);

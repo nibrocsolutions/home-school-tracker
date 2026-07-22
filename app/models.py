@@ -179,6 +179,7 @@ class Activity(Base):
         Enum(ActivityType), default=ActivityType.regular
     )
     audio_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    teacher_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     external_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     lesson_plan: Mapped["LessonPlan"] = relationship("LessonPlan", back_populates="activities")
@@ -197,6 +198,7 @@ class ActivityCompletion(Base):
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     student_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    message_read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     activity: Mapped["Activity"] = relationship("Activity", back_populates="completions")
     student: Mapped["User"] = relationship("User", back_populates="activity_completions")

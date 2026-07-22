@@ -1066,6 +1066,15 @@ body {
     padding: 0 0.5rem;
 }
 
+.activity-row .btn.btn-remove {
+    justify-self: start;
+    align-self: center;
+    white-space: nowrap;
+    color: var(--text);
+    font-size: 0.85rem;
+    padding: 0.35rem 0.75rem;
+}
+
 .plan-list {
     display: flex;
     flex-direction: column;
@@ -1203,7 +1212,6 @@ body {
     box-shadow: var(--shadow);
     border: 2px solid transparent;
     transition: border-color 0.2s, transform 0.2s;
-    cursor: pointer;
     text-align: left;
     width: 100%;
 }
@@ -1213,7 +1221,7 @@ body {
     border-color: var(--accent);
 }
 
-.checklist-item.completed {
+.checklist-item-wrap.completed .checklist-item {
     background: #f0fdf4;
     border-color: #86efac;
 }
@@ -1232,7 +1240,7 @@ body {
     transition: all 0.2s;
 }
 
-.checklist-item.completed .checkbox-btn {
+.checklist-item-wrap.completed .checkbox-btn:not(.not-finished) {
     background: var(--success);
     border-color: var(--success);
     color: white;
@@ -2100,6 +2108,7 @@ button.school-day-cell:hover {
 
 .activity-type-select,
 .activity-audio-field,
+.activity-notes-field,
 .activity-link-field {
     padding: 0.5rem 0.65rem;
     border: 2px solid var(--border);
@@ -2202,6 +2211,11 @@ button.school-day-cell:hover {
     border-left: 4px solid #f59e0b;
 }
 
+.response-card-unread {
+    border-left-color: #2563eb;
+    box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.15);
+}
+
 .response-card-header {
     display: flex;
     justify-content: space-between;
@@ -2223,6 +2237,64 @@ button.school-day-cell:hover {
     .schedule-item-header {
         grid-template-columns: 1fr;
     }
+}
+
+.subjects-panel-btn {
+    margin-bottom: 1rem;
+}
+
+.chrome-tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.1rem;
+    height: 1.1rem;
+    margin-left: 0.35rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.checklist-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    flex-shrink: 0;
+}
+
+.checkbox-btn.not-finished {
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+
+.checkbox-btn.not-finished:hover {
+    background: #eff6ff;
+    border-color: #2563eb;
+}
+
+.checkbox-btn.not-finished .check-icon {
+    font-size: 0.85rem;
+}
+
+.checklist-action-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.1;
+}
+
+.teacher-notes-preview {
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
 }
 
 .sr-only {

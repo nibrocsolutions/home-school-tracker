@@ -43,7 +43,7 @@
                         <td><strong class="counter-possible-preview">—</strong></td>
                     </tr>
                     <tr>
-                        <td>Planned Actual School Days</td>
+                        <td>School Days</td>
                         <td><strong class="counter-planned-actual">{{ planned_actual_count }}</strong></td>
                     </tr>
                     <tr>
@@ -56,7 +56,7 @@
                         <td><strong class="counter-planned-off">{{ planned_school_off_count }}</strong></td>
                     </tr>
                     <tr>
-                        <td>Completed Actual School Days</td>
+                        <td>Completed School Days</td>
                         <td><strong class="counter-completed">{{ completed_count }}</strong></td>
                     </tr>
                     <tr>
@@ -71,7 +71,7 @@
             </table>
             {% if school_year %}
             <p class="section-hint progress-footnote">
-                Possible school days are weekdays (Monday–Friday). Federal holiday names may appear on the calendar, but those days stay as school days unless you mark them as holiday or day off.
+                Possible school days are weekdays (Monday–Friday). Federal holiday names may appear on the calendar, but those days stay as school days unless you mark them as a day off.
             </p>
             {% else %}
             <p class="section-hint possible-days-hint">
@@ -165,10 +165,10 @@
         </div>
 
         <div class="school-day-legend">
-            <span class="legend-item"><span class="legend-swatch day-type-actual_school"></span> Planned actual school days</span>
+            <span class="legend-item"><span class="legend-swatch day-type-actual_school"></span> School days</span>
             <span class="legend-item">
                 <span class="legend-check-only" aria-hidden="true">✓</span>
-                Completed actual school days
+                Completed school days
             </span>
             <span class="legend-item"><span class="legend-swatch day-type-school_off"></span> Days off</span>
             <span class="legend-item"><span class="legend-swatch day-type-weekend"></span> Weekends</span>
@@ -186,17 +186,12 @@
                     <label class="school-day-type-option">
                         <input type="radio" name="day_type" value="actual_school">
                         <span class="legend-swatch day-type-actual_school"></span>
-                        Planned actual school day
+                        School day
                     </label>
                     <label class="school-day-type-option">
                         <input type="radio" name="day_type" value="school_off">
                         <span class="legend-swatch day-type-school_off"></span>
                         Day off
-                    </label>
-                    <label class="school-day-type-option">
-                        <input type="radio" name="day_type" value="holiday">
-                        <span class="legend-swatch day-type-holiday"></span>
-                        Holiday
                     </label>
                     <label class="school-day-type-option">
                         <input type="radio" name="day_type" value="weekend">
@@ -207,7 +202,6 @@
                 <p class="section-hint">
                     Days off move unfinished subject lessons to later matching school days
                     (based on each subject's weekday picker). Lessons that no longer fit are dropped.
-                    Holidays only affect lessons when you set a day to Holiday here.
                 </p>
                 <label class="school-day-completed-option" id="school-day-completed-wrap" hidden>
                     <input type="checkbox" name="is_completed" id="school-day-completed">
@@ -226,6 +220,10 @@
         <div class="panel school-day-subjects-panel">
             <h2>Yearly Subjects &amp; Activities</h2>
             <p class="section-hint">Manage subjects and activities scheduled across the school year.</p>
+            <a href="/teacher/school-days?cal_month={{ cal_month_param }}&subjects_view=list"
+               class="btn btn-primary subjects-panel-btn">
+                Subjects
+            </a>
             {% if subjects_progress %}
             <h3>Subjects Progress</h3>
             <p class="section-hint">
@@ -260,10 +258,6 @@
                 </tbody>
             </table>
             {% endif %}
-            <a href="/teacher/school-days?cal_month={{ cal_month_param }}&subjects_view=list"
-               class="btn btn-primary">
-                Subjects
-            </a>
         </div>
         {% endif %}
     </div>

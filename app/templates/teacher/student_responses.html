@@ -13,7 +13,7 @@
     {% if student_responses %}
     <div class="response-list">
         {% for resp in student_responses %}
-        <article class="response-card">
+        <article class="response-card {% if resp.is_unread %}response-card-unread{% endif %}">
             <div class="response-card-header">
                 <strong>{{ resp.student_name }}</strong>
                 <span class="date-badge">{{ resp.plan_date.strftime('%a, %b %d') }}</span>

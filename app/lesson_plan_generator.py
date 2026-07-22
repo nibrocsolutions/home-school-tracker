@@ -261,7 +261,7 @@ def _add_activity_to_plan(
             description=activity_data["description"] or None,
             sort_order=sort_order,
             activity_type=activity_type,
-            audio_url=activity_data["audio_url"] or None,
+            teacher_notes=activity_data.get("teacher_notes") or None,
             external_link=activity_data["external_link"] or None,
         )
     )
@@ -497,3 +497,97 @@ def build_subjects_progress_report(
             }
         )
     return rows
+
+
+def days_off_in_year(school_year: SchoolDayYear) -> list[date]:
+    """Return planned day-off dates within the school year."""
+    planned_map = {day.day_date: day for day in school_year.planned_days}
+    days: list[date] = []
+    for day_date in iter_dates_in_range(school_year.start_date, school_year.end_date):
+        planned = planned_map.get(day_date)
+        if planned is None:
+            continue
+        if _day_type_value(planned.day_type) == SchoolDayType.school_off.value:
+            days.append(day_date)
+    return days
+
+
+def move_activity_to_next_school_day(
+    db: Session,
+    activity: Activity,
+    plan: LessonPlan,
+    school_year: SchoolDayYear | None,
+    schedule_items: list[WeeklyScheduleItem],
+) -> date | None:
+    """Move an unfinished activity onto the next matching school day.
+
+    Subject activities honor the subject's weekday picker when one is configured.
+    Returns the new plan date, or None when no later school day is available.
+    """
+    if school_year is None:
+        return None
+
+    matching_item = next(
+        (
+            item
+            for item in schedule_items
+            if activity_matches_schedule_item(activity.title, item)
+        ),
+        None,
+    )
+    weekdays = parse_weekdays(matching_item.weekdays) if matching_item else set()
+    if weekdays:
+        candidates = [
+            day
+            for day in matching_available_days(school_year, weekdays)
+            if day > plan.plan_date
+        ]
+    else:
+        candidates = [
+            day for day in actual_school_days_in_year(school_year) if day > plan.plan_date
+        ]
+    if not candidates:
+        return None
+
+    target_date = candidates[0]
+    plans_by_key: dict[tuple[date, int], LessonPlan] = {
+        (existing.plan_date, existing.student_id): existing
+        for existing in db.query(LessonPlan)
+        .options(joinedload(LessonPlan.activities))
+        .filter(
+            LessonPlan.teacher_id == plan.teacher_id,
+            LessonPlan.student_id == plan.student_id,
+            LessonPlan.plan_date >= school_year.start_date,
+            LessonPlan.plan_date <= school_year.end_date,
+        )
+        .all()
+    }
+    target = _get_or_create_plan(
+        db,
+        plans_by_key,
+        teacher_id=plan.teacher_id,
+        plan_date=target_date,
+        student_id=plan.student_id,
+    )
+    if _activity_exists(target, activity.title) and target.id != plan.id:
+        # Avoid duplicate subject lessons on the target day; drop this unfinished one.
+        db.delete(activity)
+        db.flush()
+        remaining = (
+            db.query(Activity).filter(Activity.lesson_plan_id == plan.id).count()
+        )
+        if remaining == 0:
+            db.delete(plan)
+        db.flush()
+        return target_date
+
+    next_sort = max((act.sort_order for act in target.activities), default=0) + 1
+    activity.lesson_plan_id = target.id
+    activity.sort_order = next_sort
+    db.flush()
+
+    remaining = db.query(Activity).filter(Activity.lesson_plan_id == plan.id).count()
+    if remaining == 0:
+        db.delete(plan)
+    db.flush()
+    return target_date

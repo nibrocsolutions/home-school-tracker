@@ -13,6 +13,9 @@
             {{ act.title }}
             {% if act.activity_type.value == 'special' %}<span class="activity-type-tag special">Special</span>{% endif %}
             {% if act.activity_type.value == 'history' %}<span class="activity-type-tag history">History</span>{% endif %}
+            {% if act.teacher_notes %}
+            <p class="teacher-notes-preview">Teacher notes: {{ act.teacher_notes }}</p>
+            {% endif %}
         </li>
         {% endfor %}
     </ul>

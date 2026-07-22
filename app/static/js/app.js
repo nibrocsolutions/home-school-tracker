@@ -48,9 +48,9 @@ const DAY_TYPE_CLASSES = [
 ];
 
 const DAY_TYPE_LABELS = {
-    actual_school: 'planned actual school day',
+    actual_school: 'school day',
     school_off: 'day off',
-    holiday: 'holiday',
+    holiday: 'school day',
     weekend: 'weekend',
 };
 
@@ -221,7 +221,10 @@ function initSchoolDayEditor() {
     function openEditor(button) {
         activeButton = button;
         const dayDate = button.dataset.dayDate;
-        const dayType = button.dataset.dayType;
+        // Holiday is no longer selectable; treat legacy holiday values as day off.
+        const dayType = button.dataset.dayType === 'holiday'
+            ? 'school_off'
+            : button.dataset.dayType;
         const isCompleted = button.dataset.isCompleted === 'true';
 
         if (dateLabel) {

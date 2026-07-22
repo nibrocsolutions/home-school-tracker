@@ -49,12 +49,26 @@ def run_schema_migrations(db: Session) -> None:
             )
         if not _column_exists(inspector, "activities", "audio_url"):
             db.execute(text("ALTER TABLE activities ADD COLUMN audio_url VARCHAR(500)"))
+        if not _column_exists(inspector, "activities", "teacher_notes"):
+            db.execute(text("ALTER TABLE activities ADD COLUMN teacher_notes TEXT"))
         if not _column_exists(inspector, "activities", "external_link"):
             db.execute(text("ALTER TABLE activities ADD COLUMN external_link VARCHAR(500)"))
 
     if _table_exists(inspector, "activity_completions"):
         if not _column_exists(inspector, "activity_completions", "student_message"):
             db.execute(text("ALTER TABLE activity_completions ADD COLUMN student_message TEXT"))
+        if not _column_exists(inspector, "activity_completions", "message_read_at"):
+            db.execute(
+                text("ALTER TABLE activity_completions ADD COLUMN message_read_at TIMESTAMP")
+            )
+            # Existing messages should not appear as unread after this feature ships.
+            db.execute(
+                text(
+                    "UPDATE activity_completions "
+                    "SET message_read_at = CURRENT_TIMESTAMP "
+                    "WHERE student_message IS NOT NULL AND student_message != ''"
+                )
+            )
 
     db.commit()
 
@@ -97,6 +111,7 @@ def run_schema_migrations(db: Session) -> None:
     _migrate_school_day_type_enum(db)
     _migrate_remove_skip_and_auto_holidays(db, inspector)
     _migrate_remove_sick_days(db, inspector)
+    _migrate_holidays_to_days_off(db, inspector)
 
 
 def _migrate_school_day_type_enum(db: Session) -> None:
@@ -150,6 +165,25 @@ def _migrate_remove_sick_days(db: Session, inspector) -> None:
             "UPDATE planned_school_days "
             "SET day_type = 'school_off' "
             "WHERE day_type = 'sick'"
+        )
+    )
+    db.commit()
+
+
+def _migrate_holidays_to_days_off(db: Session, inspector) -> None:
+    """Holiday is no longer a day-kind choice; convert remaining holidays to days off."""
+    if not _table_exists(inspector, "planned_school_days"):
+        return
+
+    bind = db.get_bind()
+    if bind.dialect.name == "postgresql" and not _enum_has_label(db, "holiday"):
+        return
+
+    db.execute(
+        text(
+            "UPDATE planned_school_days "
+            "SET day_type = 'school_off' "
+            "WHERE day_type = 'holiday'"
         )
     )
     db.commit()

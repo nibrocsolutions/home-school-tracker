@@ -82,7 +82,7 @@ def _serialize_plan_activities(plan: LessonPlan) -> list[dict]:
             "title": activity.title,
             "description": activity.description or "",
             "activity_type": activity.activity_type.value,
-            "audio_url": activity.audio_url or "",
+            "teacher_notes": activity.teacher_notes or "",
             "external_link": activity.external_link or "",
         }
         for activity in sorted(plan.activities, key=lambda a: a.sort_order)
@@ -166,9 +166,9 @@ def build_lesson_planning_context(
         "editor_context": editor_context,
         "pdf_ref_date": cal_month.isoformat(),
         "school_day_type_labels": {
-            SchoolDayType.actual_school: "Planned actual school days",
+            SchoolDayType.actual_school: "School days",
             SchoolDayType.school_off: "Days off",
-            SchoolDayType.holiday: "Holidays",
+            SchoolDayType.holiday: "Days off",
             SchoolDayType.weekend: "Weekends",
         },
     }

@@ -76,6 +76,7 @@ def export_database(db: Session) -> bytes:
                 "is_required": activity.is_required,
                 "activity_type": activity.activity_type.value,
                 "audio_url": activity.audio_url,
+                "teacher_notes": activity.teacher_notes,
                 "external_link": activity.external_link,
             }
             for activity in db.query(Activity).order_by(Activity.id).all()
@@ -88,6 +89,7 @@ def export_database(db: Session) -> bytes:
                 "completed": completion.completed,
                 "completed_at": _serialize_datetime(completion.completed_at),
                 "student_message": completion.student_message,
+                "message_read_at": _serialize_datetime(completion.message_read_at),
             }
             for completion in db.query(ActivityCompletion).order_by(ActivityCompletion.id).all()
         ],
@@ -236,6 +238,7 @@ def import_database(db: Session, raw: bytes) -> None:
                 is_required=row["is_required"],
                 activity_type=ActivityType(row.get("activity_type", "regular")),
                 audio_url=row.get("audio_url"),
+                teacher_notes=row.get("teacher_notes"),
                 external_link=row.get("external_link"),
             )
         )
@@ -249,6 +252,7 @@ def import_database(db: Session, raw: bytes) -> None:
                 completed=row["completed"],
                 completed_at=_parse_datetime(row.get("completed_at")),
                 student_message=row.get("student_message"),
+                message_read_at=_parse_datetime(row.get("message_read_at")),
             )
         )
 

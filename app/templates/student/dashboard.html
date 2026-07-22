@@ -53,12 +53,27 @@
             {% for act in lesson_plan.activities | sort(attribute='sort_order') %}
             {% set act_data = completions.get(act.id, {}) %}
             <div class="checklist-item-wrap {% if act_data.get('completed') %}completed{% endif %}">
-                <form method="post" action="/student/activities/{{ act.id }}/toggle" class="checklist-item">
-                    <input type="hidden" name="view" value="daily">
-                    <input type="hidden" name="ref_date" value="{{ ref_date }}">
-                    <button type="submit" class="checkbox-btn" aria-label="Toggle {{ act.title }}">
-                        <span class="check-icon">{% if act_data.get('completed') %}✓{% endif %}</span>
-                    </button>
+                <div class="checklist-item">
+                    <div class="checklist-actions">
+                        <form method="post" action="/student/activities/{{ act.id }}/toggle">
+                            <input type="hidden" name="view" value="daily">
+                            <input type="hidden" name="ref_date" value="{{ ref_date }}">
+                            <button type="submit" class="checkbox-btn" aria-label="Mark {{ act.title }} finished">
+                                <span class="check-icon">{% if act_data.get('completed') %}✓{% endif %}</span>
+                            </button>
+                            <span class="checklist-action-label">Finished</span>
+                        </form>
+                        {% if not act_data.get('completed') %}
+                        <form method="post" action="/student/activities/{{ act.id }}/not-finished">
+                            <input type="hidden" name="view" value="daily">
+                            <input type="hidden" name="ref_date" value="{{ ref_date }}">
+                            <button type="submit" class="checkbox-btn not-finished" aria-label="Mark {{ act.title }} not finished and move to next school day">
+                                <span class="check-icon" aria-hidden="true"></span>
+                            </button>
+                            <span class="checklist-action-label">Not finished</span>
+                        </form>
+                        {% endif %}
+                    </div>
                     <div class="checklist-content">
                         <strong>{{ act.title }}</strong>
                         {% if act.activity_type.value == 'special' %}
@@ -71,11 +86,6 @@
                         {% if act.description %}
                         <p>{{ act.description }}</p>
                         {% endif %}
-                        {% if act.audio_url %}
-                        <p class="activity-audio-link">
-                            <a href="{{ act.audio_url }}" target="_blank" rel="noopener noreferrer">🎧 Listen to History Lesson Audio</a>
-                        </p>
-                        {% endif %}
                         {% if act.external_link %}
                         <p class="activity-external-link">
                             <a href="{{ act.external_link }}" target="_blank" rel="noopener noreferrer">🔗 Open Resource</a>
@@ -85,7 +95,7 @@
                         <span class="optional-tag">Optional</span>
                         {% endif %}
                     </div>
-                </form>
+                </div>
 
                 <div class="activity-message-form">
                     {% if act_data.get('student_message') %}

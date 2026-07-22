@@ -2,7 +2,15 @@ from datetime import date, timedelta
 
 from sqlalchemy.orm import Session, joinedload
 
-from app.models import Activity, ActivityType, LessonPlan, SchoolDayType, SchoolDayYear, WeeklyScheduleItem
+from app.models import (
+    Activity,
+    ActivityCompletion,
+    ActivityType,
+    LessonPlan,
+    SchoolDayType,
+    SchoolDayYear,
+    WeeklyScheduleItem,
+)
 from app.school_year_utils import _day_type_value, iter_dates_in_range
 from app.weekly_schedule import (
     activity_matches_schedule_item,
@@ -85,9 +93,95 @@ def _clear_schedule_item_activities(
     schedule_items: list[WeeklyScheduleItem],
     *,
     preserve_completed: bool = False,
-) -> None:
-    """Remove previously auto-populated activities for the given subjects so they can be rebuilt."""
+) -> dict[int, dict[int, list[dict | None]]]:
+    """Remove previously auto-populated activities for the given subjects so they can be rebuilt.
+
+    Returns preserved teacher-message payloads keyed by schedule item id then student id,
+    in plan-date order for the activities being removed. Messages move with lessons when
+    unfinished work is rescheduled.
+    """
+    preserved: dict[int, dict[int, list[dict | None]]] = {
+        item.id: {} for item in schedule_items
+    }
     if not schedule_items:
+        return preserved
+
+    plans = (
+        db.query(LessonPlan)
+        .options(
+            joinedload(LessonPlan.activities).joinedload(Activity.completions),
+        )
+        .filter(
+            LessonPlan.teacher_id == teacher_id,
+            LessonPlan.plan_date >= school_year.start_date,
+            LessonPlan.plan_date <= school_year.end_date,
+        )
+        .order_by(LessonPlan.plan_date, LessonPlan.id)
+        .all()
+    )
+
+    # Collect removable activities in date order before deleting.
+    pending_delete: list[tuple[WeeklyScheduleItem, LessonPlan, Activity]] = []
+    empty_plans: list[LessonPlan] = []
+    for plan in plans:
+        remaining = []
+        for activity in list(plan.activities):
+            matched_item = next(
+                (
+                    item
+                    for item in schedule_items
+                    if activity_matches_schedule_item(activity.title, item)
+                ),
+                None,
+            )
+            if matched_item is not None and not (
+                preserve_completed and _activity_is_completed(activity, plan.student_id)
+            ):
+                pending_delete.append((matched_item, plan, activity))
+            else:
+                remaining.append(activity)
+        if not remaining:
+            empty_plans.append(plan)
+
+    pending_delete.sort(key=lambda row: (row[1].plan_date, row[1].id, row[2].sort_order, row[2].id))
+    for item, plan, activity in pending_delete:
+        student_bucket = preserved[item.id].setdefault(plan.student_id, [])
+        completion = next(
+            (
+                entry
+                for entry in activity.completions
+                if entry.student_id == plan.student_id
+            ),
+            None,
+        )
+        if completion and completion.student_message and completion.student_message.strip():
+            student_bucket.append(
+                {
+                    "student_message": completion.student_message,
+                    "message_read_at": completion.message_read_at,
+                }
+            )
+        else:
+            student_bucket.append(None)
+        db.delete(activity)
+
+    db.flush()
+    for plan in empty_plans:
+        db.delete(plan)
+    db.flush()
+    db.expire_all()
+    return preserved
+
+
+def _restore_preserved_messages(
+    db: Session,
+    teacher_id: int,
+    school_year: SchoolDayYear,
+    schedule_items: list[WeeklyScheduleItem],
+    preserved: dict[int, dict[int, list[dict | None]]],
+) -> None:
+    """Re-attach preserved student messages onto rebuilt unfinished activities by date order."""
+    if not preserved:
         return
 
     plans = (
@@ -100,30 +194,55 @@ def _clear_schedule_item_activities(
             LessonPlan.plan_date >= school_year.start_date,
             LessonPlan.plan_date <= school_year.end_date,
         )
+        .order_by(LessonPlan.plan_date, LessonPlan.id)
         .all()
     )
 
-    empty_plans: list[LessonPlan] = []
-    for plan in plans:
-        remaining = []
-        for activity in list(plan.activities):
-            matches = any(
-                activity_matches_schedule_item(activity.title, item) for item in schedule_items
-            )
-            if matches and not (
-                preserve_completed and _activity_is_completed(activity, plan.student_id)
-            ):
-                db.delete(activity)
-            else:
-                remaining.append(activity)
-        if not remaining:
-            empty_plans.append(plan)
-
+    for item in schedule_items:
+        by_student = preserved.get(item.id) or {}
+        for student_id, payloads in by_student.items():
+            if not payloads:
+                continue
+            rebuilt: list[Activity] = []
+            for plan in plans:
+                if plan.student_id != student_id:
+                    continue
+                for activity in sorted(plan.activities, key=lambda a: (a.sort_order, a.id)):
+                    if not activity_matches_schedule_item(activity.title, item):
+                        continue
+                    # Only unfinished rebuilt lessons receive shifted messages.
+                    if _activity_is_completed(activity, student_id):
+                        continue
+                    rebuilt.append(activity)
+            for activity, payload in zip(rebuilt, payloads):
+                if not payload:
+                    continue
+                message = (payload.get("student_message") or "").strip()
+                if not message:
+                    continue
+                completion = next(
+                    (
+                        entry
+                        for entry in activity.completions
+                        if entry.student_id == student_id
+                    ),
+                    None,
+                )
+                if completion is None:
+                    completion = ActivityCompletion(
+                        activity_id=activity.id,
+                        student_id=student_id,
+                        completed=False,
+                        student_message=message,
+                        message_read_at=payload.get("message_read_at"),
+                    )
+                    db.add(completion)
+                else:
+                    # Keep an existing message if somehow present; otherwise restore.
+                    if not (completion.student_message and completion.student_message.strip()):
+                        completion.student_message = message
+                        completion.message_read_at = payload.get("message_read_at")
     db.flush()
-    for plan in empty_plans:
-        db.delete(plan)
-    db.flush()
-    db.expire_all()
 
 
 def _auto_plan_title(plan_date: date) -> str:
@@ -303,7 +422,7 @@ def populate_lesson_plans_from_subjects(
     if not schedule_items:
         return 0
 
-    _clear_schedule_item_activities(
+    preserved_messages = _clear_schedule_item_activities(
         db,
         teacher_id,
         school_year,
@@ -394,6 +513,9 @@ def populate_lesson_plans_from_subjects(
                 activities_added += 1
 
     db.flush()
+    _restore_preserved_messages(
+        db, teacher_id, school_year, schedule_items, preserved_messages
+    )
     return activities_added
 
 
@@ -552,17 +674,9 @@ def shift_unfinished_activity_like_day_off(
     teacher_id = plan.teacher_id
 
     if matching_item is not None and parse_weekdays(matching_item.weekdays):
-        # Drop this unfinished occurrence; rebuild will place it on a later free day.
-        db.delete(activity)
-        db.flush()
-        remaining = (
-            db.query(Activity).filter(Activity.lesson_plan_id == plan.id).count()
-        )
-        if remaining == 0:
-            db.delete(plan)
-            db.flush()
-
-        # Ensure assigned students are available for rebuild.
+        # Rebuild unfinished subject lessons with this date blocked so they cascade
+        # forward (same behavior as marking a day off). Messages are preserved by
+        # populate_lesson_plans_from_subjects.
         item = (
             db.query(WeeklyScheduleItem)
             .options(joinedload(WeeklyScheduleItem.assigned_students))

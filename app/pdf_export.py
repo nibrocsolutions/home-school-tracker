@@ -204,24 +204,9 @@ def _render_plan_block(
     _render_activity_table(pdf, plan, completions)
 
 
-def _render_days_off_summary(pdf: LessonPlanPDF, days_off: list[date]) -> None:
-    """Always list days off for the period, even when no lessons exist on those days."""
-    pdf._section_title("Days Off")
-    pdf.set_font("Helvetica", "", 9)
-    pdf.set_text_color(*COLORS["text"])
-    if not days_off:
-        pdf.cell(0, 5, "None", new_x="LMARGIN", new_y="NEXT")
-    else:
-        lines = [
-            f"{day.strftime('%A, %B %d, %Y')}"
-            for day in sorted(days_off)
-        ]
-        pdf.multi_cell(pdf._usable_width(), 5, _safe_text("\n".join(lines)), align="L")
-    pdf.ln(4)
-
-
 def _render_day_off_detail(pdf: LessonPlanPDF, day_off: date) -> None:
-    pdf._section_title(f"Day off - {day_off.strftime('%A, %B %d, %Y')}")
+    """Render a day off like a normal day entry: date heading + short note."""
+    pdf._section_title(day_off.strftime("%A, %B %d, %Y"))
     pdf.set_font("Helvetica", "I", 9)
     pdf.set_text_color(*COLORS["muted"])
     pdf.cell(0, 5, "No lesson plans scheduled (day off).", new_x="LMARGIN", new_y="NEXT")
@@ -245,14 +230,13 @@ def _render_weekly_overview_table(
     for plan_date in all_dates:
         day_plans = grouped.get(plan_date, [])
         if plan_date in off_set:
-            # Always show the day off row, even if lessons somehow remain.
             pdf._multi_line_table_row(
                 [
                     plan_date.strftime("%b %d"),
                     plan_date.strftime("%a"),
                     "-",
-                    "Day off",
-                    "-",
+                    plan_date.strftime("%A, %B %d, %Y"),
+                    "No lesson plans scheduled (day off).",
                 ],
                 widths,
                 alt=row_idx % 2 == 0,
@@ -345,8 +329,6 @@ def build_lesson_plan_pdf(
     pdf.ln(4)
 
     off_list = list(days_off or [])
-    # Always surface days off, even when the period has no lesson plans.
-    _render_days_off_summary(pdf, off_list)
 
     if not plans and not off_list:
         pdf.set_font("Helvetica", "I", 11)

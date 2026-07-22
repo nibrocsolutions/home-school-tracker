@@ -10,11 +10,13 @@
         <span class="chrome-tab-label">School Year Planning</span>
     </a>
     <a href="/teacher/student-responses"
-       class="chrome-tab {% if active_page == 'student-responses' %}active{% endif %}"
+       class="chrome-tab {% if active_page == 'student-responses' %}active{% endif %}{% if unread_student_message_count %} has-unread-badge{% endif %}"
        role="tab" aria-selected="{{ 'true' if active_page == 'student-responses' else 'false' }}">
         <span class="chrome-tab-label">Student Responses</span>
         {% if unread_student_message_count %}
-        <span class="chrome-tab-badge" title="{{ unread_student_message_count }} unread"
+        <span class="chrome-tab-badge"
+              style="display:inline-flex;align-items:center;justify-content:center;min-width:1.35rem;height:1.35rem;margin-left:0.5rem;padding:0 0.4rem;border-radius:999px;background-color:#2563eb;color:#ffffff;font-size:0.7rem;font-weight:700;line-height:1;border:2px solid #ffffff;"
+              title="{{ unread_student_message_count }} unread"
               aria-label="{{ unread_student_message_count }} unread student messages">{{ unread_student_message_count }}</span>
         {% endif %}
     </a>

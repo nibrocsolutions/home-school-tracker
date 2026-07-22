@@ -13,11 +13,11 @@ function createActivityRow(activity = {}) {
             <option value="regular" ${activity.activity_type === 'regular' ? 'selected' : ''}>Regular</option>
             <option value="special" ${activity.activity_type === 'special' ? 'selected' : ''}>Special Activity</option>
             <option value="subject" ${activity.activity_type === 'subject' ? 'selected' : ''}>Subject</option>
-            <option value="history" ${activity.activity_type === 'history' ? 'selected' : ''}>History (with audio)</option>
+            <option value="history" ${activity.activity_type === 'history' ? 'selected' : ''}>History</option>
         </select>
-        <input type="url" name="activity_audio_urls" placeholder="Audio URL (history)" class="activity-audio-field" value="${activity.audio_url || ''}">
+        <input type="text" name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field" value="${activity.teacher_notes || ''}">
         <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field" value="${activity.external_link || ''}">
-        <button type="button" class="btn-remove" aria-label="Remove activity">&times;</button>
+        <button type="button" class="btn btn-secondary btn-sm btn-remove" aria-label="Remove activity">Remove</button>
     `;
     row.querySelector('.btn-remove').addEventListener('click', () => row.remove());
     return row;

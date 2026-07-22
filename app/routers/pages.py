@@ -17,6 +17,7 @@ from app.auth import (
 )
 from app.backup import export_database, import_database
 from app.calendar_context import build_calendar_context
+from app.calendar_utils import month_end, month_start, week_end, week_start
 from app.database import get_db
 from app.models import (
     Activity,
@@ -34,6 +35,8 @@ from app.models import (
 )
 from app.lesson_plan_generator import (
     build_subjects_progress_report,
+    days_off_in_year,
+    move_activity_to_next_school_day,
     populate_lesson_plans_from_subjects,
     reschedule_lessons_after_day_type_change,
     shift_lesson_plans_by_days,
@@ -109,7 +112,7 @@ def _fetch_student_responses(db: Session, teacher_id: int) -> list[dict]:
             ActivityCompletion.student_message != "",
         )
         .order_by(ActivityCompletion.completed_at.desc())
-        .limit(20)
+        .limit(50)
         .all()
     )
     return [
@@ -120,9 +123,68 @@ def _fetch_student_responses(db: Session, teacher_id: int) -> list[dict]:
             "plan_date": plan.plan_date,
             "message": completion.student_message,
             "completed_at": completion.completed_at,
+            "is_unread": completion.message_read_at is None,
         }
         for completion, activity, plan, student in rows
     ]
+
+
+def _count_unread_student_messages(db: Session, teacher_id: int) -> int:
+    return (
+        db.query(ActivityCompletion)
+        .join(Activity, ActivityCompletion.activity_id == Activity.id)
+        .join(LessonPlan, Activity.lesson_plan_id == LessonPlan.id)
+        .filter(
+            LessonPlan.teacher_id == teacher_id,
+            ActivityCompletion.student_message.isnot(None),
+            ActivityCompletion.student_message != "",
+            ActivityCompletion.message_read_at.is_(None),
+        )
+        .count()
+    )
+
+
+def _mark_student_messages_read(db: Session, teacher_id: int) -> None:
+    rows = (
+        db.query(ActivityCompletion)
+        .join(Activity, ActivityCompletion.activity_id == Activity.id)
+        .join(LessonPlan, Activity.lesson_plan_id == LessonPlan.id)
+        .filter(
+            LessonPlan.teacher_id == teacher_id,
+            ActivityCompletion.student_message.isnot(None),
+            ActivityCompletion.student_message != "",
+            ActivityCompletion.message_read_at.is_(None),
+        )
+        .all()
+    )
+    now = datetime.utcnow()
+    for completion in rows:
+        completion.message_read_at = now
+
+
+def _teacher_shell_context(db: Session, teacher_id: int) -> dict:
+    return {
+        "unread_student_message_count": _count_unread_student_messages(db, teacher_id),
+    }
+
+
+def _days_off_for_pdf_view(
+    db: Session,
+    teacher_id: int,
+    view: str,
+    ref: date,
+) -> list[date]:
+    school_year = _fetch_school_day_year(db, teacher_id)
+    if school_year is None:
+        return []
+    all_off = days_off_in_year(school_year)
+    if view == "weekly":
+        start, end = week_start(ref), week_end(ref)
+    elif view == "monthly":
+        start, end = month_start(ref), month_end(ref)
+    else:
+        start = end = ref
+    return [day for day in all_off if start <= day <= end]
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -602,7 +664,7 @@ def _parse_lesson_activities(
     activity_titles: list[str],
     activity_descriptions: list[str],
     activity_types: list[str],
-    activity_audio_urls: list[str],
+    activity_teacher_notes: list[str],
     activity_external_links: list[str],
     activity_student_ids: list[int] | None = None,
 ) -> list[tuple[int | None, str, str | None, ActivityType, str | None, str | None, int]]:
@@ -612,7 +674,7 @@ def _parse_lesson_activities(
             continue
         desc = activity_descriptions[idx] if idx < len(activity_descriptions) else ""
         type_raw = activity_types[idx] if idx < len(activity_types) else "regular"
-        audio = activity_audio_urls[idx] if idx < len(activity_audio_urls) else ""
+        notes = activity_teacher_notes[idx] if idx < len(activity_teacher_notes) else ""
         link = activity_external_links[idx] if idx < len(activity_external_links) else ""
         student_id = None
         if activity_student_ids is not None and idx < len(activity_student_ids):
@@ -627,7 +689,7 @@ def _parse_lesson_activities(
                 act_title.strip(),
                 desc.strip() or None,
                 act_type,
-                audio.strip() or None,
+                notes.strip() or None,
                 link.strip() or None,
                 idx + 1,
             )
@@ -669,7 +731,7 @@ def _save_lesson_plans_for_date(
                     description=activity.get("description"),
                     sort_order=act_idx + sort_base * 100,
                     activity_type=activity["activity_type"],
-                    audio_url=activity.get("audio_url"),
+                    teacher_notes=activity.get("teacher_notes"),
                     external_link=activity.get("external_link"),
                 )
             )
@@ -770,6 +832,7 @@ async def teacher_lesson_planning_page(
             "user": current_user,
             "active_page": "lesson-planning",
             "students": students,
+            **_teacher_shell_context(db, current_user.id),
             **_sample_plans_context(db),
             **planning,
         },
@@ -840,10 +903,10 @@ def _build_student_plans_from_form(
                 "title": act_title,
                 "description": act_desc,
                 "activity_type": act_type,
-                "audio_url": audio,
+                "teacher_notes": notes,
                 "external_link": link,
             }
-            for act_student_id, act_title, act_desc, act_type, audio, link, _sort in activities_data
+            for act_student_id, act_title, act_desc, act_type, notes, link, _sort in activities_data
             if act_student_id == student_id
         ]
         plans.append(
@@ -870,7 +933,7 @@ async def save_lesson_planning_plan(
     activity_titles: list[str] = Form(default=[]),
     activity_descriptions: list[str] = Form(default=[]),
     activity_types: list[str] = Form(default=[]),
-    activity_audio_urls: list[str] = Form(default=[]),
+    activity_teacher_notes: list[str] = Form(default=[]),
     activity_external_links: list[str] = Form(default=[]),
 ):
     school_year = _fetch_school_day_year(db, current_user.id)
@@ -900,7 +963,7 @@ async def save_lesson_planning_plan(
         activity_titles,
         activity_descriptions,
         activity_types,
-        activity_audio_urls,
+        activity_teacher_notes,
         activity_external_links,
         activity_student_ids,
     )
@@ -1063,13 +1126,17 @@ async def teacher_student_responses_page(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
 ):
+    responses = _fetch_student_responses(db, current_user.id)
+    _mark_student_messages_read(db, current_user.id)
+    db.commit()
     return render(
         request,
         "teacher/student_responses.html",
         {
             "user": current_user,
             "active_page": "student-responses",
-            "student_responses": _fetch_student_responses(db, current_user.id),
+            "student_responses": responses,
+            **_teacher_shell_context(db, current_user.id),
         },
     )
 
@@ -1133,6 +1200,7 @@ async def teacher_school_days_page(
             "subject_student_ids": subject_student_ids,
             "weekday_labels": SCHOOL_WEEKDAY_LABELS,
             "format_weekdays": format_weekdays,
+            **_teacher_shell_context(db, current_user.id),
             **school_days,
         },
     )
@@ -1176,11 +1244,13 @@ async def teacher_lesson_plans_pdf(
 ):
     all_plans = _fetch_teacher_plans(db, current_user.id)
     calendar = build_calendar_context(all_plans, view, ref_date)
+    days_off = _days_off_for_pdf_view(db, current_user.id, view, calendar["ref"])
     pdf_bytes = build_lesson_plan_pdf(
         calendar["lesson_plans"],
         view,
         calendar["ref"],
         subtitle=f"Teacher: {current_user.full_name}",
+        days_off=days_off,
     )
     filename = pdf_filename(view, calendar["ref"], "teacher")
     return RawResponse(
@@ -1286,7 +1356,7 @@ async def create_lesson_plan(
     activity_titles: list[str] = Form(...),
     activity_descriptions: list[str] = Form(default=[]),
     activity_types: list[str] = Form(default=[]),
-    activity_audio_urls: list[str] = Form(default=[]),
+    activity_teacher_notes: list[str] = Form(default=[]),
     activity_external_links: list[str] = Form(default=[]),
 ):
     if not student_ids:
@@ -1301,7 +1371,7 @@ async def create_lesson_plan(
         activity_titles,
         activity_descriptions,
         activity_types,
-        activity_audio_urls,
+        activity_teacher_notes,
         activity_external_links,
         activity_student_ids=None,
     )
@@ -1316,10 +1386,10 @@ async def create_lesson_plan(
                     "title": act_title,
                     "description": act_desc,
                     "activity_type": act_type,
-                    "audio_url": audio,
+                    "teacher_notes": notes,
                     "external_link": link,
                 }
-                for _sid, act_title, act_desc, act_type, audio, link, _sort in activities_data
+                for _sid, act_title, act_desc, act_type, notes, link, _sort in activities_data
             ],
         }
         for student_id in student_ids
@@ -1460,6 +1530,10 @@ async def update_school_day(
         if ajax:
             return JSONResponse({"error": "type"}, status_code=400)
         return _school_days_redirect(cal_month=cal_month, error="date")
+
+    # Holiday is no longer a selectable day kind; treat it as a day off.
+    if parsed_type == SchoolDayType.holiday:
+        parsed_type = SchoolDayType.school_off
 
     completed = is_completed.lower() in ("true", "1", "on")
     if parsed_type != SchoolDayType.actual_school:
@@ -1671,12 +1745,21 @@ async def student_lesson_plans_pdf(
     all_plans = _fetch_student_plans(db, current_user.id)
     calendar = build_calendar_context(all_plans, view, ref_date)
     completions_by_plan = load_completions_for_plans(db, current_user.id, calendar["lesson_plans"])
+    teacher_id = None
+    if calendar["lesson_plans"]:
+        teacher_id = calendar["lesson_plans"][0].teacher_id
+    elif all_plans:
+        teacher_id = all_plans[0].teacher_id
+    days_off: list[date] = []
+    if teacher_id is not None:
+        days_off = _days_off_for_pdf_view(db, teacher_id, view, calendar["ref"])
     pdf_bytes = build_lesson_plan_pdf(
         calendar["lesson_plans"],
         view,
         calendar["ref"],
         subtitle=f"Student: {current_user.full_name}",
         completions_by_plan=completions_by_plan,
+        days_off=days_off,
     )
     filename = pdf_filename(view, calendar["ref"], "student")
     return RawResponse(
@@ -1783,6 +1866,7 @@ async def submit_activity_message(
     if completion:
         completion.student_message = message
         completion.completed_at = datetime.utcnow()
+        completion.message_read_at = None
     else:
         completion = ActivityCompletion(
             activity_id=activity_id,
@@ -1790,6 +1874,7 @@ async def submit_activity_message(
             completed=False,
             student_message=message,
             completed_at=datetime.utcnow(),
+            message_read_at=None,
         )
         db.add(completion)
     db.commit()
@@ -1797,5 +1882,62 @@ async def submit_activity_message(
         url=_student_return_url(
             view=view, ref_date=ref_date or None, success="message"
         ),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/student/activities/{activity_id}/not-finished")
+async def mark_activity_not_finished(
+    activity_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.student))],
+    view: str = Form("daily"),
+    ref_date: str = Form(""),
+):
+    activity = (
+        db.query(Activity)
+        .options(joinedload(Activity.completions))
+        .filter(Activity.id == activity_id)
+        .first()
+    )
+    if not activity:
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    plan = db.query(LessonPlan).filter(LessonPlan.id == activity.lesson_plan_id).first()
+    if not plan or plan.student_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your activity")
+
+    # Ensure the lesson is not marked completed before moving it.
+    completion = (
+        db.query(ActivityCompletion)
+        .filter(
+            ActivityCompletion.activity_id == activity_id,
+            ActivityCompletion.student_id == current_user.id,
+        )
+        .first()
+    )
+    if completion and completion.completed:
+        completion.completed = False
+        completion.completed_at = None
+
+    school_year = _fetch_school_day_year(db, plan.teacher_id)
+    schedule_items = (
+        db.query(WeeklyScheduleItem)
+        .filter(WeeklyScheduleItem.teacher_id == plan.teacher_id)
+        .order_by(WeeklyScheduleItem.sort_order, WeeklyScheduleItem.id)
+        .all()
+    )
+    new_date = move_activity_to_next_school_day(
+        db, activity, plan, school_year, schedule_items
+    )
+    db.commit()
+
+    if new_date is not None:
+        return RedirectResponse(
+            url=_student_return_url(view="daily", ref_date=new_date.isoformat()),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    return RedirectResponse(
+        url=_student_return_url(view=view, ref_date=ref_date or None),
         status_code=status.HTTP_303_SEE_OTHER,
     )

@@ -269,7 +269,7 @@ def seed_database(db: Session) -> None:
                     description="Listen to the history lesson audio, then tell your teacher what you learned.",
                     sort_order=2,
                     activity_type=ActivityType.history,
-                    audio_url=HISTORY_AUDIO_URL,
+                    teacher_notes="History audio is available from the subject resource link.",
                 ),
                 Activity(
                     title="Creative Writing",

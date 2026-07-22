@@ -125,7 +125,7 @@ def schedule_item_to_activity(
         "title": title,
         "description": item.description or "",
         "activity_type": activity_type.value,
-        "audio_url": item.audio_url or "",
+        "teacher_notes": "",
         "external_link": item.external_link or "",
     }
 

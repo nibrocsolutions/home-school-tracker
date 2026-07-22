@@ -106,11 +106,13 @@ def _enrich_activities_with_subject_links(
     activities: list[Activity],
     schedule_items: list,
 ) -> None:
-    """Fill missing activity links from matching yearly subject / schedule items."""
+    """Fill missing activity external links from matching yearly subject / schedule items."""
     if not activities or not schedule_items:
         return
     for activity in activities:
         if activity.title == MOVED_LESSONS_PLACEHOLDER_TITLE:
+            continue
+        if (activity.external_link or "").strip():
             continue
         matched = next(
             (
@@ -122,10 +124,10 @@ def _enrich_activities_with_subject_links(
         )
         if matched is None:
             continue
-        if not activity.external_link and matched.external_link:
-            activity.external_link = matched.external_link
-        if not activity.audio_url and matched.audio_url:
-            activity.audio_url = matched.audio_url
+        # Prefer external_link; fall back to legacy audio_url values still stored on subjects.
+        link = (matched.external_link or getattr(matched, "audio_url", None) or "").strip()
+        if link:
+            activity.external_link = link
 
 
 def _fetch_student_responses(db: Session, teacher_id: int) -> list[dict]:
@@ -766,7 +768,6 @@ def _save_lesson_plans_for_date(
                     activity_type=activity["activity_type"],
                     teacher_notes=activity.get("teacher_notes"),
                     external_link=activity.get("external_link"),
-                    audio_url=activity.get("audio_url"),
                 )
             )
     return len(student_plans)
@@ -1036,7 +1037,6 @@ async def save_school_day_subject(
     lesson_amount: str = Form("0"),
     item_description: str = Form(""),
     external_link: str = Form(""),
-    audio_url: str = Form(""),
     student_ids: list[int] = Form(default=[]),
 ):
     if not item_name.strip():
@@ -1086,7 +1086,7 @@ async def save_school_day_subject(
         subject.weekdays = normalize_school_weekdays(weekdays_list)
         subject.description = item_description.strip() or None
         subject.external_link = external_link.strip() or None
-        subject.audio_url = audio_url.strip() or None
+        subject.audio_url = None
         subject.lesson_amount = amount
         _sync_subject_students(db, subject, student_ids)
         saved_subject = subject
@@ -1104,7 +1104,7 @@ async def save_school_day_subject(
             weekdays=normalize_school_weekdays(weekdays_list),
             description=item_description.strip() or None,
             external_link=external_link.strip() or None,
-            audio_url=audio_url.strip() or None,
+            audio_url=None,
             lesson_amount=amount,
             sort_order=max_order + 1,
         )
@@ -1330,7 +1330,6 @@ async def save_weekly_schedule(
     weekdays_list: list[str] = Form(default=[]),
     item_descriptions: list[str] = Form(default=[]),
     external_links: list[str] = Form(default=[]),
-    audio_urls: list[str] = Form(default=[]),
 ):
     db.query(WeeklyScheduleItem).filter(
         WeeklyScheduleItem.teacher_id == current_user.id
@@ -1344,7 +1343,6 @@ async def save_weekly_schedule(
         weekdays = weekdays_list[idx] if idx < len(weekdays_list) else ""
         desc = item_descriptions[idx] if idx < len(item_descriptions) else ""
         link = external_links[idx] if idx < len(external_links) else ""
-        audio = audio_urls[idx] if idx < len(audio_urls) else ""
 
         try:
             item_kind = ScheduleItemKind(kind_raw)
@@ -1367,7 +1365,7 @@ async def save_weekly_schedule(
                 weekdays=weekdays.strip(),
                 description=desc.strip() or None,
                 external_link=link.strip() or None,
-                audio_url=audio.strip() or None,
+                audio_url=None,
                 sort_order=idx + 1,
             )
         )
@@ -1734,6 +1732,10 @@ async def student_dashboard(
             .all()
         )
         _enrich_activities_with_subject_links(lesson_plan.activities, schedule_items)
+        # Surface legacy activity audio_url values as the external link for display.
+        for act in lesson_plan.activities:
+            if not (act.external_link or "").strip() and (act.audio_url or "").strip():
+                act.external_link = act.audio_url.strip()
         plan_completions = load_completions_for_plans(db, current_user.id, [lesson_plan])
         completions = plan_completions.get(lesson_plan.id, {})
         trackable = [
@@ -1768,6 +1770,8 @@ async def student_dashboard(
             "progress": progress,
             "done_count": done_count,
             "total_count": total_count,
+            "trackable_done": done_count,
+            "trackable_total": total_count,
             "show_interactive": show_interactive,
             "all_completions": all_completions,
             "hide_view_toggle": True,

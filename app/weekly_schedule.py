@@ -41,7 +41,7 @@ DEFAULT_SCHEDULE_ITEMS = [
         "weekdays": "",
         "lesson_amount": 72,
         "description": "Listen to the history audio lesson and share what you learned.",
-        "audio_url": HISTORY_AUDIO_URL,
+        "external_link": HISTORY_AUDIO_URL,
     },
     {
         "name": "Math",
@@ -126,8 +126,7 @@ def schedule_item_to_activity(
         "description": item.description or "",
         "activity_type": activity_type.value,
         "teacher_notes": "",
-        "external_link": item.external_link or "",
-        "audio_url": item.audio_url or "",
+        "external_link": (item.external_link or getattr(item, "audio_url", None) or "").strip(),
     }
 
 

@@ -160,11 +160,20 @@ def _clear_schedule_item_activities(
             ),
             None,
         )
+        message = ""
+        message_read_at = None
         if completion and completion.student_message and completion.student_message.strip():
+            message = completion.student_message.strip()
+            message_read_at = completion.message_read_at
+        link = (activity.external_link or "").strip() or None
+        notes = (activity.teacher_notes or "").strip() or None
+        if message or link or notes:
             student_bucket.append(
                 {
-                    "student_message": completion.student_message,
-                    "message_read_at": completion.message_read_at,
+                    "student_message": message or None,
+                    "message_read_at": message_read_at,
+                    "external_link": link,
+                    "teacher_notes": notes,
                 }
             )
         else:
@@ -260,7 +269,7 @@ def _restore_preserved_messages(
     schedule_items: list[WeeklyScheduleItem],
     preserved: dict[int, dict[int, list[dict | None]]],
 ) -> None:
-    """Re-attach preserved student messages onto rebuilt unfinished activities by date order."""
+    """Re-attach preserved messages/links/notes onto rebuilt unfinished activities."""
     if not preserved:
         return
 
@@ -293,7 +302,7 @@ def _restore_preserved_messages(
                 for activity in sorted(plan.activities, key=lambda a: (a.sort_order, a.id)):
                     if not activity_matches_schedule_item(activity.title, item):
                         continue
-                    # Only unfinished rebuilt lessons receive shifted messages.
+                    # Only unfinished rebuilt lessons receive shifted fields.
                     if _activity_is_completed(activity, student_id):
                         continue
                     rebuilt.append(activity)
@@ -302,7 +311,14 @@ def _restore_preserved_messages(
             for activity, payload in paired:
                 if not payload:
                     continue
-                _attach_message_payload(db, activity, student_id, payload)
+                link = (payload.get("external_link") or "").strip()
+                if link:
+                    activity.external_link = link
+                notes = (payload.get("teacher_notes") or "").strip()
+                if notes:
+                    activity.teacher_notes = notes
+                if (payload.get("student_message") or "").strip():
+                    _attach_message_payload(db, activity, student_id, payload)
 
             # Never drop messages when fewer lessons remain after a day-off rebuild.
             leftovers = [

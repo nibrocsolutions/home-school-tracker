@@ -16,6 +16,7 @@ DEFAULT_SCHEDULE_ITEMS = [
         "weekdays": "",
         "lesson_amount": 36,
         "description": "Community co-op classes with other homeschool families.",
+        "include_numbering": False,
     },
     {
         "name": "Wild and Free Outing",
@@ -24,6 +25,7 @@ DEFAULT_SCHEDULE_ITEMS = [
         "weekdays": "",
         "lesson_amount": 36,
         "description": "Outdoor nature exploration and adventure learning.",
+        "include_numbering": False,
     },
     {
         "name": "Classical Conversations Essentials",
@@ -33,6 +35,7 @@ DEFAULT_SCHEDULE_ITEMS = [
         "lesson_amount": 36,
         "description": "Essentials program — grammar, writing, and presentations.",
         "external_link": CLASSICAL_CONVERSATIONS_URL,
+        "include_numbering": False,
     },
     {
         "name": "History",
@@ -42,6 +45,7 @@ DEFAULT_SCHEDULE_ITEMS = [
         "lesson_amount": 72,
         "description": "Listen to the history audio lesson and share what you learned.",
         "external_link": HISTORY_AUDIO_URL,
+        "include_numbering": True,
     },
     {
         "name": "Math",
@@ -50,6 +54,7 @@ DEFAULT_SCHEDULE_ITEMS = [
         "weekdays": "",
         "lesson_amount": 120,
         "description": "Complete math workbook pages and practice problems.",
+        "include_numbering": True,
     },
     {
         "name": "Language Arts",
@@ -58,6 +63,16 @@ DEFAULT_SCHEDULE_ITEMS = [
         "weekdays": "",
         "lesson_amount": 120,
         "description": "Grammar, spelling, and creative writing.",
+        "include_numbering": True,
+    },
+    {
+        "name": "Science",
+        "item_kind": ScheduleItemKind.subject,
+        "special_type": None,
+        "weekdays": "",
+        "lesson_amount": 120,
+        "description": "Hands-on experiments, observations, and science workbook lessons.",
+        "include_numbering": True,
     },
 ]
 
@@ -90,11 +105,27 @@ def schedule_items_for_date(
     return [item for item in items if day_idx in parse_weekdays(item.weekdays)]
 
 
-LESSON_NUMBERED_SUBJECTS = frozenset({"math", "language arts"})
+LESSON_NUMBERED_SUBJECTS = frozenset({"math", "language arts", "history", "science"})
+
+
+def default_include_numbering(name: str, item_kind: ScheduleItemKind | str | None = None) -> bool:
+    """Return True when a new subject should default to lesson numbering."""
+    kind_value = item_kind.value if isinstance(item_kind, ScheduleItemKind) else item_kind
+    if kind_value and kind_value != ScheduleItemKind.subject.value:
+        return False
+    return name.strip().lower() in LESSON_NUMBERED_SUBJECTS
+
+
+def subject_includes_numbering(item: WeeklyScheduleItem) -> bool:
+    return bool(getattr(item, "include_numbering", False))
 
 
 def schedule_item_base_title(item: WeeklyScheduleItem) -> str:
-    if item.item_kind == ScheduleItemKind.subject and item.name.lower() == "history":
+    if (
+        item.item_kind == ScheduleItemKind.subject
+        and item.name.lower() == "history"
+        and not subject_includes_numbering(item)
+    ):
         return f"History: {item.name}"
     return item.name
 
@@ -117,7 +148,7 @@ def schedule_item_to_activity(
     if (
         lesson_number is not None
         and item.item_kind == ScheduleItemKind.subject
-        and item.name.lower() in LESSON_NUMBERED_SUBJECTS
+        and subject_includes_numbering(item)
     ):
         title = f"{item.name} - Lesson {lesson_number}"
 
@@ -135,6 +166,10 @@ def activity_matches_schedule_item(activity_title: str, item: WeeklyScheduleItem
     base = schedule_item_base_title(item)
     if activity_title == base or activity_title == item.name:
         return True
+    # Legacy History titles used "History: History" even when numbering is now on.
+    if item.item_kind == ScheduleItemKind.subject and item.name.lower() == "history":
+        if activity_title == f"History: {item.name}":
+            return True
     prefix = f"{item.name} - Lesson "
     if activity_title.startswith(prefix):
         suffix = activity_title[len(prefix) :]

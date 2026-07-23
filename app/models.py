@@ -135,6 +135,7 @@ class WeeklyScheduleItem(Base):
     audio_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     lesson_amount: Mapped[int] = mapped_column(Integer, default=0)
+    include_numbering: Mapped[bool] = mapped_column(Boolean, default=False)
 
     teacher: Mapped["User"] = relationship("User", back_populates="weekly_schedule_items")
     assigned_students: Mapped[list["User"]] = relationship(

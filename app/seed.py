@@ -163,6 +163,7 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             description="Listen to the history audio lesson and share what you learned.",
             external_link=HISTORY_AUDIO_URL,
             lesson_amount=72,
+            include_numbering=True,
             sort_order=4,
         ),
         WeeklyScheduleItem(
@@ -172,6 +173,7 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             weekdays="",
             description="Complete math workbook pages and practice problems.",
             lesson_amount=120,
+            include_numbering=True,
             sort_order=5,
         ),
         WeeklyScheduleItem(
@@ -181,7 +183,18 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             weekdays="",
             description="Grammar, spelling, and creative writing.",
             lesson_amount=120,
+            include_numbering=True,
             sort_order=6,
+        ),
+        WeeklyScheduleItem(
+            teacher_id=teacher_id,
+            name="Science",
+            item_kind=ScheduleItemKind.subject,
+            weekdays="",
+            description="Hands-on experiments, observations, and science workbook lessons.",
+            lesson_amount=120,
+            include_numbering=True,
+            sort_order=7,
         ),
     ]
     db.add_all(defaults)

@@ -104,8 +104,13 @@
                                     <option value="subject" {% if activity.activity_type == 'subject' %}selected{% endif %}>Subject</option>
                                     <option value="history" {% if activity.activity_type == 'history' %}selected{% endif %}>History</option>
                                 </select>
-                                <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field"
-                                       value="{{ activity.external_link }}">
+                                <div class="activity-link-group">
+                                    <input type="text" name="activity_external_links"
+                                           placeholder="External URL or media file"
+                                           class="activity-link-field"
+                                           value="{{ activity.external_link }}">
+                                    <button type="button" class="btn btn-ghost btn-sm btn-choose-media">Choose media</button>
+                                </div>
                                 <textarea name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field"
                                           rows="3">{{ activity.teacher_notes }}</textarea>
                                 <button type="button" class="btn btn-danger btn-sm btn-remove" aria-label="Remove lesson">Remove Lesson</button>
@@ -122,7 +127,12 @@
                                     <option value="subject">Subject</option>
                                     <option value="history">History</option>
                                 </select>
-                                <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field">
+                                <div class="activity-link-group">
+                                    <input type="text" name="activity_external_links"
+                                           placeholder="External URL or media file"
+                                           class="activity-link-field">
+                                    <button type="button" class="btn btn-ghost btn-sm btn-choose-media">Choose media</button>
+                                </div>
                                 <textarea name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field" rows="3"></textarea>
                                 <button type="button" class="btn btn-danger btn-sm btn-remove" aria-label="Remove lesson">Remove Lesson</button>
                             </div>
@@ -147,3 +157,4 @@
         </div>
     </form>
 </section>
+<script src="/static/js/media-picker.js?v=media-library-1"></script>

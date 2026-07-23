@@ -17,7 +17,13 @@
             <p class="teacher-notes-preview">Teacher notes: {{ act.teacher_notes }}</p>
             {% endif %}
             {% if act.external_link %}
-            <p class="activity-external-link"><a href="{{ act.external_link }}" target="_blank" rel="noopener noreferrer">Resource link</a></p>
+            <p class="activity-external-link">
+                {% if is_media_library_url(act.external_link) %}
+                <a href="{{ act.external_link }}" target="_blank" rel="noopener noreferrer">{{ media_display_name(act.external_link) }}</a>
+                {% else %}
+                <a href="{{ act.external_link }}" target="_blank" rel="noopener noreferrer">Resource link</a>
+                {% endif %}
+            </p>
             {% endif %}
         </li>
         {% endfor %}

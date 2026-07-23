@@ -15,3 +15,8 @@ build/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Keep media library docs, ignore dropped lesson files
+media/**
+!media/README.md
+!media/.gitkeep

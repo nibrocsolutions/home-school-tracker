@@ -68,7 +68,10 @@
                         <option value="subject">Subject</option>
                         <option value="history">History</option>
                     </select>
-                    <input type="url" name="activity_external_links" placeholder="External link" class="activity-link-field">
+                    <div class="activity-link-group">
+                        <input type="text" name="activity_external_links" placeholder="External URL or media file" class="activity-link-field">
+                        <button type="button" class="btn btn-ghost btn-sm btn-choose-media">Choose media</button>
+                    </div>
                     <textarea name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field" rows="3"></textarea>
                 </div>
             </div>
@@ -77,3 +80,4 @@
         <button type="submit" class="btn btn-primary">Save Lesson Plan</button>
     </form>
 </div>
+<script src="/static/js/media-picker.js?v=media-library-1"></script>

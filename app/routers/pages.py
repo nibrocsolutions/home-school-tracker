@@ -3,7 +3,7 @@ from datetime import date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response as RawResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response as RawResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
@@ -12,6 +12,7 @@ from app.auth import (
     ROLE_HOME_PAGES,
     authenticate_user,
     create_access_token,
+    get_current_user,
     hash_password,
     require_roles,
 )
@@ -19,6 +20,16 @@ from app.backup import export_database, import_database
 from app.calendar_context import build_calendar_context
 from app.calendar_utils import month_end, month_start, week_end, week_start
 from app.database import get_db
+from app.media_library import (
+    format_file_size,
+    guess_media_type,
+    is_media_library_url,
+    list_media_files,
+    media_display_name,
+    media_library_summary,
+    media_root,
+    resolve_media_file,
+)
 from app.models import (
     Activity,
     ActivityCompletion,
@@ -72,6 +83,8 @@ from app.weekly_schedule import (
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["is_media_library_url"] = is_media_library_url
+templates.env.globals["media_display_name"] = media_display_name
 
 
 def render(request: Request, name: str, context: dict, status_code: int = 200):
@@ -534,6 +547,70 @@ async def admin_backup_import(
     return RedirectResponse(
         url="/admin/backup?success=imported",
         status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.get("/admin/media", response_class=HTMLResponse)
+async def admin_media_library_page(
+    request: Request,
+    current_user: Annotated[User, Depends(require_roles(UserRole.admin))],
+):
+    summary = media_library_summary()
+    return render(
+        request,
+        "admin/media.html",
+        {
+            "user": current_user,
+            "media_root": summary["root"],
+            "media_files": summary["files"],
+            "media_folders": summary["folders"],
+            "media_file_count": summary["file_count"],
+            "media_folder_count": summary["folder_count"],
+        },
+    )
+
+
+@router.get("/api/media-library")
+async def media_library_api(
+    current_user: Annotated[
+        User, Depends(require_roles(UserRole.admin, UserRole.teacher))
+    ],
+    q: str | None = Query(None),
+):
+    files = list_media_files(query=q)
+    return JSONResponse(
+        {
+            "root": str(media_root()),
+            "count": len(files),
+            "files": [
+                {
+                    "path": item.relative_path,
+                    "name": item.name,
+                    "size": item.size,
+                    "size_label": format_file_size(item.size),
+                    "kind": item.kind,
+                    "url": item.url,
+                }
+                for item in files
+            ],
+        }
+    )
+
+
+@router.get("/media/{file_path:path}")
+async def serve_media_file(
+    file_path: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    """Serve a file from the media library to authenticated users."""
+    resolved = resolve_media_file(file_path)
+    if resolved is None:
+        raise HTTPException(status_code=404, detail="Media file not found")
+    return FileResponse(
+        path=resolved,
+        media_type=guess_media_type(resolved),
+        filename=resolved.name,
+        content_disposition_type="inline",
     )
 
 

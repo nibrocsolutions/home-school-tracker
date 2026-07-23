@@ -24,6 +24,10 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-hst_user}:${POSTGRES_PASSWORD:-change_me_secure_password}@db:5432/${POSTGRES_DB:-home_school_tracker}
       SECRET_KEY: ${SECRET_KEY:-change_me_to_a_long_random_secret_key}
+      MEDIA_ROOT: /app/media
+    volumes:
+      # Drop MP3s/PDFs/other lesson files into ./media on the host
+      - ./media:/app/media
     depends_on:
       db:
         condition: service_healthy

@@ -102,7 +102,8 @@
         <div class="panel school-day-media-panel">
             <h2>Media Library</h2>
             <p class="section-hint">
-                Upload MP3s, PDFs, and other lesson files into subject folders.
+                Upload MP3s, PDFs, and other lesson files into subject folders,
+                or create a new folder under media.
                 Teachers can attach them later from Edit Lesson Plan.
             </p>
             <p class="section-hint">
@@ -134,7 +135,18 @@
                             {% else %}
                             <option value="other">other</option>
                             {% endfor %}
+                            <option value="__new__">+ Create new folder…</option>
                         </select>
+                    </div>
+                    <div class="form-row" id="media-new-folder-row" hidden>
+                        <label for="media-new-folder-name">New folder name</label>
+                        <input type="text"
+                               id="media-new-folder-name"
+                               name="new_folder_name"
+                               maxlength="64"
+                               placeholder="e.g. story-of-civilization"
+                               autocomplete="off">
+                        <p class="section-hint">Letters, numbers, dashes, and dots. Spaces become dashes.</p>
                     </div>
                     <div class="form-row">
                         <label for="media-upload-files">Files</label>
@@ -142,13 +154,14 @@
                                id="media-upload-files"
                                name="media_files"
                                multiple
-                               required
                                accept=".mp3,.m4a,.wav,.ogg,.aac,.flac,.pdf,.png,.jpg,.jpeg,.gif,.webp,.mp4,.webm,.doc,.docx,.txt,.epub,.zip">
-                        <p class="section-hint">You can select multiple files at once.</p>
+                        <p class="section-hint">
+                            Optional when creating a folder. Select multiple files to upload into the chosen folder.
+                        </p>
                     </div>
                     <div class="media-upload-actions">
                         <button type="button" class="btn btn-secondary" id="media-upload-cancel">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Upload</button>
+                        <button type="submit" class="btn btn-primary" id="media-upload-submit">Upload</button>
                     </div>
                 </form>
             </dialog>

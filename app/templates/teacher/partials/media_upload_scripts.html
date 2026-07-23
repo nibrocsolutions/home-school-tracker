@@ -5,13 +5,40 @@
     const cancelBtn = document.getElementById('media-upload-cancel');
     const closeBtn = dialog?.querySelector('.media-upload-close');
     const form = document.getElementById('media-upload-form');
-    if (!dialog || !openBtn || !form) return;
+    const folderSelect = document.getElementById('media-upload-folder');
+    const newFolderRow = document.getElementById('media-new-folder-row');
+    const newFolderInput = document.getElementById('media-new-folder-name');
+    const fileInput = document.getElementById('media-upload-files');
+    const submitBtn = document.getElementById('media-upload-submit');
+    if (!dialog || !openBtn || !form || !folderSelect) return;
+
+    function syncFolderMode() {
+        const creating = folderSelect.value === '__new__';
+        if (newFolderRow) newFolderRow.hidden = !creating;
+        if (newFolderInput) {
+            newFolderInput.required = creating;
+            if (!creating) newFolderInput.value = '';
+        }
+        if (fileInput) {
+            // Files are optional when creating a folder; required for existing folders.
+            fileInput.required = !creating;
+        }
+        if (submitBtn) {
+            submitBtn.textContent = creating ? 'Create / Upload' : 'Upload';
+        }
+    }
 
     function openDialog() {
+        syncFolderMode();
         if (typeof dialog.showModal === 'function') {
             dialog.showModal();
         } else {
             dialog.setAttribute('open', 'open');
+        }
+        if (folderSelect.value === '__new__') {
+            newFolderInput?.focus();
+        } else {
+            fileInput?.focus();
         }
     }
 
@@ -23,6 +50,24 @@
         }
     }
 
+    folderSelect.addEventListener('change', syncFolderMode);
+    form.addEventListener('submit', (event) => {
+        const creating = folderSelect.value === '__new__';
+        const folderName = (newFolderInput?.value || '').trim();
+        const hasFiles = Boolean(fileInput?.files && fileInput.files.length > 0);
+        if (creating && !folderName) {
+            event.preventDefault();
+            alert('Enter a name for the new folder.');
+            newFolderInput?.focus();
+            return;
+        }
+        if (!creating && !hasFiles) {
+            event.preventDefault();
+            alert('Choose at least one file to upload, or create a new folder.');
+            fileInput?.focus();
+        }
+    });
+
     openBtn.addEventListener('click', openDialog);
     cancelBtn?.addEventListener('click', closeDialog);
     closeBtn?.addEventListener('click', closeDialog);
@@ -30,5 +75,6 @@
         event.preventDefault();
         closeDialog();
     });
+    syncFolderMode();
 })();
 </script>

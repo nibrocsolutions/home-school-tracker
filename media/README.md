@@ -22,8 +22,9 @@ These subject folders are created automatically when the app starts.
 
 1. Open **School Year Planning**.
 2. Below **Progress**, click **Add Media**.
-3. Choose a folder (for example `history`) and select one or more files.
-4. Click **Upload**. Files are available immediately in the lesson plan media picker.
+3. Choose an existing folder, or select **Create new folder…** and enter a name.
+4. Optionally select one or more files, then click **Upload** / **Create / Upload**.
+5. Files are available immediately in the lesson plan media picker.
 
 ### Docker / Raspberry Pi (copy onto the server)
 

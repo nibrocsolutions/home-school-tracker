@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError
 
 from app.database import Base, SessionLocal, engine
+from app.media_library import ensure_default_media_folders
 from app.routers import pages
 from app.seed import seed_database
 
@@ -22,6 +23,7 @@ def init_db(retries: int = 30, delay: float = 2.0) -> None:
                 seed_database(db)
             finally:
                 db.close()
+            ensure_default_media_folders()
             return
         except OperationalError:
             if attempt == retries - 1:

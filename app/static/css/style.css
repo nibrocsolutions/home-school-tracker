@@ -2188,13 +2188,63 @@ button.school-day-cell:hover {
 .activity-link-group {
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr;
     gap: 0.5rem;
     align-items: center;
 }
 
 .activity-link-group .activity-link-field {
     width: 100%;
+}
+
+.activity-media-group {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.activity-media-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    width: 100%;
+}
+
+.activity-media-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 100%;
+    padding: 0.25rem 0.45rem 0.25rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: #f8fafc;
+    font-size: 0.8rem;
+}
+
+.activity-media-chip a {
+    color: inherit;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 22rem;
+}
+
+.activity-media-chip-remove {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 0.15rem;
+}
+
+.activity-media-chip-remove:hover {
+    color: var(--error);
 }
 
 .activity-audio-player {
@@ -2208,9 +2258,13 @@ button.school-day-cell:hover {
     margin-top: 0.35rem;
 }
 
+.activity-resource-list {
+    margin-top: 0.25rem;
+}
+
 .media-library-dialog {
-    width: min(40rem, calc(100vw - 2rem));
-    max-height: min(36rem, calc(100vh - 2rem));
+    width: min(44rem, calc(100vw - 2rem));
+    max-height: min(40rem, calc(100vh - 2rem));
     border: none;
     border-radius: var(--radius);
     padding: 0;
@@ -2226,12 +2280,35 @@ button.school-day-cell:hover {
     flex-direction: column;
     gap: 0.75rem;
     padding: 1rem 1.1rem 1rem;
-    max-height: min(36rem, calc(100vh - 2rem));
+    max-height: min(40rem, calc(100vh - 2rem));
 }
 
 .media-library-header h3 {
     margin: 0;
     font-size: 1.15rem;
+}
+
+.media-library-folders {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.media-folder-chip {
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 999px;
+    padding: 0.3rem 0.7rem;
+    font-family: var(--font);
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.media-folder-chip.active,
+.media-folder-chip:hover {
+    border-color: var(--primary);
+    background: #eef2ff;
+    color: #3730a3;
 }
 
 .media-library-filter {
@@ -2248,7 +2325,7 @@ button.school-day-cell:hover {
     flex-direction: column;
     gap: 0.4rem;
     min-height: 10rem;
-    max-height: 20rem;
+    max-height: 18rem;
     padding-right: 0.15rem;
 }
 
@@ -2267,8 +2344,14 @@ button.school-day-cell:hover {
     font-family: var(--font);
 }
 
+.media-library-item input[type="checkbox"] {
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+}
+
 .media-library-item:hover,
-.media-library-item:focus-visible {
+.media-library-item:focus-visible,
+.media-library-item.selected {
     border-color: var(--primary);
     background: #f5f7ff;
     outline: none;
@@ -2279,6 +2362,7 @@ button.school-day-cell:hover {
     flex-direction: column;
     gap: 0.15rem;
     min-width: 0;
+    flex: 1;
 }
 
 .media-library-item-path {
@@ -2309,7 +2393,20 @@ button.school-day-cell:hover {
 
 .media-library-footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.media-library-footer-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.media-library-selected-count {
+    color: var(--muted);
+    font-size: 0.85rem;
 }
 
 .media-howto-list {
@@ -2333,9 +2430,20 @@ button.school-day-cell:hover {
     margin-top: 0.75rem;
 }
 
+.media-folder-summary {
+    margin: 0.35rem 0 0 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
 @media (max-width: 640px) {
     .activity-link-group {
         grid-template-columns: 1fr;
+    }
+
+    .media-library-item {
+        flex-wrap: wrap;
     }
 }
 

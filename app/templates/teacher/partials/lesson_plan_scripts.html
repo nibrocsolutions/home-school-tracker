@@ -16,8 +16,12 @@ function createActivityRow(activity = {}) {
             <option value="history" ${activity.activity_type === 'history' ? 'selected' : ''}>History</option>
         </select>
         <div class="activity-link-group">
-            <input type="text" name="activity_external_links" placeholder="External URL or media file" class="activity-link-field" value="${activity.external_link || ''}">
-            <button type="button" class="btn btn-ghost btn-sm btn-choose-media">Choose media</button>
+            <input type="text" name="activity_external_links" placeholder="External web URL (optional)" class="activity-link-field" value="${activity.external_link || ''}">
+        </div>
+        <div class="activity-media-group" data-media-group>
+            <input type="hidden" name="activity_media_attachments" class="activity-media-field" value="${activity.media_attachments || ''}">
+            <div class="activity-media-chips" hidden></div>
+            <button type="button" class="btn btn-ghost btn-sm btn-choose-media">Add media files</button>
         </div>
         <textarea name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field" rows="3">${activity.teacher_notes || ''}</textarea>
         <button type="button" class="btn btn-danger btn-sm btn-remove" aria-label="Remove lesson">Remove Lesson</button>
@@ -27,6 +31,9 @@ function createActivityRow(activity = {}) {
             row.remove();
         }
     });
+    if (window.HomeSchoolMediaPicker?.syncMediaGroup) {
+        window.HomeSchoolMediaPicker.syncMediaGroup(row.querySelector('[data-media-group]'));
+    }
     return row;
 }
 

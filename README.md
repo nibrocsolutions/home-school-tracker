@@ -102,16 +102,19 @@ Teachers can attach files from a shared media folder when editing a lesson plan 
 
 ### Add files on Docker / Raspberry Pi
 
-1. Copy files into the project `media/` folder (next to `docker-compose.yml`):
+1. Copy files into a subject subfolder under project `media/` (for example History):
 
 ```bash
 cd /path/to/home-school-tracker
-mkdir -p media
-cp -R ~/Downloads/the-story-of-civilization-vol4-united-states-audiobook-\(1of3\) media/
+mkdir -p media/history
+cp -R ~/Downloads/the-story-of-civilization-vol4-united-states-audiobook-\(1of3\) media/history/
 ```
 
+Default folders created automatically: `history`, `math`, `language-arts`, `science`, `other`.
+
 2. Docker Compose mounts `./media` into the app as `/app/media` (already configured).
-3. Open **Admin → Media Library** to confirm the files appear, or edit a lesson and click **Choose media**.
+3. Open **Admin → Media Library** to confirm the files appear, or edit a lesson and click **Add media files**.
+4. In the chooser, filter by folder, select one or more files, then click **Add selected**.
 
 New files usually show up immediately. If they do not:
 

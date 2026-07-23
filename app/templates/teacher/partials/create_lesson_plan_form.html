@@ -69,8 +69,12 @@
                         <option value="history">History</option>
                     </select>
                     <div class="activity-link-group">
-                        <input type="text" name="activity_external_links" placeholder="External URL or media file" class="activity-link-field">
-                        <button type="button" class="btn btn-ghost btn-sm btn-choose-media">Choose media</button>
+                        <input type="text" name="activity_external_links" placeholder="External web URL (optional)" class="activity-link-field">
+                    </div>
+                    <div class="activity-media-group" data-media-group>
+                        <input type="hidden" name="activity_media_attachments" class="activity-media-field" value="">
+                        <div class="activity-media-chips" hidden></div>
+                        <button type="button" class="btn btn-ghost btn-sm btn-choose-media">Add media files</button>
                     </div>
                     <textarea name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field" rows="3"></textarea>
                 </div>
@@ -80,4 +84,4 @@
         <button type="submit" class="btn btn-primary">Save Lesson Plan</button>
     </form>
 </div>
-<script src="/static/js/media-picker.js?v=media-library-1"></script>
+<script src="/static/js/media-picker.js?v=media-multi-1"></script>

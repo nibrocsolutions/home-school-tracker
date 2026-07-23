@@ -53,6 +53,20 @@ def run_schema_migrations(db: Session) -> None:
             db.execute(text("ALTER TABLE activities ADD COLUMN teacher_notes TEXT"))
         if not _column_exists(inspector, "activities", "external_link"):
             db.execute(text("ALTER TABLE activities ADD COLUMN external_link VARCHAR(500)"))
+        if not _column_exists(inspector, "activities", "media_attachments"):
+            db.execute(text("ALTER TABLE activities ADD COLUMN media_attachments TEXT"))
+            db.commit()
+            # Move legacy single /media/... links into the multi-attachment field.
+            db.execute(
+                text(
+                    "UPDATE activities "
+                    "SET media_attachments = external_link, external_link = NULL "
+                    "WHERE external_link IS NOT NULL "
+                    "AND external_link LIKE '/media/%' "
+                    "AND (media_attachments IS NULL OR media_attachments = '')"
+                )
+            )
+            db.commit()
 
     if _table_exists(inspector, "activity_completions"):
         if not _column_exists(inspector, "activity_completions", "student_message"):

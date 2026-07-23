@@ -78,6 +78,7 @@ def export_database(db: Session) -> bytes:
                 "audio_url": activity.audio_url,
                 "teacher_notes": activity.teacher_notes,
                 "external_link": activity.external_link,
+                "media_attachments": activity.media_attachments,
             }
             for activity in db.query(Activity).order_by(Activity.id).all()
         ],
@@ -241,6 +242,7 @@ def import_database(db: Session, raw: bytes) -> None:
                 audio_url=row.get("audio_url"),
                 teacher_notes=row.get("teacher_notes"),
                 external_link=row.get("external_link"),
+                media_attachments=row.get("media_attachments"),
             )
         )
 

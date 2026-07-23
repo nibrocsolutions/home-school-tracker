@@ -16,7 +16,17 @@ build/
 .coverage
 htmlcov/
 
-# Keep media library docs, ignore dropped lesson files
+# Keep media library docs and empty subject folders, ignore dropped lesson files
 media/**
 !media/README.md
 !media/.gitkeep
+!media/history/
+!media/history/.gitkeep
+!media/math/
+!media/math/.gitkeep
+!media/language-arts/
+!media/language-arts/.gitkeep
+!media/science/
+!media/science/.gitkeep
+!media/other/
+!media/other/.gitkeep

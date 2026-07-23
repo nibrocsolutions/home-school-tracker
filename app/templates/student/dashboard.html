@@ -45,7 +45,6 @@
         <div class="checklist">
             {% for act in lesson_plan.activities | sort(attribute='sort_order') %}
             {% set act_data = completions.get(act.id, {}) %}
-            {% set resource_link = act.external_link or act.audio_url %}
             {% if act.title == 'Lessons moved' %}
             <div class="checklist-item-wrap moved-lessons-notice">
                 <div class="checklist-item">
@@ -92,26 +91,29 @@
                         {% if act.description %}
                         <p>{{ act.description }}</p>
                         {% endif %}
-                        {% if resource_link %}
+                        {% set media_urls = activity_media_urls(
+                            media_attachments=act.media_attachments,
+                            external_link=act.external_link,
+                            audio_url=act.audio_url
+                        ) %}
+                        {% set web_link = activity_external_web_link(act.external_link) %}
+                        {% if media_urls or web_link %}
                         <div class="activity-resource">
-                            {% if is_media_library_url(resource_link) %}
+                            {% for resource_link in media_urls %}
                             <p class="activity-external-link">
                                 <a href="{{ resource_link }}" target="_blank" rel="noopener noreferrer">
                                     Open {{ media_display_name(resource_link) }}
                                 </a>
                             </p>
-                            {% if resource_link.lower().endswith('.mp3')
-                                or resource_link.lower().endswith('.m4a')
-                                or resource_link.lower().endswith('.wav')
-                                or resource_link.lower().endswith('.ogg')
-                                or resource_link.lower().endswith('.aac') %}
+                            {% if is_audio_media_url(resource_link) %}
                             <audio class="activity-audio-player" controls preload="metadata" src="{{ resource_link }}">
                                 Your browser does not support audio playback.
                             </audio>
                             {% endif %}
-                            {% else %}
+                            {% endfor %}
+                            {% if web_link %}
                             <p class="activity-external-link">
-                                <a href="{{ resource_link }}" target="_blank" rel="noopener noreferrer">{{ resource_link }}</a>
+                                <a href="{{ web_link }}" target="_blank" rel="noopener noreferrer">{{ web_link }}</a>
                             </p>
                             {% endif %}
                         </div>

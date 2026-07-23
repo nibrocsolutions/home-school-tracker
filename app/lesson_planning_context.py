@@ -77,16 +77,31 @@ def plans_for_date(plans: list[LessonPlan], plan_date: date) -> list[LessonPlan]
 
 
 def _serialize_plan_activities(plan: LessonPlan) -> list[dict]:
-    return [
-        {
-            "title": activity.title,
-            "description": activity.description or "",
-            "activity_type": activity.activity_type.value,
-            "teacher_notes": activity.teacher_notes or "",
-            "external_link": activity.external_link or "",
-        }
-        for activity in sorted(plan.activities, key=lambda a: a.sort_order)
-    ]
+    from app.media_library import (
+        activity_external_web_link,
+        activity_media_urls,
+        serialize_media_attachments,
+    )
+
+    serialized = []
+    for activity in sorted(plan.activities, key=lambda a: a.sort_order):
+        media_urls = activity_media_urls(
+            media_attachments=getattr(activity, "media_attachments", None),
+            external_link=activity.external_link,
+            audio_url=activity.audio_url,
+        )
+        serialized.append(
+            {
+                "title": activity.title,
+                "description": activity.description or "",
+                "activity_type": activity.activity_type.value,
+                "teacher_notes": activity.teacher_notes or "",
+                "external_link": activity_external_web_link(activity.external_link) or "",
+                "media_attachments": serialize_media_attachments(media_urls) or "",
+                "media_urls": media_urls,
+            }
+        )
+    return serialized
 
 
 def build_lesson_planning_context(

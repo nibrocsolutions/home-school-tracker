@@ -16,14 +16,25 @@
             {% if act.teacher_notes %}
             <p class="teacher-notes-preview">Teacher notes: {{ act.teacher_notes }}</p>
             {% endif %}
-            {% if act.external_link %}
-            <p class="activity-external-link">
-                {% if is_media_library_url(act.external_link) %}
-                <a href="{{ act.external_link }}" target="_blank" rel="noopener noreferrer">{{ media_display_name(act.external_link) }}</a>
-                {% else %}
-                <a href="{{ act.external_link }}" target="_blank" rel="noopener noreferrer">Resource link</a>
+            {% set media_urls = activity_media_urls(
+                media_attachments=act.media_attachments,
+                external_link=act.external_link,
+                audio_url=act.audio_url
+            ) %}
+            {% set web_link = activity_external_web_link(act.external_link) %}
+            {% if media_urls or web_link %}
+            <div class="activity-resource-list">
+                {% for resource_link in media_urls %}
+                <p class="activity-external-link">
+                    <a href="{{ resource_link }}" target="_blank" rel="noopener noreferrer">{{ media_display_name(resource_link) }}</a>
+                </p>
+                {% endfor %}
+                {% if web_link %}
+                <p class="activity-external-link">
+                    <a href="{{ web_link }}" target="_blank" rel="noopener noreferrer">Resource link</a>
+                </p>
                 {% endif %}
-            </p>
+            </div>
             {% endif %}
         </li>
         {% endfor %}

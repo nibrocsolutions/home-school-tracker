@@ -1,7 +1,7 @@
 # Media Library
 
 Drop lesson attachment files here (MP3s, PDFs, images, videos, worksheets, etc.).
-Teachers can pick one or more files from the **Edit Lesson Plan** page using **Add media files**.
+Teachers can attach them later from Edit Lesson Plan using **Add media files**, or upload new files from School Year Planning with **Add Media**.
 
 ## Recommended folder layout
 
@@ -18,7 +18,14 @@ These subject folders are created automatically when the app starts.
 
 ## How to add files (recommended)
 
-### Docker / Raspberry Pi
+### From the web app (teachers)
+
+1. Open **School Year Planning**.
+2. Below **Progress**, click **Add Media**.
+3. Choose a folder (for example `history`) and select one or more files.
+4. Click **Upload**. Files are available immediately in the lesson plan media picker.
+
+### Docker / Raspberry Pi (copy onto the server)
 
 1. Copy files into a subject folder under project `media/`:
 

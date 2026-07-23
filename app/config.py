@@ -15,6 +15,7 @@ class Settings:
     )
     access_token_expire_minutes: int = 60 * 12
     algorithm: str = "HS256"
+    media_root: str = os.getenv("MEDIA_ROOT", "")
 
 
 @lru_cache

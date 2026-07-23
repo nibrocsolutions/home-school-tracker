@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Media Library — {{ app_name }}{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block body %}
+{% set home_url = '/admin' %}
+{% include "partials/nav.html" %}
+
+<main class="main-content">
+    <section class="page-hero admin-hero">
+        <div>
+            <h1>Media Library</h1>
+            <p>Drop audio, PDFs, and other lesson files into the media folder, then attach them from Edit Lesson Plan.</p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>How to add files</h2>
+        <ol class="media-howto-list">
+            <li>On the server (or Raspberry Pi), open the project folder that contains <code>docker-compose.yml</code>.</li>
+            <li>Copy folders or files into <code>media/</code>. Example for your Story of Civilization audiobook:
+                <pre class="media-code-block">mkdir -p media
+cp -R ~/Downloads/the-story-of-civilization-vol4-united-states-audiobook-\(1of3\) media/</pre>
+            </li>
+            <li>Docker already mounts <code>./media</code> into the app. New files usually appear immediately.</li>
+            <li>In the teacher lesson plan editor, click <strong>Choose media</strong> on an activity to attach a file.</li>
+        </ol>
+        <p class="section-hint">
+            Server folder: <code>{{ media_root }}</code>
+            · {{ media_file_count }} file{% if media_file_count != 1 %}s{% endif %}
+            · {{ media_folder_count }} folder{% if media_folder_count != 1 %}s{% endif %}
+        </p>
+        <div class="media-admin-actions">
+            <a href="/admin" class="btn btn-ghost btn-sm">← Back to Admin Dashboard</a>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Files currently available</h2>
+        {% if media_files %}
+        {% if media_folders %}
+        <p class="section-hint">Folders: {{ media_folders | join(', ') }}</p>
+        {% endif %}
+        <div class="table-wrap">
+            <table class="data-table" aria-label="Media library files">
+                <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Type</th>
+                        <th>Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in media_files %}
+                    <tr>
+                        <td>
+                            <a href="{{ file.url }}" target="_blank" rel="noopener noreferrer">{{ file.path }}</a>
+                        </td>
+                        <td>{{ file.kind }}</td>
+                        <td>{{ file.size_label }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty-state">
+            No media files yet. Copy files into the host <code>media/</code> folder, then refresh this page.
+        </p>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}

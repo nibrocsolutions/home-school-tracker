@@ -10,9 +10,10 @@ A self-hosted web application for managing homeschool lesson plans, daily activi
 ## Features
 
 - **Three user roles**, each with a dedicated home page:
-  - **Admin** — system overview, metrics, user management, and database backup/restore
+  - **Admin** — system overview, metrics, user management, database backup/restore, and media library
   - **Teacher** — build daily lesson plans with activities for each student
   - **Student** — interactive checklist for today's assigned tasks
+- **Media library** — drop MP3s/PDFs/other files into a shared folder and attach them to lessons
 - **PostgreSQL database** in a separate container with persistent storage
 - **Pre-populated demo data** — sample users and lesson plans ready on first launch
 - **Professional, kid-friendly UI** — warm colors, progress tracking, and celebration banners
@@ -95,6 +96,37 @@ Admins can export and import a full JSON backup of all application data from the
 
 Use daily exports as a safety net when rebuilding the application after a failure.
 
+## Media Library (MP3s, PDFs, and other lesson files)
+
+Teachers can attach files from a shared media folder when editing a lesson plan (**Choose media**).
+
+### Add files on Docker / Raspberry Pi
+
+1. Copy files into the project `media/` folder (next to `docker-compose.yml`):
+
+```bash
+cd /path/to/home-school-tracker
+mkdir -p media
+cp -R ~/Downloads/the-story-of-civilization-vol4-united-states-audiobook-\(1of3\) media/
+```
+
+2. Docker Compose mounts `./media` into the app as `/app/media` (already configured).
+3. Open **Admin → Media Library** to confirm the files appear, or edit a lesson and click **Choose media**.
+
+New files usually show up immediately. If they do not:
+
+```bash
+docker compose restart app
+```
+
+### Optional configuration
+
+| Variable     | Default                         | Description                          |
+|--------------|---------------------------------|--------------------------------------|
+| `MEDIA_ROOT` | `/app/media` (Docker) or `./media` | Absolute path to the media library |
+
+Large audio files should stay in `media/` on disk — they are gitignored on purpose.
+
 ## Configuration
 
 All settings are in `.env`:
@@ -106,6 +138,7 @@ All settings are in `.env`:
 | `POSTGRES_DB`       | `home_school_tracker`        | Database name                        |
 | `SECRET_KEY`        | (see `.env.example`)         | JWT signing key for sessions         |
 | `APP_PORT`          | `8080`                       | Host port mapped to the web app      |
+| `MEDIA_ROOT`        | `/app/media` (Docker)        | Folder for lesson media attachments  |
 
 ## Raspberry Pi Tips
 
@@ -138,9 +171,11 @@ home-school-tracker/
 │   ├── auth.py           # Authentication & authorization
 │   ├── seed.py           # Demo data seeder
 │   ├── backup.py         # Database export/import
+│   ├── media_library.py  # Shared lesson media folder helpers
 │   ├── routers/          # Route handlers
 │   ├── templates/        # HTML templates (Jinja2)
 │   └── static/           # CSS & JavaScript
+├── media/                # Drop MP3s/PDFs here (mounted into Docker)
 ├── docker-compose.yml    # Multi-container orchestration
 ├── Dockerfile            # App container definition
 ├── requirements.txt      # Python dependencies

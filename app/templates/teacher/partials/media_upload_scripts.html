@@ -1,0 +1,34 @@
+<script>
+(function () {
+    const dialog = document.getElementById('media-upload-dialog');
+    const openBtn = document.getElementById('open-media-upload');
+    const cancelBtn = document.getElementById('media-upload-cancel');
+    const closeBtn = dialog?.querySelector('.media-upload-close');
+    const form = document.getElementById('media-upload-form');
+    if (!dialog || !openBtn || !form) return;
+
+    function openDialog() {
+        if (typeof dialog.showModal === 'function') {
+            dialog.showModal();
+        } else {
+            dialog.setAttribute('open', 'open');
+        }
+    }
+
+    function closeDialog() {
+        if (typeof dialog.close === 'function') {
+            dialog.close();
+        } else {
+            dialog.removeAttribute('open');
+        }
+    }
+
+    openBtn.addEventListener('click', openDialog);
+    cancelBtn?.addEventListener('click', closeDialog);
+    closeBtn?.addEventListener('click', closeDialog);
+    dialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        closeDialog();
+    });
+})();
+</script>

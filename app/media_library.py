@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import mimetypes
 import os
+import re
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,6 +24,19 @@ AUDIO_EXTENSIONS = frozenset({".mp3", ".m4a", ".wav", ".ogg", ".aac", ".flac", "
 DOCUMENT_EXTENSIONS = frozenset({".pdf", ".txt", ".doc", ".docx", ".epub", ".rtf"})
 IMAGE_EXTENSIONS = frozenset({".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"})
 VIDEO_EXTENSIONS = frozenset({".mp4", ".webm", ".mov", ".m4v"})
+
+ALLOWED_UPLOAD_EXTENSIONS = (
+    AUDIO_EXTENSIONS
+    | DOCUMENT_EXTENSIONS
+    | IMAGE_EXTENSIONS
+    | VIDEO_EXTENSIONS
+    | {".zip", ".csv", ".json", ".md"}
+)
+
+# Audiobook chapters can be large; keep a generous but finite ceiling.
+MAX_UPLOAD_BYTES = int(os.getenv("MEDIA_MAX_UPLOAD_BYTES", str(500 * 1024 * 1024)))
+FOLDER_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+UNSAFE_FILENAME_RE = re.compile(r"[^A-Za-z0-9._()\[\]\-\s]+")
 
 
 @dataclass(frozen=True)
@@ -304,3 +319,85 @@ def media_library_summary() -> dict:
             for item in files
         ],
     }
+
+
+def sanitize_upload_filename(filename: str) -> str:
+    """Return a safe basename for an uploaded file."""
+    base = Path(filename or "").name.strip()
+    base = unicodedata.normalize("NFKC", base)
+    base = UNSAFE_FILENAME_RE.sub("_", base).strip(" .")
+    if not base or base in {".", ".."}:
+        raise ValueError("Please choose a valid file name.")
+    if Path(base).suffix.lower() not in ALLOWED_UPLOAD_EXTENSIONS:
+        raise ValueError(
+            "That file type is not allowed. Use audio, PDF, image, video, or common document files."
+        )
+    return base
+
+
+def resolve_upload_folder(folder_name: str) -> Path:
+    """Resolve/create a top-level media folder for uploads."""
+    ensure_default_media_folders()
+    cleaned = (folder_name or "").strip().strip("/\\")
+    if not cleaned or cleaned == "(root)":
+        cleaned = "other"
+    if not FOLDER_NAME_RE.fullmatch(cleaned):
+        raise ValueError("Choose a valid media folder name.")
+    if ".." in cleaned or "/" in cleaned or "\\" in cleaned:
+        raise ValueError("Choose a valid media folder name.")
+
+    root = media_root()
+    target = (root / cleaned).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("Choose a valid media folder name.") from exc
+    target.mkdir(parents=True, exist_ok=True)
+    if not target.is_dir():
+        raise ValueError("That media folder could not be used.")
+    return target
+
+
+def unique_destination(folder: Path, filename: str) -> Path:
+    """Avoid overwriting existing files by appending -2, -3, ... as needed."""
+    dest = folder / filename
+    if not dest.exists():
+        return dest
+    stem = dest.stem
+    suffix = dest.suffix
+    index = 2
+    while True:
+        candidate = folder / f"{stem}-{index}{suffix}"
+        if not candidate.exists():
+            return candidate
+        index += 1
+
+
+def save_uploaded_media_file(
+    *,
+    folder_name: str,
+    filename: str,
+    content: bytes,
+) -> MediaFile:
+    """Validate and write an uploaded file into the media library."""
+    if not content:
+        raise ValueError("The selected file was empty.")
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise ValueError(
+            f"That file is too large. Maximum size is {format_file_size(MAX_UPLOAD_BYTES)}."
+        )
+
+    safe_name = sanitize_upload_filename(filename)
+    folder = resolve_upload_folder(folder_name)
+    destination = unique_destination(folder, safe_name)
+    destination.write_bytes(content)
+
+    relative = destination.relative_to(media_root()).as_posix()
+    return MediaFile(
+        relative_path=relative,
+        name=destination.name,
+        size=len(content),
+        kind=_file_kind(destination),
+        url=media_url_for(relative),
+        folder=_folder_for_relative(relative),
+    )

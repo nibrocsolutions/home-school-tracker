@@ -60,7 +60,10 @@
             <div class="checklist-item-wrap {% if act_data.get('completed') %}completed{% endif %}">
                 <div class="checklist-item">
                     <div class="checklist-actions">
-                        <form method="post" action="/student/activities/{{ act.id }}/toggle">
+                        <form method="post"
+                              action="/student/activities/{{ act.id }}/toggle"
+                              class="student-confirm-form"
+                              data-confirm-message="{% if act_data.get('completed') %}Unmark “{{ act.title }}” as finished?{% else %}Mark “{{ act.title }}” as finished?{% endif %}">
                             <input type="hidden" name="view" value="daily">
                             <input type="hidden" name="ref_date" value="{{ ref_date }}">
                             <button type="submit" class="checkbox-btn" aria-label="Mark {{ act.title }} finished">
@@ -69,7 +72,10 @@
                             <span class="checklist-action-label">Finished</span>
                         </form>
                         {% if not act_data.get('completed') %}
-                        <form method="post" action="/student/activities/{{ act.id }}/not-finished">
+                        <form method="post"
+                              action="/student/activities/{{ act.id }}/not-finished"
+                              class="student-confirm-form"
+                              data-confirm-message="Mark “{{ act.title }}” as not finished? It will move to a later school day.">
                             <input type="hidden" name="view" value="daily">
                             <input type="hidden" name="ref_date" value="{{ ref_date }}">
                             <button type="submit" class="checkbox-btn not-finished" aria-label="Mark {{ act.title }} not finished and move to next school day">
@@ -159,4 +165,17 @@
     </section>
     {% endif %}
 </main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('form.student-confirm-form').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+        const message = form.dataset.confirmMessage || 'Are you sure?';
+        if (!window.confirm(message)) {
+            event.preventDefault();
+        }
+    });
+});
+</script>
 {% endblock %}

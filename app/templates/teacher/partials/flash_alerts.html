@@ -27,6 +27,17 @@
 {% if request.query_params.get('success') == 'config' %}
 <div class="alert alert-success">School year settings saved.</div>
 {% endif %}
+{% if request.query_params.get('success') == 'media-upload' %}
+<div class="alert alert-success">
+    Uploaded {{ request.query_params.get('count', '1') }} media file{{ 's' if request.query_params.get('count', '1') != '1' else '' }} to the library.
+</div>
+{% endif %}
+{% if request.query_params.get('error') == 'media-empty' %}
+<div class="alert alert-error">Please choose at least one file to upload.</div>
+{% endif %}
+{% if request.query_params.get('error') == 'media-upload' %}
+<div class="alert alert-error">Could not upload those files. Check the file type/size and try again.</div>
+{% endif %}
 {% if request.query_params.get('error') == 'dates' %}
 <div class="alert alert-error">Please enter valid start and end dates.</div>
 {% endif %}

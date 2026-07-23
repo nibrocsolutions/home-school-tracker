@@ -98,6 +98,61 @@
             </div>
             {% endif %}
         </div>
+
+        <div class="panel school-day-media-panel">
+            <h2>Media Library</h2>
+            <p class="section-hint">
+                Upload MP3s, PDFs, and other lesson files into subject folders.
+                Teachers can attach them later from Edit Lesson Plan.
+            </p>
+            <p class="section-hint">
+                {{ media_file_count }} file{% if media_file_count != 1 %}s{% endif %} available
+                across {{ media_folders | length }} folder{% if media_folders | length != 1 %}s{% endif %}.
+            </p>
+            <button type="button" class="btn btn-primary" id="open-media-upload">
+                Add Media
+            </button>
+
+            <dialog id="media-upload-dialog" class="media-upload-dialog" aria-labelledby="media-upload-title">
+                <form method="post"
+                      action="/teacher/media/upload"
+                      enctype="multipart/form-data"
+                      class="media-upload-form"
+                      id="media-upload-form">
+                    <input type="hidden" name="cal_month" value="{{ cal_month_param }}">
+                    <div class="media-upload-header">
+                        <h3 id="media-upload-title">Add Media Files</h3>
+                        <button type="button" class="media-upload-close" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="form-row">
+                        <label for="media-upload-folder">Folder</label>
+                        <select id="media-upload-folder" name="folder" required>
+                            {% for folder in media_folders %}
+                            <option value="{{ folder.path }}" {% if folder.path == 'history' %}selected{% endif %}>
+                                {{ folder.name }} ({{ folder.file_count }})
+                            </option>
+                            {% else %}
+                            <option value="other">other</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label for="media-upload-files">Files</label>
+                        <input type="file"
+                               id="media-upload-files"
+                               name="media_files"
+                               multiple
+                               required
+                               accept=".mp3,.m4a,.wav,.ogg,.aac,.flac,.pdf,.png,.jpg,.jpeg,.gif,.webp,.mp4,.webm,.doc,.docx,.txt,.epub,.zip">
+                        <p class="section-hint">You can select multiple files at once.</p>
+                    </div>
+                    <div class="media-upload-actions">
+                        <button type="button" class="btn btn-secondary" id="media-upload-cancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Upload</button>
+                    </div>
+                </form>
+            </dialog>
+        </div>
     </div>
 
     <div class="school-day-main">

@@ -21,5 +21,7 @@
 {% block scripts %}
 {% if subjects_view == 'detail' %}
 {% include "teacher/partials/subject_detail_scripts.html" %}
+{% elif not subjects_view %}
+{% include "teacher/partials/media_upload_scripts.html" %}
 {% endif %}
 {% endblock %}

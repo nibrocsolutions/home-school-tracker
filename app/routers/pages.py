@@ -33,6 +33,7 @@ from app.media_library import (
     media_library_summary,
     media_root,
     resolve_media_file,
+    save_uploaded_media_file,
     serialize_media_attachments,
 )
 from app.models import (
@@ -1357,6 +1358,10 @@ async def teacher_school_days_page(
             "subject_student_ids": subject_student_ids,
             "weekday_labels": SCHOOL_WEEKDAY_LABELS,
             "format_weekdays": format_weekdays,
+            "media_folders": [
+                folder for folder in list_media_folders() if folder["path"] != "(root)"
+            ],
+            "media_file_count": len(list_media_files()),
             **_teacher_shell_context(db, current_user.id),
             **school_days,
         },
@@ -1388,6 +1393,52 @@ async def teacher_attendance_report_pdf(
         content=pdf_bytes,
         media_type="application/pdf",
         headers=pdf_response_headers(filename, inline=disposition == "inline"),
+    )
+
+
+@router.post("/teacher/media/upload")
+async def teacher_media_upload(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    cal_month: str = Form(""),
+    folder: str = Form("other"),
+    media_files: list[UploadFile] = File(default=[]),
+):
+    """Upload one or more files into the shared media library from School Year Planning."""
+    del db, current_user  # auth already enforced
+    uploads = [item for item in media_files if item and (item.filename or "").strip()]
+    if not uploads:
+        return _school_days_redirect(
+            cal_month=cal_month or None,
+            error="media-empty",
+        )
+
+    saved = 0
+    last_error = None
+    for upload in uploads:
+        try:
+            content = await upload.read()
+            save_uploaded_media_file(
+                folder_name=folder,
+                filename=upload.filename or "upload.bin",
+                content=content,
+            )
+            saved += 1
+        except ValueError as exc:
+            last_error = str(exc)
+        except OSError:
+            last_error = "Could not save one or more files to the media folder."
+
+    if saved == 0:
+        return _school_days_redirect(
+            cal_month=cal_month or None,
+            error="media-upload",
+        )
+
+    return _school_days_redirect(
+        cal_month=cal_month or None,
+        success="media-upload",
+        count=str(saved),
     )
 
 

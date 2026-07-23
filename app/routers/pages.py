@@ -23,6 +23,7 @@ from app.database import get_db
 from app.media_library import (
     activity_external_web_link,
     activity_media_urls,
+    create_media_folder,
     format_file_size,
     guess_media_type,
     is_audio_media_url,
@@ -1402,32 +1403,65 @@ async def teacher_media_upload(
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
     cal_month: str = Form(""),
     folder: str = Form("other"),
+    new_folder_name: str = Form(""),
     media_files: list[UploadFile] = File(default=[]),
 ):
-    """Upload one or more files into the shared media library from School Year Planning."""
+    """Upload files and/or create a media folder from School Year Planning."""
     del db, current_user  # auth already enforced
+
+    target_folder = (new_folder_name or "").strip() if folder == "__new__" else folder
     uploads = [item for item in media_files if item and (item.filename or "").strip()]
+
+    created_folder = None
+    try:
+        if folder == "__new__":
+            if not (new_folder_name or "").strip():
+                return _school_days_redirect(
+                    cal_month=cal_month or None,
+                    error="media-folder-name",
+                )
+            created_folder = create_media_folder(new_folder_name)
+            target_folder = created_folder
+        elif not uploads:
+            return _school_days_redirect(
+                cal_month=cal_month or None,
+                error="media-empty",
+            )
+        else:
+            # Ensure selected folder exists before saving files.
+            target_folder = create_media_folder(target_folder or "other")
+    except ValueError:
+        return _school_days_redirect(
+            cal_month=cal_month or None,
+            error="media-folder-name",
+        )
+    except OSError:
+        return _school_days_redirect(
+            cal_month=cal_month or None,
+            error="media-upload",
+        )
+
     if not uploads:
         return _school_days_redirect(
             cal_month=cal_month or None,
-            error="media-empty",
+            success="media-folder",
+            count=created_folder or target_folder,
         )
 
     saved = 0
-    last_error = None
     for upload in uploads:
         try:
             content = await upload.read()
             save_uploaded_media_file(
-                folder_name=folder,
+                folder_name=target_folder or "other",
                 filename=upload.filename or "upload.bin",
                 content=content,
             )
             saved += 1
-        except ValueError as exc:
-            last_error = str(exc)
+        except ValueError:
+            continue
         except OSError:
-            last_error = "Could not save one or more files to the media folder."
+            continue
 
     if saved == 0:
         return _school_days_redirect(

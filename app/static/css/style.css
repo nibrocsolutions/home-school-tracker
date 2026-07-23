@@ -1848,6 +1848,10 @@ button.school-day-cell:hover {
     margin-top: 0.25rem;
 }
 
+#media-new-folder-row input[type="text"] {
+    width: 100%;
+}
+
 .legend-item {
     display: inline-flex;
     align-items: center;

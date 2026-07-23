@@ -32,8 +32,16 @@
     Uploaded {{ request.query_params.get('count', '1') }} media file{{ 's' if request.query_params.get('count', '1') != '1' else '' }} to the library.
 </div>
 {% endif %}
+{% if request.query_params.get('success') == 'media-folder' %}
+<div class="alert alert-success">
+    Created media folder “{{ request.query_params.get('count', 'new') }}”.
+</div>
+{% endif %}
 {% if request.query_params.get('error') == 'media-empty' %}
 <div class="alert alert-error">Please choose at least one file to upload.</div>
+{% endif %}
+{% if request.query_params.get('error') == 'media-folder-name' %}
+<div class="alert alert-error">Enter a valid new folder name (letters, numbers, dashes, or dots).</div>
 {% endif %}
 {% if request.query_params.get('error') == 'media-upload' %}
 <div class="alert alert-error">Could not upload those files. Check the file type/size and try again.</div>

@@ -335,16 +335,28 @@ def sanitize_upload_filename(filename: str) -> str:
     return base
 
 
+def normalize_folder_name(folder_name: str) -> str:
+    """Normalize a user-entered media folder name into a safe top-level folder."""
+    raw = (folder_name or "").strip()
+    if not raw or ".." in raw or "/" in raw or "\\" in raw:
+        raise ValueError("Enter a folder name (letters, numbers, dashes, or dots).")
+
+    cleaned = unicodedata.normalize("NFKC", raw)
+    cleaned = cleaned.strip("/\\")
+    cleaned = re.sub(r"\s+", "-", cleaned)
+    cleaned = UNSAFE_FILENAME_RE.sub("-", cleaned)
+    cleaned = re.sub(r"-{2,}", "-", cleaned).strip("-._")
+    if not cleaned or cleaned == "(root)":
+        raise ValueError("Enter a folder name (letters, numbers, dashes, or dots).")
+    if not FOLDER_NAME_RE.fullmatch(cleaned):
+        raise ValueError("Enter a folder name (letters, numbers, dashes, or dots).")
+    return cleaned
+
+
 def resolve_upload_folder(folder_name: str) -> Path:
     """Resolve/create a top-level media folder for uploads."""
     ensure_default_media_folders()
-    cleaned = (folder_name or "").strip().strip("/\\")
-    if not cleaned or cleaned == "(root)":
-        cleaned = "other"
-    if not FOLDER_NAME_RE.fullmatch(cleaned):
-        raise ValueError("Choose a valid media folder name.")
-    if ".." in cleaned or "/" in cleaned or "\\" in cleaned:
-        raise ValueError("Choose a valid media folder name.")
+    cleaned = normalize_folder_name(folder_name) if folder_name.strip() else "other"
 
     root = media_root()
     target = (root / cleaned).resolve()
@@ -356,6 +368,12 @@ def resolve_upload_folder(folder_name: str) -> Path:
     if not target.is_dir():
         raise ValueError("That media folder could not be used.")
     return target
+
+
+def create_media_folder(folder_name: str) -> str:
+    """Create a top-level media folder and return its normalized name."""
+    folder = resolve_upload_folder(folder_name)
+    return folder.name
 
 
 def unique_destination(folder: Path, filename: str) -> Path:

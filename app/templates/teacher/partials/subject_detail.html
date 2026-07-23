@@ -66,6 +66,15 @@
         </div>
 
         <div class="form-row">
+            <label class="weekday-check numbering-check" for="include_numbering">
+                <input type="checkbox" id="include_numbering" name="include_numbering" value="1"
+                       {% if subject and subject.include_numbering %}checked{% endif %}>
+                Number lessons (e.g. Math - Lesson 1)
+            </label>
+            <p class="section-hint">Math, Language Arts, History, and Science default to numbered lessons.</p>
+        </div>
+
+        <div class="form-row">
             <label for="item_description">Description</label>
             <textarea id="item_description" name="item_description" rows="2"
                       placeholder="Optional description">{{ subject.description if subject and subject.description else '' }}</textarea>

@@ -5,9 +5,13 @@
 
     const hidden = document.getElementById('weekdays_list');
     const nameInput = document.getElementById('item_name');
+    const kindSelect = document.getElementById('item_kind');
     const lessonAmountInput = document.getElementById('lesson_amount');
+    const numberingCheckbox = document.getElementById('include_numbering');
     const isNewSubject = !form.querySelector('input[name="subject_id"]');
     const mathLaDefault = Number(lessonAmountInput?.dataset.defaultMathLa || 120);
+    const defaultNumberedNames = new Set(['math', 'language arts', 'history', 'science']);
+    let numberingTouched = !isNewSubject;
 
     function syncWeekdays() {
         const checked = [...form.querySelectorAll('.weekday-cb:checked')].map(cb => cb.value);
@@ -21,7 +25,7 @@
     function maybeDefaultMathLaLessons() {
         if (!isNewSubject || !lessonAmountInput || !nameInput) return;
         const name = normalizedSubjectName(nameInput.value);
-        if (name === 'math' || name === 'language arts') {
+        if (name === 'math' || name === 'language arts' || name === 'science') {
             const current = lessonAmountInput.value.trim();
             if (current === '' || current === '0') {
                 lessonAmountInput.value = String(mathLaDefault);
@@ -29,16 +33,36 @@
         }
     }
 
+    function maybeDefaultNumbering() {
+        if (!isNewSubject || !numberingCheckbox || numberingTouched) return;
+        const kind = kindSelect?.value || 'subject';
+        const name = normalizedSubjectName(nameInput?.value);
+        numberingCheckbox.checked = kind === 'subject' && defaultNumberedNames.has(name);
+    }
+
     form.querySelectorAll('.weekday-cb').forEach(cb => {
         cb.addEventListener('change', syncWeekdays);
     });
 
-    nameInput?.addEventListener('change', maybeDefaultMathLaLessons);
-    nameInput?.addEventListener('blur', maybeDefaultMathLaLessons);
+    numberingCheckbox?.addEventListener('change', () => {
+        numberingTouched = true;
+    });
+
+    nameInput?.addEventListener('change', () => {
+        maybeDefaultMathLaLessons();
+        maybeDefaultNumbering();
+    });
+    nameInput?.addEventListener('blur', () => {
+        maybeDefaultMathLaLessons();
+        maybeDefaultNumbering();
+    });
+    nameInput?.addEventListener('input', maybeDefaultNumbering);
+    kindSelect?.addEventListener('change', maybeDefaultNumbering);
 
     form.addEventListener('submit', function (e) {
         syncWeekdays();
         maybeDefaultMathLaLessons();
+        maybeDefaultNumbering();
         const submitter = e.submitter;
         if (submitter && submitter.getAttribute('formaction')?.includes('/delete')) {
             return;
@@ -50,6 +74,7 @@
         }
     });
     syncWeekdays();
+    maybeDefaultNumbering();
 
     document.getElementById('select-all-subject-students')?.addEventListener('click', () => {
         form.querySelectorAll('.student-checkboxes input[type="checkbox"]').forEach(cb => {

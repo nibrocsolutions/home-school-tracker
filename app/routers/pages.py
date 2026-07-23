@@ -63,6 +63,7 @@ from app.weekly_schedule import (
     SCHOOL_WEEKDAY_LABELS,
     WEEKDAY_LABELS,
     activity_matches_schedule_item,
+    default_include_numbering,
     format_weekdays,
     normalize_school_weekdays,
     schedule_item_to_activity,
@@ -1035,6 +1036,7 @@ async def save_school_day_subject(
     special_type: str = Form(""),
     weekdays_list: str = Form(""),
     lesson_amount: str = Form("0"),
+    include_numbering: str | None = Form(None),
     item_description: str = Form(""),
     external_link: str = Form(""),
     student_ids: list[int] = Form(default=[]),
@@ -1072,6 +1074,10 @@ async def save_school_day_subject(
         except ValueError:
             parsed_special = None
 
+    numbering_enabled = include_numbering in ("1", "on", "true", "yes")
+    if kind != ScheduleItemKind.subject:
+        numbering_enabled = False
+
     if subject_id and subject_id != "new":
         try:
             parsed_id = int(subject_id)
@@ -1088,6 +1094,7 @@ async def save_school_day_subject(
         subject.external_link = external_link.strip() or None
         subject.audio_url = None
         subject.lesson_amount = amount
+        subject.include_numbering = numbering_enabled
         _sync_subject_students(db, subject, student_ids)
         saved_subject = subject
     else:
@@ -1106,6 +1113,7 @@ async def save_school_day_subject(
             external_link=external_link.strip() or None,
             audio_url=None,
             lesson_amount=amount,
+            include_numbering=numbering_enabled,
             sort_order=max_order + 1,
         )
         db.add(saved_subject)
@@ -1367,6 +1375,7 @@ async def save_weekly_schedule(
                 external_link=link.strip() or None,
                 audio_url=None,
                 sort_order=idx + 1,
+                include_numbering=default_include_numbering(name, item_kind),
             )
         )
 

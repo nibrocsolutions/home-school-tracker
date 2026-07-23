@@ -1,3 +1,4 @@
+import re
 from datetime import date
 from io import BytesIO
 
@@ -99,32 +100,65 @@ class LessonPlanPDF(FPDF):
         header: bool = False,
         alt: bool = False,
         line_height: float = 5,
+        text_colors: list[tuple[int, int, int]] | None = None,
     ) -> None:
         if header:
             self.set_font("Helvetica", "B", 9)
             self.set_fill_color(*COLORS["primary"])
-            self.set_text_color(*COLORS["white"])
+            default_text = COLORS["white"]
         else:
             self.set_font("Helvetica", "", 8)
             self.set_fill_color(*COLORS["row_alt"] if alt else COLORS["white"])
-            self.set_text_color(*COLORS["text"])
+            default_text = COLORS["text"]
+
+        safe_cells = [_safe_text(text) for text in cells]
+        row_height = line_height
+        for text, width in zip(safe_cells, widths):
+            measured = self.multi_cell(
+                width, line_height, text, dry_run=True, output="HEIGHT"
+            )
+            row_height = max(row_height, float(measured or line_height))
+
+        # Keep the whole row on one page so tall teacher-note cells do not
+        # page-break mid-row and leave large blank gaps on the next page.
+        if self.get_y() + row_height > self.page_break_trigger:
+            self.add_page()
+            if header:
+                self.set_font("Helvetica", "B", 9)
+                self.set_fill_color(*COLORS["primary"])
+            else:
+                self.set_font("Helvetica", "", 8)
+                self.set_fill_color(*COLORS["row_alt"] if alt else COLORS["white"])
 
         x_start = self.l_margin
         y_start = self.get_y()
-        max_height = line_height
+        self.set_draw_color(*COLORS["border"])
 
-        for text, width in zip(cells, widths):
+        for index, (text, width) in enumerate(zip(safe_cells, widths)):
+            color = default_text
+            if text_colors and index < len(text_colors) and text_colors[index]:
+                color = text_colors[index]
+            self.set_text_color(*color)
+            self.rect(x_start, y_start, width, row_height, style="DF")
             self.set_xy(x_start, y_start)
-            self.multi_cell(width, line_height, _safe_text(text), border=1, fill=True, align="L")
-            cell_height = self.get_y() - y_start
-            max_height = max(max_height, cell_height)
+            self.multi_cell(width, line_height, text, border=0, fill=False, align="L")
             x_start += width
 
-        self.set_y(y_start + max_height)
+        self.set_text_color(*COLORS["text"])
+        self.set_y(y_start + row_height)
+
+
+def _normalize_pdf_text(text: str) -> str:
+    """Collapse noisy textarea whitespace so PDF cells stay compact."""
+    normalized = str(text).replace("\r\n", "\n").replace("\r", "\n")
+    normalized = re.sub(r"[^\S\n]+", " ", normalized)
+    normalized = re.sub(r" *\n *", "\n", normalized)
+    normalized = re.sub(r"\n{3,}", "\n\n", normalized)
+    return normalized.strip()
 
 
 def _safe_text(text: str) -> str:
-    return str(text).encode("latin-1", errors="replace").decode("latin-1")
+    return _normalize_pdf_text(text).encode("latin-1", errors="replace").decode("latin-1")
 
 
 def _activity_completed(completions: dict[int, bool | dict] | None, activity_id: int) -> bool:
@@ -170,9 +204,9 @@ def _render_activity_table(
         desc = act.description or "-"
         if not act.is_required:
             desc = f"{desc} (optional)" if desc != "-" else "(optional)"
-        notes = (getattr(act, "teacher_notes", None) or "").strip()
+        notes = _normalize_pdf_text(getattr(act, "teacher_notes", None) or "")
         if notes:
-            desc = f"{desc}\n\nTeacher Notes:\n{notes}" if desc != "-" else f"Teacher Notes:\n{notes}"
+            desc = f"{desc}\nTeacher Notes:\n{notes}" if desc != "-" else f"Teacher Notes:\n{notes}"
         cells = [str(idx), act.title, desc]
         if show_status:
             status = "Done" if _activity_completed(completions, act.id) else "Pending"
@@ -235,33 +269,24 @@ def _render_weekly_overview_table(
     for plan_date in all_dates:
         day_plans = grouped.get(plan_date, [])
         if plan_date in off_set:
-            # Draw day-off overview row with red note text in the activities column.
-            pdf.set_font("Helvetica", "", 8)
-            pdf.set_fill_color(*COLORS["row_alt"] if row_idx % 2 == 0 else COLORS["white"])
-            pdf.set_text_color(*COLORS["text"])
-            x_start = pdf.l_margin
-            y_start = pdf.get_y()
-            cells = [
-                plan_date.strftime("%b %d"),
-                plan_date.strftime("%a"),
-                "-",
-                plan_date.strftime("%A, %B %d, %Y"),
-                "No lesson plans scheduled (day off).",
-            ]
-            line_height = 5
-            max_height = line_height
-            for i, (text, width) in enumerate(zip(cells, widths)):
-                pdf.set_xy(x_start, y_start)
-                if i == len(cells) - 1:
-                    pdf.set_text_color(*COLORS["red"])
-                else:
-                    pdf.set_text_color(*COLORS["text"])
-                pdf.multi_cell(width, line_height, _safe_text(text), border=1, fill=True, align="L")
-                cell_height = pdf.get_y() - y_start
-                max_height = max(max_height, cell_height)
-                x_start += width
-            pdf.set_text_color(*COLORS["text"])
-            pdf.set_y(y_start + max_height)
+            pdf._multi_line_table_row(
+                [
+                    plan_date.strftime("%b %d"),
+                    plan_date.strftime("%a"),
+                    "-",
+                    plan_date.strftime("%A, %B %d, %Y"),
+                    "No lesson plans scheduled (day off).",
+                ],
+                widths,
+                alt=row_idx % 2 == 0,
+                text_colors=[
+                    COLORS["text"],
+                    COLORS["text"],
+                    COLORS["text"],
+                    COLORS["text"],
+                    COLORS["red"],
+                ],
+            )
             row_idx += 1
         for plan in day_plans:
             student_name = plan.student.full_name if plan.student else "-"

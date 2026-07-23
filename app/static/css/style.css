@@ -2449,6 +2449,18 @@ button.school-day-cell:hover {
     margin-bottom: 1rem;
 }
 
+.subject-detail-form .numbering-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+}
+
+.subject-detail-form .numbering-check + .section-hint {
+    margin-top: 0.35rem;
+    margin-bottom: 0;
+}
+
 .subject-weekday-picker {
     margin-top: 0.35rem;
 }

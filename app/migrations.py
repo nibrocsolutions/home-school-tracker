@@ -105,6 +105,24 @@ def run_schema_migrations(db: Session) -> None:
                 )
             )
             db.commit()
+        if not _column_exists(inspector, "weekly_schedule_items", "include_numbering"):
+            db.execute(
+                text(
+                    "ALTER TABLE weekly_schedule_items ADD COLUMN include_numbering BOOLEAN "
+                    "NOT NULL DEFAULT FALSE"
+                )
+            )
+            db.commit()
+            db.execute(
+                text(
+                    "UPDATE weekly_schedule_items "
+                    "SET include_numbering = TRUE "
+                    "WHERE item_kind = 'subject' "
+                    "AND LOWER(name) IN ('math', 'language arts', 'history', 'science')"
+                )
+            )
+            db.commit()
+            inspector = inspect(db.get_bind())
 
     _migrate_weekly_schedule_item_students(db, inspector)
     _migrate_planned_school_days(db, inspector)
@@ -112,6 +130,69 @@ def run_schema_migrations(db: Session) -> None:
     _migrate_remove_skip_and_auto_holidays(db, inspector)
     _migrate_remove_sick_days(db, inspector)
     _migrate_holidays_to_days_off(db, inspector)
+    _ensure_default_science_subject(db, inspect(db.get_bind()))
+
+
+def _ensure_default_science_subject(db: Session, inspector) -> None:
+    """Add the default Science subject for teachers who do not already have one."""
+    if not _table_exists(inspector, "weekly_schedule_items"):
+        return
+    if not _column_exists(inspector, "weekly_schedule_items", "include_numbering"):
+        return
+
+    from app.models import ScheduleItemKind, User, UserRole, WeeklyScheduleItem
+
+    teachers = (
+        db.query(User)
+        .filter(User.role == UserRole.teacher, User.is_active.is_(True))
+        .all()
+    )
+    if not teachers:
+        return
+
+    students = (
+        db.query(User)
+        .filter(User.role == UserRole.student, User.is_active.is_(True))
+        .all()
+    )
+
+    changed = False
+    for teacher in teachers:
+        existing = (
+            db.query(WeeklyScheduleItem)
+            .filter(
+                WeeklyScheduleItem.teacher_id == teacher.id,
+                WeeklyScheduleItem.item_kind == ScheduleItemKind.subject,
+                WeeklyScheduleItem.name.ilike("science"),
+            )
+            .first()
+        )
+        if existing:
+            continue
+
+        max_order = (
+            db.query(WeeklyScheduleItem)
+            .filter(WeeklyScheduleItem.teacher_id == teacher.id)
+            .count()
+        )
+        science = WeeklyScheduleItem(
+            teacher_id=teacher.id,
+            name="Science",
+            item_kind=ScheduleItemKind.subject,
+            special_type=None,
+            weekdays="",
+            description="Hands-on experiments, observations, and science workbook lessons.",
+            lesson_amount=120,
+            include_numbering=True,
+            sort_order=max_order + 1,
+        )
+        if students:
+            science.assigned_students = list(students)
+        db.add(science)
+        changed = True
+
+    if changed:
+        db.commit()
 
 
 def _migrate_school_day_type_enum(db: Session) -> None:

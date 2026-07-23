@@ -115,6 +115,7 @@ def export_database(db: Session) -> bytes:
                 "audio_url": item.audio_url,
                 "sort_order": item.sort_order,
                 "lesson_amount": item.lesson_amount,
+                "include_numbering": item.include_numbering,
             }
             for item in db.query(WeeklyScheduleItem).order_by(WeeklyScheduleItem.id).all()
         ],
@@ -268,14 +269,20 @@ def import_database(db: Session, raw: bytes) -> None:
 
     for row in data.get("weekly_schedule_items", []):
         from app.models import ScheduleItemKind, SpecialActivityKind
+        from app.weekly_schedule import default_include_numbering
 
         special_type = row.get("special_type")
+        item_kind = ScheduleItemKind(row["item_kind"])
+        if "include_numbering" in row:
+            include_numbering = bool(row.get("include_numbering"))
+        else:
+            include_numbering = default_include_numbering(row["name"], item_kind)
         db.add(
             WeeklyScheduleItem(
                 id=row["id"],
                 teacher_id=row["teacher_id"],
                 name=row["name"],
-                item_kind=ScheduleItemKind(row["item_kind"]),
+                item_kind=item_kind,
                 special_type=SpecialActivityKind(special_type) if special_type else None,
                 weekdays=row["weekdays"],
                 description=row.get("description"),
@@ -283,6 +290,7 @@ def import_database(db: Session, raw: bytes) -> None:
                 audio_url=row.get("audio_url"),
                 sort_order=row.get("sort_order", 0),
                 lesson_amount=row.get("lesson_amount", 0),
+                include_numbering=include_numbering,
             )
         )
 

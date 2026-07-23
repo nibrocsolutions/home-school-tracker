@@ -11,7 +11,7 @@
     <section class="page-hero admin-hero">
         <div>
             <h1>Media Library</h1>
-            <p>Drop audio, PDFs, and other lesson files into the media folder, then attach them from Edit Lesson Plan.</p>
+            <p>Organize lesson files in subject folders, then attach one or more files from Edit Lesson Plan.</p>
         </div>
     </section>
 
@@ -19,12 +19,15 @@
         <h2>How to add files</h2>
         <ol class="media-howto-list">
             <li>On the server (or Raspberry Pi), open the project folder that contains <code>docker-compose.yml</code>.</li>
-            <li>Copy folders or files into <code>media/</code>. Example for your Story of Civilization audiobook:
-                <pre class="media-code-block">mkdir -p media
-cp -R ~/Downloads/the-story-of-civilization-vol4-united-states-audiobook-\(1of3\) media/</pre>
+            <li>Copy files into a subject subfolder under <code>media/</code>. Example for History audiobooks:
+                <pre class="media-code-block">mkdir -p media/history
+cp -R ~/Downloads/the-story-of-civilization-vol4-united-states-audiobook-\(1of3\)/* media/history/</pre>
+                Or keep the whole folder under History:
+                <pre class="media-code-block">mkdir -p media/history
+cp -R ~/Downloads/the-story-of-civilization-vol4-united-states-audiobook-\(1of3\) media/history/</pre>
             </li>
-            <li>Docker already mounts <code>./media</code> into the app. New files usually appear immediately.</li>
-            <li>In the teacher lesson plan editor, click <strong>Choose media</strong> on an activity to attach a file.</li>
+            <li>Default folders are created automatically: <code>history</code>, <code>math</code>, <code>language-arts</code>, <code>science</code>, and <code>other</code>.</li>
+            <li>In the teacher lesson plan editor, click <strong>Add media files</strong> on an activity, browse a folder, and select one or more files.</li>
         </ol>
         <p class="section-hint">
             Server folder: <code>{{ media_root }}</code>
@@ -37,15 +40,26 @@ cp -R ~/Downloads/the-story-of-civilization-vol4-united-states-audiobook-\(1of3\
     </section>
 
     <section class="panel">
+        <h2>Folders</h2>
+        {% if media_folders %}
+        <ul class="media-folder-summary">
+            {% for folder in media_folders %}
+            <li><code>media/{{ folder }}/</code></li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty-state">No subject folders yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="panel">
         <h2>Files currently available</h2>
         {% if media_files %}
-        {% if media_folders %}
-        <p class="section-hint">Folders: {{ media_folders | join(', ') }}</p>
-        {% endif %}
         <div class="table-wrap">
             <table class="data-table" aria-label="Media library files">
                 <thead>
                     <tr>
+                        <th>Folder</th>
                         <th>File</th>
                         <th>Type</th>
                         <th>Size</th>
@@ -54,6 +68,7 @@ cp -R ~/Downloads/the-story-of-civilization-vol4-united-states-audiobook-\(1of3\
                 <tbody>
                     {% for file in media_files %}
                     <tr>
+                        <td>{{ file.folder }}</td>
                         <td>
                             <a href="{{ file.url }}" target="_blank" rel="noopener noreferrer">{{ file.path }}</a>
                         </td>
@@ -66,7 +81,7 @@ cp -R ~/Downloads/the-story-of-civilization-vol4-united-states-audiobook-\(1of3\
         </div>
         {% else %}
         <p class="empty-state">
-            No media files yet. Copy files into the host <code>media/</code> folder, then refresh this page.
+            No media files yet. Copy files into a host folder like <code>media/history/</code>, then refresh this page.
         </p>
         {% endif %}
     </section>

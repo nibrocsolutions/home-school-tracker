@@ -21,14 +21,19 @@ from app.calendar_context import build_calendar_context
 from app.calendar_utils import month_end, month_start, week_end, week_start
 from app.database import get_db
 from app.media_library import (
+    activity_external_web_link,
+    activity_media_urls,
     format_file_size,
     guess_media_type,
+    is_audio_media_url,
     is_media_library_url,
     list_media_files,
+    list_media_folders,
     media_display_name,
     media_library_summary,
     media_root,
     resolve_media_file,
+    serialize_media_attachments,
 )
 from app.models import (
     Activity,
@@ -85,6 +90,9 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["is_media_library_url"] = is_media_library_url
 templates.env.globals["media_display_name"] = media_display_name
+templates.env.globals["is_audio_media_url"] = is_audio_media_url
+templates.env.globals["activity_media_urls"] = activity_media_urls
+templates.env.globals["activity_external_web_link"] = activity_external_web_link
 
 
 def render(request: Request, name: str, context: dict, status_code: int = 200):
@@ -576,12 +584,15 @@ async def media_library_api(
         User, Depends(require_roles(UserRole.admin, UserRole.teacher))
     ],
     q: str | None = Query(None),
+    folder: str | None = Query(None),
 ):
-    files = list_media_files(query=q)
+    files = list_media_files(query=q, folder=folder)
+    folders = list_media_folders()
     return JSONResponse(
         {
             "root": str(media_root()),
             "count": len(files),
+            "folders": folders,
             "files": [
                 {
                     "path": item.relative_path,
@@ -590,6 +601,7 @@ async def media_library_api(
                     "size_label": format_file_size(item.size),
                     "kind": item.kind,
                     "url": item.url,
+                    "folder": item.folder,
                 }
                 for item in files
             ],
@@ -779,8 +791,11 @@ def _parse_lesson_activities(
     activity_types: list[str],
     activity_teacher_notes: list[str],
     activity_external_links: list[str],
+    activity_media_attachments: list[str] | None = None,
     activity_student_ids: list[int] | None = None,
-) -> list[tuple[int | None, str, str | None, ActivityType, str | None, str | None, int]]:
+) -> list[
+    tuple[int | None, str, str | None, ActivityType, str | None, str | None, str | None, int]
+]:
     activities_data = []
     for idx, act_title in enumerate(activity_titles):
         if not act_title.strip():
@@ -789,6 +804,9 @@ def _parse_lesson_activities(
         type_raw = activity_types[idx] if idx < len(activity_types) else "regular"
         notes = activity_teacher_notes[idx] if idx < len(activity_teacher_notes) else ""
         link = activity_external_links[idx] if idx < len(activity_external_links) else ""
+        media_raw = ""
+        if activity_media_attachments is not None and idx < len(activity_media_attachments):
+            media_raw = activity_media_attachments[idx]
         student_id = None
         if activity_student_ids is not None and idx < len(activity_student_ids):
             student_id = activity_student_ids[idx]
@@ -796,6 +814,12 @@ def _parse_lesson_activities(
             act_type = ActivityType(type_raw)
         except ValueError:
             act_type = ActivityType.regular
+
+        media_urls = activity_media_urls(
+            media_attachments=media_raw,
+            external_link=link,
+        )
+        web_link = activity_external_web_link(link)
         activities_data.append(
             (
                 student_id,
@@ -803,7 +827,8 @@ def _parse_lesson_activities(
                 desc.strip() or None,
                 act_type,
                 notes.strip() or None,
-                link.strip() or None,
+                web_link,
+                serialize_media_attachments(media_urls),
                 idx + 1,
             )
         )
@@ -846,6 +871,7 @@ def _save_lesson_plans_for_date(
                     activity_type=activity["activity_type"],
                     teacher_notes=activity.get("teacher_notes"),
                     external_link=activity.get("external_link"),
+                    media_attachments=activity.get("media_attachments"),
                 )
             )
     return len(student_plans)
@@ -1002,7 +1028,7 @@ def _build_student_plans_from_form(
     plan_titles: list[str],
     plan_descriptions: list[str],
     activities_data: list[
-        tuple[int | None, str, str | None, ActivityType, str | None, str | None, int]
+        tuple[int | None, str, str | None, ActivityType, str | None, str | None, str | None, int]
     ],
     *,
     fallback_title: str,
@@ -1018,8 +1044,18 @@ def _build_student_plans_from_form(
                 "activity_type": act_type,
                 "teacher_notes": notes,
                 "external_link": link,
+                "media_attachments": media,
             }
-            for act_student_id, act_title, act_desc, act_type, notes, link, _sort in activities_data
+            for (
+                act_student_id,
+                act_title,
+                act_desc,
+                act_type,
+                notes,
+                link,
+                media,
+                _sort,
+            ) in activities_data
             if act_student_id == student_id
         ]
         plans.append(
@@ -1048,6 +1084,7 @@ async def save_lesson_planning_plan(
     activity_types: list[str] = Form(default=[]),
     activity_teacher_notes: list[str] = Form(default=[]),
     activity_external_links: list[str] = Form(default=[]),
+    activity_media_attachments: list[str] = Form(default=[]),
 ):
     school_year = _fetch_school_day_year(db, current_user.id)
     if school_year is None:
@@ -1078,6 +1115,7 @@ async def save_lesson_planning_plan(
         activity_types,
         activity_teacher_notes,
         activity_external_links,
+        activity_media_attachments,
         activity_student_ids,
     )
     student_plans = _build_student_plans_from_form(
@@ -1476,6 +1514,7 @@ async def create_lesson_plan(
     activity_types: list[str] = Form(default=[]),
     activity_teacher_notes: list[str] = Form(default=[]),
     activity_external_links: list[str] = Form(default=[]),
+    activity_media_attachments: list[str] = Form(default=[]),
 ):
     if not student_ids:
         return _lesson_planning_redirect(plan_date=plan_date, error="students")
@@ -1491,6 +1530,7 @@ async def create_lesson_plan(
         activity_types,
         activity_teacher_notes,
         activity_external_links,
+        activity_media_attachments,
         activity_student_ids=None,
     )
     # Legacy create form: shared title/activities copied to each selected student.
@@ -1506,8 +1546,9 @@ async def create_lesson_plan(
                     "activity_type": act_type,
                     "teacher_notes": notes,
                     "external_link": link,
+                    "media_attachments": media,
                 }
-                for _sid, act_title, act_desc, act_type, notes, link, _sort in activities_data
+                for _sid, act_title, act_desc, act_type, notes, link, media, _sort in activities_data
             ],
         }
         for student_id in student_ids

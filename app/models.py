@@ -182,6 +182,7 @@ class Activity(Base):
     audio_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     teacher_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     external_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    media_attachments: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     lesson_plan: Mapped["LessonPlan"] = relationship("LessonPlan", back_populates="activities")
     completions: Mapped[list["ActivityCompletion"]] = relationship(

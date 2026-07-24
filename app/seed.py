@@ -17,7 +17,7 @@ from app.models import (
     UserRole,
     WeeklyScheduleItem,
 )
-from app.sample_plans import HISTORY_AUDIO_URL
+from app.sample_plans import CLASSICAL_CONVERSATIONS_URL
 
 WEEKDAYS = [
     "Monday",
@@ -161,7 +161,6 @@ def seed_default_weekly_schedule(db: Session, teacher_id: int) -> None:
             item_kind=ScheduleItemKind.subject,
             weekdays="",
             description="Listen to the history audio lesson and share what you learned.",
-            external_link=HISTORY_AUDIO_URL,
             lesson_amount=72,
             include_numbering=True,
             sort_order=4,
@@ -311,8 +310,7 @@ def seed_database(db: Session) -> None:
                     description="Listen to the history lesson audio, then tell your teacher what you learned.",
                     sort_order=2,
                     activity_type=ActivityType.history,
-                    teacher_notes="History audio is available from the subject resource link.",
-                    external_link=HISTORY_AUDIO_URL,
+                    teacher_notes="Attach history audio from the media library when available.",
                 ),
                 Activity(
                     title="Creative Writing",

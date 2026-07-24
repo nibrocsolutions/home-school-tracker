@@ -116,7 +116,8 @@
             focusedStudentId = String(studentId);
         });
         section.querySelector('.add-student-activity')?.addEventListener('click', () => {
-            section.querySelector('.activities-list').appendChild(createActivityRow(studentId));
+            const list = section.querySelector('.activities-list');
+            list.insertBefore(createActivityRow(studentId), list.firstChild);
         });
         return section;
     }
@@ -197,7 +198,8 @@
             focusedStudentId = studentId;
         });
         section.querySelector('.add-student-activity')?.addEventListener('click', () => {
-            section.querySelector('.activities-list').appendChild(createActivityRow(studentId));
+            const list = section.querySelector('.activities-list');
+            list.insertBefore(createActivityRow(studentId), list.firstChild);
         });
     });
 

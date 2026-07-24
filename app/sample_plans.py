@@ -1,10 +1,5 @@
 """Sample lesson plan templates shown to teachers when the admin enables the feature."""
 
-HISTORY_AUDIO_URL = (
-    "https://tanbooks.com/account.php?action=download_item&data="
-    "OTU5NDk5LDI4NzksMzA2OTAwLDFmYzRlYTFiYjAxYTYyOTk5ODAwYjYwMDQ0NDBlY2E2LDQ2OTMwOTgwNDIwNTIxODMwODE5NjI2OTQxMjg3MDk="
-)
-
 CLASSICAL_CONVERSATIONS_URL = "https://classicalconversations.com/programs/essentials/"
 
 SAMPLE_LESSON_PLANS: list[dict] = [
@@ -39,8 +34,7 @@ SAMPLE_LESSON_PLANS: list[dict] = [
                 "title": "History Audio Lesson",
                 "description": "Listen to the history lesson audio, then tell your teacher what you learned.",
                 "activity_type": "history",
-                "teacher_notes": "History audio is available from the subject resource link.",
-                "external_link": HISTORY_AUDIO_URL,
+                "teacher_notes": "Attach history audio from the media library when available.",
             },
             {
                 "title": "Timeline Work",

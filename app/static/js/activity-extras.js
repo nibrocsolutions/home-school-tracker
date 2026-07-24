@@ -37,22 +37,23 @@
             const data = JSON.parse(value);
             if (!Array.isArray(data)) return [];
             // Keep blank draft rows in the editor; the server strips empties on save.
-            return data
-                .filter((item) => item && typeof item === 'object')
-                .map((item) => ({
-                    label: String(item.label || '').trim(),
-                    value: String(item.value || '').trim(),
-                }));
+            return data.map((item) => {
+                if (typeof item === 'string') return String(item);
+                if (item && typeof item === 'object') {
+                    const label = String(item.label || '').trim();
+                    const fieldValue = String(item.value || '').trim();
+                    if (label && fieldValue) return `${label}: ${fieldValue}`;
+                    return label || fieldValue;
+                }
+                return '';
+            });
         } catch (error) {
             return [];
         }
     }
 
     function serializeCustomFields(fields) {
-        const cleaned = (fields || []).map((item) => ({
-            label: String(item.label || '').trim(),
-            value: String(item.value || '').trim(),
-        }));
+        const cleaned = (fields || []).map((item) => String(item || ''));
         return cleaned.length ? JSON.stringify(cleaned) : '';
     }
 
@@ -128,23 +129,16 @@
             const row = document.createElement('div');
             row.className = 'activity-custom-field-row';
             row.innerHTML = `
-                <input type="text" class="activity-custom-label" placeholder="Field label" value="${escapeHtml(item.label)}" aria-label="Custom field label">
-                <input type="text" class="activity-custom-value" placeholder="Value" value="${escapeHtml(item.value)}" aria-label="Custom field value">
-                <button type="button" class="btn btn-ghost btn-sm activity-custom-remove" aria-label="Remove custom field">&times;</button>
+                <textarea class="activity-custom-text" rows="2" placeholder="Custom text" aria-label="Custom text">${escapeHtml(item)}</textarea>
+                <button type="button" class="btn btn-ghost btn-sm activity-custom-remove" aria-label="Remove custom text">&times;</button>
             `;
-            const labelInput = row.querySelector('.activity-custom-label');
-            const valueInput = row.querySelector('.activity-custom-value');
-            const persist = () => {
+            const textInput = row.querySelector('.activity-custom-text');
+            textInput.addEventListener('input', () => {
                 const next = parseCustomFields(field.value);
-                next[index] = {
-                    label: labelInput.value.trim(),
-                    value: valueInput.value.trim(),
-                };
+                next[index] = textInput.value;
                 field.value = serializeCustomFields(next);
                 field.dispatchEvent(new Event('change', { bubbles: true }));
-            };
-            labelInput.addEventListener('input', persist);
-            valueInput.addEventListener('input', persist);
+            });
             row.querySelector('.activity-custom-remove').addEventListener('click', () => {
                 const next = parseCustomFields(field.value);
                 next.splice(index, 1);
@@ -156,20 +150,17 @@
         });
     }
 
-    function addCustomField(group, seed = { label: '', value: '' }) {
+    function addCustomField(group, seed = '') {
         const field = group.querySelector('.activity-custom-fields-field');
         if (!field) return;
         const next = parseCustomFields(field.value);
-        next.push({
-            label: String(seed.label || '').trim(),
-            value: String(seed.value || '').trim(),
-        });
+        next.push(String(seed || ''));
         field.value = serializeCustomFields(next);
         field.dispatchEvent(new Event('change', { bubbles: true }));
         syncCustomFieldsGroup(group);
         const rows = group.querySelectorAll('.activity-custom-field-row');
         const last = rows[rows.length - 1];
-        last?.querySelector('.activity-custom-label')?.focus();
+        last?.querySelector('.activity-custom-text')?.focus();
     }
 
     function syncActivityRow(row) {

@@ -67,6 +67,28 @@ def run_schema_migrations(db: Session) -> None:
                 )
             )
             db.commit()
+        if not _column_exists(inspector, "activities", "custom_fields"):
+            db.execute(text("ALTER TABLE activities ADD COLUMN custom_fields TEXT"))
+            db.commit()
+            inspector = inspect(db.get_bind())
+
+        # Allow multiple external URLs (and longer single URLs) on activities.
+        if bind.dialect.name == "postgresql" and _column_exists(
+            inspector, "activities", "external_link"
+        ):
+            col_type = next(
+                (
+                    col["type"].__class__.__name__.lower()
+                    for col in inspector.get_columns("activities")
+                    if col["name"] == "external_link"
+                ),
+                "",
+            )
+            if "varchar" in col_type or "string" in col_type:
+                db.execute(
+                    text("ALTER TABLE activities ALTER COLUMN external_link TYPE TEXT")
+                )
+                db.commit()
 
     if _table_exists(inspector, "activity_completions"):
         if not _column_exists(inspector, "activity_completions", "student_message"):

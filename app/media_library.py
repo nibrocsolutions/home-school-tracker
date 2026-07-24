@@ -106,13 +106,35 @@ def is_audio_media_url(value: str | None) -> bool:
     return any(lower.endswith(ext) for ext in AUDIO_EXTENSIONS)
 
 
+def _split_media_attachment_blob(value: str) -> list[str]:
+    """Split a stored attachments blob into items without breaking comma filenames.
+
+    New data is newline-separated. Legacy rows may still use commas between full
+    `/media/...` URLs; only those are split on commas.
+    """
+    normalized = value.replace("\r\n", "\n").replace("\r", "\n")
+    if "\n" in normalized:
+        return [line.strip() for line in normalized.split("\n") if line.strip()]
+
+    text = normalized.strip()
+    if not text:
+        return []
+    if "," not in text:
+        return [text]
+
+    parts = [part.strip() for part in text.split(",") if part.strip()]
+    if len(parts) > 1 and all(is_media_library_url(part) for part in parts):
+        return parts
+    return [text]
+
+
 def parse_media_attachments(value: str | None) -> list[str]:
-    """Parse stored media attachments (newline or comma separated /media URLs)."""
+    """Parse stored media attachments (newline-separated /media URLs)."""
     if not value:
         return []
     urls: list[str] = []
     seen: set[str] = set()
-    for raw_line in value.replace(",", "\n").splitlines():
+    for raw_line in _split_media_attachment_blob(value):
         item = raw_line.strip()
         if not item:
             continue
@@ -135,6 +157,29 @@ def serialize_media_attachments(urls: list[str] | None) -> str | None:
     return "\n".join(cleaned)
 
 
+def parse_external_links(value: str | None) -> list[str]:
+    """Parse newline-separated external web URLs (commas inside URLs are preserved)."""
+    if not value:
+        return []
+    links: list[str] = []
+    seen: set[str] = set()
+    normalized = value.replace("\r\n", "\n").replace("\r", "\n")
+    for raw_line in normalized.split("\n"):
+        item = raw_line.strip()
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        links.append(item)
+    return links
+
+
+def serialize_external_links(urls: list[str] | None) -> str | None:
+    cleaned = activity_external_web_links("\n".join(urls or []))
+    if not cleaned:
+        return None
+    return "\n".join(cleaned)
+
+
 def activity_media_urls(
     *,
     media_attachments: str | None = None,
@@ -144,8 +189,10 @@ def activity_media_urls(
     """Collect media library URLs for an activity, including legacy single-link fields."""
     urls = parse_media_attachments(media_attachments)
     seen = set(urls)
-    for candidate in (external_link, audio_url):
-        text = (candidate or "").strip()
+    candidates = parse_external_links(external_link)
+    if audio_url and audio_url.strip():
+        candidates.append(audio_url.strip())
+    for text in candidates:
         if not text or not is_media_library_url(text):
             continue
         if text in seen:
@@ -155,12 +202,24 @@ def activity_media_urls(
     return urls
 
 
+def activity_external_web_links(external_link: str | None) -> list[str]:
+    """Return non-media web URLs stored on an activity (supports multiple links)."""
+    links: list[str] = []
+    seen: set[str] = set()
+    for text in parse_external_links(external_link):
+        if not text or is_media_library_url(text):
+            continue
+        if text in seen:
+            continue
+        seen.add(text)
+        links.append(text)
+    return links
+
+
 def activity_external_web_link(external_link: str | None) -> str | None:
-    """Return external_link only when it is a non-media web URL."""
-    text = (external_link or "").strip()
-    if not text or is_media_library_url(text):
-        return None
-    return text
+    """Return the first non-media web URL (legacy single-link helper)."""
+    links = activity_external_web_links(external_link)
+    return links[0] if links else None
 
 
 def _file_kind(path: Path) -> str:

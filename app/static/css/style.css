@@ -2242,13 +2242,27 @@ button.school-day-cell:hover {
 
 .activity-link-group {
     grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+}
+
+.activity-link-group .activity-link-field {
+    width: 100%;
+}
+
+.activity-link-add-row {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
     gap: 0.5rem;
     align-items: center;
 }
 
-.activity-link-group .activity-link-field {
+.activity-link-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
     width: 100%;
 }
 
@@ -2258,6 +2272,42 @@ button.school-day-cell:hover {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+}
+
+.activity-custom-fields-group {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+}
+
+.activity-custom-fields-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.activity-custom-field-row {
+    display: grid;
+    grid-template-columns: minmax(7rem, 0.9fr) minmax(8rem, 1.4fr) auto;
+    gap: 0.45rem;
+    align-items: center;
+}
+
+.activity-custom-field-row input {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 0.9rem;
+}
+
+.activity-custom-field {
+    margin: 0.25rem 0 0;
+    font-size: 0.88rem;
+    color: var(--text);
 }
 
 .activity-media-chips {
@@ -2494,6 +2544,11 @@ button.school-day-cell:hover {
 
 @media (max-width: 640px) {
     .activity-link-group {
+        grid-template-columns: 1fr;
+    }
+
+    .activity-link-add-row,
+    .activity-custom-field-row {
         grid-template-columns: 1fr;
     }
 

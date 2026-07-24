@@ -168,7 +168,8 @@ def _clear_schedule_item_activities(
         link = (activity.external_link or "").strip() or None
         notes = (activity.teacher_notes or "").strip() or None
         media = (getattr(activity, "media_attachments", None) or "").strip() or None
-        if message or link or notes or media:
+        custom = (getattr(activity, "custom_fields", None) or "").strip() or None
+        if message or link or notes or media or custom:
             student_bucket.append(
                 {
                     "student_message": message or None,
@@ -176,6 +177,7 @@ def _clear_schedule_item_activities(
                     "external_link": link,
                     "teacher_notes": notes,
                     "media_attachments": media,
+                    "custom_fields": custom,
                 }
             )
         else:
@@ -319,6 +321,9 @@ def _restore_preserved_messages(
                 media = (payload.get("media_attachments") or "").strip()
                 if media:
                     activity.media_attachments = media
+                custom = (payload.get("custom_fields") or "").strip()
+                if custom:
+                    activity.custom_fields = custom
                 notes = (payload.get("teacher_notes") or "").strip()
                 if notes:
                     activity.teacher_notes = notes
@@ -516,6 +521,7 @@ def _add_activity_to_plan(
             teacher_notes=activity_data.get("teacher_notes") or None,
             external_link=activity_data.get("external_link") or None,
             media_attachments=activity_data.get("media_attachments") or None,
+            custom_fields=activity_data.get("custom_fields") or None,
         )
     )
 

@@ -21,19 +21,25 @@
                 external_link=act.external_link,
                 audio_url=act.audio_url
             ) %}
-            {% set web_link = activity_external_web_link(act.external_link) %}
-            {% if media_urls or web_link %}
+            {% set web_links = activity_external_web_links(act.external_link) %}
+            {% set custom_fields = parse_custom_fields(act.custom_fields) %}
+            {% if media_urls or web_links or custom_fields %}
             <div class="activity-resource-list">
                 {% for resource_link in media_urls %}
                 <p class="activity-external-link">
                     <a href="{{ resource_link }}" target="_blank" rel="noopener noreferrer">{{ media_display_name(resource_link) }}</a>
                 </p>
                 {% endfor %}
-                {% if web_link %}
+                {% for web_link in web_links %}
                 <p class="activity-external-link">
-                    <a href="{{ web_link }}" target="_blank" rel="noopener noreferrer">Resource link</a>
+                    <a href="{{ web_link }}" target="_blank" rel="noopener noreferrer">{{ web_link }}</a>
                 </p>
-                {% endif %}
+                {% endfor %}
+                {% for field in custom_fields %}
+                <p class="activity-custom-field">
+                    {% if field.label %}<strong>{{ field.label }}:</strong> {% endif %}{{ field.value }}
+                </p>
+                {% endfor %}
             </div>
             {% endif %}
         </li>

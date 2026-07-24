@@ -60,10 +60,20 @@
     }
 
     function parseAttachments(value) {
-        return String(value || '')
-            .split(/[\n,]+/)
-            .map((item) => item.trim())
-            .filter(Boolean);
+        // Prefer newline separation so commas inside filenames stay intact.
+        const text = String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+        if (!text) return [];
+        if (text.includes('\n')) {
+            return text.split('\n').map((item) => item.trim()).filter(Boolean);
+        }
+        if (text.includes(',')) {
+            const parts = text.split(',').map((item) => item.trim()).filter(Boolean);
+            // Legacy rows only: comma-separated full /media/... URLs.
+            if (parts.length > 1 && parts.every((item) => item.startsWith('/media/'))) {
+                return parts;
+            }
+        }
+        return [text];
     }
 
     function serializeAttachments(urls) {

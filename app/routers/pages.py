@@ -20,8 +20,10 @@ from app.backup import export_database, import_database
 from app.calendar_context import build_calendar_context
 from app.calendar_utils import month_end, month_start, week_end, week_start
 from app.database import get_db
+from app.activity_fields import parse_custom_fields, serialize_custom_fields
 from app.media_library import (
     activity_external_web_link,
+    activity_external_web_links,
     activity_media_urls,
     create_media_folder,
     format_file_size,
@@ -35,6 +37,7 @@ from app.media_library import (
     media_root,
     resolve_media_file,
     save_uploaded_media_file,
+    serialize_external_links,
     serialize_media_attachments,
 )
 from app.models import (
@@ -95,6 +98,8 @@ templates.env.globals["media_display_name"] = media_display_name
 templates.env.globals["is_audio_media_url"] = is_audio_media_url
 templates.env.globals["activity_media_urls"] = activity_media_urls
 templates.env.globals["activity_external_web_link"] = activity_external_web_link
+templates.env.globals["activity_external_web_links"] = activity_external_web_links
+templates.env.globals["parse_custom_fields"] = parse_custom_fields
 
 
 def render(request: Request, name: str, context: dict, status_code: int = 200):
@@ -795,8 +800,19 @@ def _parse_lesson_activities(
     activity_external_links: list[str],
     activity_media_attachments: list[str] | None = None,
     activity_student_ids: list[int] | None = None,
+    activity_custom_fields: list[str] | None = None,
 ) -> list[
-    tuple[int | None, str, str | None, ActivityType, str | None, str | None, str | None, int]
+    tuple[
+        int | None,
+        str,
+        str | None,
+        ActivityType,
+        str | None,
+        str | None,
+        str | None,
+        str | None,
+        int,
+    ]
 ]:
     activities_data = []
     for idx, act_title in enumerate(activity_titles):
@@ -809,6 +825,9 @@ def _parse_lesson_activities(
         media_raw = ""
         if activity_media_attachments is not None and idx < len(activity_media_attachments):
             media_raw = activity_media_attachments[idx]
+        custom_raw = ""
+        if activity_custom_fields is not None and idx < len(activity_custom_fields):
+            custom_raw = activity_custom_fields[idx]
         student_id = None
         if activity_student_ids is not None and idx < len(activity_student_ids):
             student_id = activity_student_ids[idx]
@@ -821,7 +840,7 @@ def _parse_lesson_activities(
             media_attachments=media_raw,
             external_link=link,
         )
-        web_link = activity_external_web_link(link)
+        web_links = activity_external_web_links(link)
         activities_data.append(
             (
                 student_id,
@@ -829,8 +848,9 @@ def _parse_lesson_activities(
                 desc.strip() or None,
                 act_type,
                 notes.strip() or None,
-                web_link,
+                serialize_external_links(web_links),
                 serialize_media_attachments(media_urls),
+                serialize_custom_fields(parse_custom_fields(custom_raw)),
                 idx + 1,
             )
         )
@@ -874,6 +894,7 @@ def _save_lesson_plans_for_date(
                     teacher_notes=activity.get("teacher_notes"),
                     external_link=activity.get("external_link"),
                     media_attachments=activity.get("media_attachments"),
+                    custom_fields=activity.get("custom_fields"),
                 )
             )
     return len(student_plans)
@@ -1030,7 +1051,17 @@ def _build_student_plans_from_form(
     plan_titles: list[str],
     plan_descriptions: list[str],
     activities_data: list[
-        tuple[int | None, str, str | None, ActivityType, str | None, str | None, str | None, int]
+        tuple[
+            int | None,
+            str,
+            str | None,
+            ActivityType,
+            str | None,
+            str | None,
+            str | None,
+            str | None,
+            int,
+        ]
     ],
     *,
     fallback_title: str,
@@ -1047,6 +1078,7 @@ def _build_student_plans_from_form(
                 "teacher_notes": notes,
                 "external_link": link,
                 "media_attachments": media,
+                "custom_fields": custom,
             }
             for (
                 act_student_id,
@@ -1056,6 +1088,7 @@ def _build_student_plans_from_form(
                 notes,
                 link,
                 media,
+                custom,
                 _sort,
             ) in activities_data
             if act_student_id == student_id
@@ -1087,6 +1120,7 @@ async def save_lesson_planning_plan(
     activity_teacher_notes: list[str] = Form(default=[]),
     activity_external_links: list[str] = Form(default=[]),
     activity_media_attachments: list[str] = Form(default=[]),
+    activity_custom_fields: list[str] = Form(default=[]),
 ):
     school_year = _fetch_school_day_year(db, current_user.id)
     if school_year is None:
@@ -1119,6 +1153,7 @@ async def save_lesson_planning_plan(
         activity_external_links,
         activity_media_attachments,
         activity_student_ids,
+        activity_custom_fields,
     )
     student_plans = _build_student_plans_from_form(
         student_ids,
@@ -1600,6 +1635,7 @@ async def create_lesson_plan(
     activity_teacher_notes: list[str] = Form(default=[]),
     activity_external_links: list[str] = Form(default=[]),
     activity_media_attachments: list[str] = Form(default=[]),
+    activity_custom_fields: list[str] = Form(default=[]),
 ):
     if not student_ids:
         return _lesson_planning_redirect(plan_date=plan_date, error="students")
@@ -1617,6 +1653,7 @@ async def create_lesson_plan(
         activity_external_links,
         activity_media_attachments,
         activity_student_ids=None,
+        activity_custom_fields=activity_custom_fields,
     )
     # Legacy create form: shared title/activities copied to each selected student.
     student_plans = [
@@ -1632,8 +1669,9 @@ async def create_lesson_plan(
                     "teacher_notes": notes,
                     "external_link": link,
                     "media_attachments": media,
+                    "custom_fields": custom,
                 }
-                for _sid, act_title, act_desc, act_type, notes, link, media, _sort in activities_data
+                for _sid, act_title, act_desc, act_type, notes, link, media, custom, _sort in activities_data
             ],
         }
         for student_id in student_ids

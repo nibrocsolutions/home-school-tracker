@@ -68,13 +68,23 @@
                         <option value="subject">Subject</option>
                         <option value="history">History</option>
                     </select>
-                    <div class="activity-link-group">
-                        <input type="text" name="activity_external_links" placeholder="External web URL (optional)" class="activity-link-field">
+                    <div class="activity-link-group" data-link-group>
+                        <input type="hidden" name="activity_external_links" class="activity-links-field" value="">
+                        <div class="activity-link-chips" hidden></div>
+                        <div class="activity-link-add-row">
+                            <input type="text" class="activity-link-input activity-link-field" placeholder="https://example.com" autocomplete="off">
+                            <button type="button" class="btn btn-ghost btn-sm btn-add-link">Add link</button>
+                        </div>
                     </div>
                     <div class="activity-media-group" data-media-group>
                         <input type="hidden" name="activity_media_attachments" class="activity-media-field" value="">
                         <div class="activity-media-chips" hidden></div>
                         <button type="button" class="btn btn-ghost btn-sm btn-choose-media">Add media files</button>
+                    </div>
+                    <div class="activity-custom-fields-group" data-custom-fields-group>
+                        <input type="hidden" name="activity_custom_fields" class="activity-custom-fields-field" value="">
+                        <div class="activity-custom-fields-list" hidden></div>
+                        <button type="button" class="btn btn-ghost btn-sm btn-add-custom-field">Add custom field</button>
                     </div>
                     <textarea name="activity_teacher_notes" placeholder="Teacher Notes" class="activity-notes-field" rows="3"></textarea>
                 </div>
@@ -84,4 +94,5 @@
         <button type="submit" class="btn btn-primary">Save Lesson Plan</button>
     </form>
 </div>
-<script src="/static/js/media-picker.js?v=media-multi-1"></script>
+<script src="/static/js/media-picker.js?v=media-comma-fix-1"></script>
+<script src="/static/js/activity-extras.js?v=links-custom-1"></script>

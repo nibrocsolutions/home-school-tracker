@@ -77,9 +77,11 @@ def plans_for_date(plans: list[LessonPlan], plan_date: date) -> list[LessonPlan]
 
 
 def _serialize_plan_activities(plan: LessonPlan) -> list[dict]:
+    from app.activity_fields import serialize_custom_fields, parse_custom_fields
     from app.media_library import (
-        activity_external_web_link,
+        activity_external_web_links,
         activity_media_urls,
+        serialize_external_links,
         serialize_media_attachments,
     )
 
@@ -90,15 +92,18 @@ def _serialize_plan_activities(plan: LessonPlan) -> list[dict]:
             external_link=activity.external_link,
             audio_url=activity.audio_url,
         )
+        web_links = activity_external_web_links(activity.external_link)
+        custom_fields = parse_custom_fields(getattr(activity, "custom_fields", None))
         serialized.append(
             {
                 "title": activity.title,
                 "description": activity.description or "",
                 "activity_type": activity.activity_type.value,
                 "teacher_notes": activity.teacher_notes or "",
-                "external_link": activity_external_web_link(activity.external_link) or "",
+                "external_link": serialize_external_links(web_links) or "",
                 "media_attachments": serialize_media_attachments(media_urls) or "",
                 "media_urls": media_urls,
+                "custom_fields": serialize_custom_fields(custom_fields) or "",
             }
         )
     return serialized

@@ -11,6 +11,14 @@ function saveScrollPosition() {
 }
 
 function restoreScrollPosition() {
+    // Opening the lesson plan editor should always start at the top of the page,
+    // even if the user clicked a calendar day while scrolled partway down.
+    if (document.querySelector('.lesson-plan-editor-section')) {
+        sessionStorage.removeItem(SCROLL_KEY);
+        window.scrollTo(0, 0);
+        return;
+    }
+
     const saved = sessionStorage.getItem(SCROLL_KEY);
     if (saved === null) {
         return;
@@ -26,6 +34,13 @@ function initPreserveScroll() {
     document.querySelectorAll('[data-preserve-scroll]').forEach(function (container) {
         container.querySelectorAll('a[href]').forEach(function (link) {
             if (link.target === '_blank') {
+                return;
+            }
+            // Day links open the editor — do not carry calendar scroll into that page.
+            if (link.hasAttribute('data-scroll-top') || link.classList.contains('lesson-plan-day-link')) {
+                link.addEventListener('click', function () {
+                    sessionStorage.removeItem(SCROLL_KEY);
+                });
                 return;
             }
             link.addEventListener('click', saveScrollPosition);

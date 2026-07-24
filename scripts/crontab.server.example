@@ -1,0 +1,20 @@
+# Scheduled JSON backup snapshots for Home School Tracker
+#
+# Recommendation:
+#   Prefer a cron job ON THE SERVER (Raspberry Pi / Docker host) that writes
+#   snapshots locally (and optionally uploads to S3/Backblaze). That runs even
+#   when your Mac is asleep or offline.
+#
+#   Pulling from a Mac is a good *extra* offsite copy, not the only schedule.
+#
+# This file is an example for the machine that runs docker compose.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Four times daily (local server time): 00:15, 06:15, 12:15, 18:15
+# Adjust the project path below.
+15 0,6,12,18 * * * cd /path/to/home-school-tracker && /usr/bin/docker compose exec -T app python -m app.backup_snapshot >> /path/to/home-school-tracker/backups/cron.log 2>&1
+
+# Optional: also archive the media library once a day (JSON backup does not include binary files)
+30 2 * * * cd /path/to/home-school-tracker && tar -czf backups/media-$(date -u +\%Y\%m\%d).tar.gz -C media . && find backups -name 'media-*.tar.gz' -mtime +14 -delete >> /path/to/home-school-tracker/backups/cron.log 2>&1

@@ -1,0 +1,19 @@
+# Optional Mac-side pull of Home School Tracker backups
+#
+# Use this as a *secondary* offsite copy. Prefer the server-side cron in
+# crontab.server.example as the primary schedule.
+#
+# Prerequisites:
+#   1. Set BACKUP_EXPORT_TOKEN in the server's .env and restart the app
+#   2. Store the same token in ~/.config/hst/backup.env on this Mac
+#   3. Replace APP_URL with your Pi/VPN hostname
+
+SHELL=/bin/zsh
+PATH=/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin
+
+# Four times daily (Mac local time)
+20 0,6,12,18 * * * /bin/bash -lc 'set -a; source "$HOME/.config/hst/backup.env"; set +a; mkdir -p "$HOME/Documents/hst-backups"; curl -fsS -H "Authorization: Bearer $BACKUP_EXPORT_TOKEN" "$APP_URL/api/backup/export" -o "$HOME/Documents/hst-backups/hst-backup-$(date -u +\%Y\%m\%d-\%H\%M\%S).json"'
+
+# Example ~/.config/hst/backup.env
+#   APP_URL=https://homeschool.local:8080
+#   BACKUP_EXPORT_TOKEN=long-random-secret

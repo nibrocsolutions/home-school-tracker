@@ -17,6 +17,7 @@ from app.auth import (
     require_roles,
 )
 from app.backup import export_database, import_database
+from app.backup_auth import require_backup_export_token
 from app.calendar_context import build_calendar_context
 from app.calendar_utils import month_end, month_start, week_end, week_start
 from app.database import get_db
@@ -536,6 +537,22 @@ async def admin_backup_export(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.admin))],
 ):
+    backup_bytes = export_database(db)
+    filename = f"hst-backup-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.json"
+    return RawResponse(
+        content=backup_bytes,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/api/backup/export")
+async def api_backup_export(
+    db: Annotated[Session, Depends(get_db)],
+    _auth: Annotated[bool, Depends(require_backup_export_token)],
+):
+    """Machine-friendly backup download for cron/curl (token auth)."""
+    del _auth
     backup_bytes = export_database(db)
     filename = f"hst-backup-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.json"
     return RawResponse(

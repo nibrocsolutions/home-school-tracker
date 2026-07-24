@@ -94,7 +94,18 @@ Admins can export and import a full JSON backup of all application data from the
 - **Export Backup** — downloads users, lesson plans, activities, and completion records
 - **Import Backup** — restores data from a previously exported file (replaces all current data)
 
-Use daily exports as a safety net when rebuilding the application after a failure.
+### Scheduled snapshots (4×/day)
+
+**Recommended:** run a cron job on the Raspberry Pi / Docker host that writes snapshots into `./backups` (optionally upload to S3/Backblaze). That keeps working even when your Mac is asleep.
+
+**Optional extra:** have your Mac curl `/api/backup/export` with a shared token and save copies locally.
+
+Full guide + crontab examples: [`docs/backup-cron.md`](docs/backup-cron.md)
+
+```bash
+# Manual snapshot inside Docker
+docker compose exec app python -m app.backup_snapshot
+```
 
 ## Media Library (MP3s, PDFs, and other lesson files)
 
@@ -174,11 +185,15 @@ home-school-tracker/
 │   ├── auth.py           # Authentication & authorization
 │   ├── seed.py           # Demo data seeder
 │   ├── backup.py         # Database export/import
+│   ├── backup_snapshot.py# Cron-friendly snapshot writer
 │   ├── media_library.py  # Shared lesson media folder helpers
 │   ├── routers/          # Route handlers
 │   ├── templates/        # HTML templates (Jinja2)
 │   └── static/           # CSS & JavaScript
+├── backups/              # Timestamped JSON snapshots (gitignored)
 ├── media/                # Drop MP3s/PDFs here (mounted into Docker)
+├── docs/                 # Ops notes (backup cron, etc.)
+├── scripts/              # Example crontabs for server + Mac
 ├── docker-compose.yml    # Multi-container orchestration
 ├── Dockerfile            # App container definition
 ├── requirements.txt      # Python dependencies

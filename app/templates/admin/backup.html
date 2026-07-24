@@ -50,6 +50,13 @@
                 Store this file safely — it can be used to rebuild the application after a failure.
             </p>
             <a href="/admin/backup/export" class="btn btn-primary">Download Backup File</a>
+            <p class="panel-description" style="margin-top: 1rem;">
+                For automatic 4×/day snapshots, prefer a cron job on the server that runs
+                <code>python -m app.backup_snapshot</code> into <code>./backups</code>
+                (optionally upload to S3). A Mac can also pull
+                <code>/api/backup/export</code> with a shared token as a secondary copy.
+                See <code>docs/backup-cron.md</code>.
+            </p>
             <p style="margin-top: 1rem;">
                 <a href="/admin" class="btn btn-ghost btn-sm">← Back to Admin Dashboard</a>
             </p>

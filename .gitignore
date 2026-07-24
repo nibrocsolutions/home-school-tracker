@@ -30,3 +30,8 @@ media/**
 !media/science/.gitkeep
 !media/other/
 !media/other/.gitkeep
+
+# Local JSON / media archive snapshots
+backups/**
+!backups/.gitkeep
+!backups/README.md

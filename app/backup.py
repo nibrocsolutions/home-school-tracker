@@ -186,6 +186,8 @@ def import_database(db: Session, raw: bytes) -> None:
 
     _validate_backup(data)
 
+    # Clear association rows first so schedule-item deletes cannot leave orphans.
+    db.execute(text("DELETE FROM weekly_schedule_item_students"))
     db.query(PlannedSchoolDay).delete()
     db.query(WeeklyScheduleItem).delete()
     db.query(SchoolDayYear).delete()
@@ -196,13 +198,16 @@ def import_database(db: Session, raw: bytes) -> None:
     db.query(User).delete()
     db.flush()
 
+    imported_user_ids: set[int] = set()
     for row in data["users"]:
         role_value = row["role"]
         if role_value == "administrator":
             role_value = "admin"
+        user_id = int(row["id"])
+        imported_user_ids.add(user_id)
         db.add(
             User(
-                id=row["id"],
+                id=user_id,
                 username=row["username"],
                 email=row["email"],
                 password_hash=row["password_hash"],
@@ -271,6 +276,7 @@ def import_database(db: Session, raw: bytes) -> None:
             )
         )
 
+    imported_schedule_item_ids: set[int] = set()
     for row in data.get("weekly_schedule_items", []):
         from app.models import ScheduleItemKind, SpecialActivityKind
         from app.weekly_schedule import default_include_numbering
@@ -281,9 +287,11 @@ def import_database(db: Session, raw: bytes) -> None:
             include_numbering = bool(row.get("include_numbering"))
         else:
             include_numbering = default_include_numbering(row["name"], item_kind)
+        item_id = int(row["id"])
+        imported_schedule_item_ids.add(item_id)
         db.add(
             WeeklyScheduleItem(
-                id=row["id"],
+                id=item_id,
                 teacher_id=row["teacher_id"],
                 name=row["name"],
                 item_kind=item_kind,
@@ -298,11 +306,20 @@ def import_database(db: Session, raw: bytes) -> None:
             )
         )
 
+    # Session autoflush is disabled; parent rows must exist before association inserts.
+    db.flush()
+
     for row in data.get("weekly_schedule_item_students", []):
+        schedule_item_id = int(row["schedule_item_id"])
+        student_id = int(row["student_id"])
+        if schedule_item_id not in imported_schedule_item_ids:
+            continue
+        if student_id not in imported_user_ids:
+            continue
         db.execute(
             weekly_schedule_item_students.insert().values(
-                schedule_item_id=row["schedule_item_id"],
-                student_id=row["student_id"],
+                schedule_item_id=schedule_item_id,
+                student_id=student_id,
             )
         )
 

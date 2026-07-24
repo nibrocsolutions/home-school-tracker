@@ -124,9 +124,7 @@
                             </p>
                             {% endfor %}
                             {% for field in custom_fields %}
-                            <p class="activity-custom-field">
-                                {% if field.label %}<strong>{{ field.label }}:</strong> {% endif %}{{ field.value }}
-                            </p>
+                            <p class="activity-custom-field">{{ field }}</p>
                             {% endfor %}
                         </div>
                         {% endif %}

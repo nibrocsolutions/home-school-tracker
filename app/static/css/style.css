@@ -2290,18 +2290,21 @@ button.school-day-cell:hover {
 
 .activity-custom-field-row {
     display: grid;
-    grid-template-columns: minmax(7rem, 0.9fr) minmax(8rem, 1.4fr) auto;
+    grid-template-columns: 1fr auto;
     gap: 0.45rem;
-    align-items: center;
+    align-items: start;
 }
 
-.activity-custom-field-row input {
+.activity-custom-field-row .activity-custom-text {
     width: 100%;
+    min-height: 3.25rem;
     padding: 0.45rem 0.6rem;
     border: 2px solid var(--border);
     border-radius: var(--radius-sm);
     font-family: var(--font);
     font-size: 0.9rem;
+    line-height: 1.4;
+    resize: vertical;
 }
 
 .activity-custom-field {

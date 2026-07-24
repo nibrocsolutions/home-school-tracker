@@ -226,10 +226,7 @@ def _render_plan_block(
     meta = []
     if show_date:
         meta.append(plan.plan_date.strftime("%A, %B %d, %Y"))
-    if hasattr(plan, "student") and plan.student:
-        meta.append(f"Student: {plan.student.full_name}")
-    if hasattr(plan, "teacher") and plan.teacher:
-        meta.append(f"Teacher: {plan.teacher.full_name}")
+    # Student/teacher names appear once in the PDF subtitle — omit per-day repeats.
     if meta:
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(*COLORS["muted"])

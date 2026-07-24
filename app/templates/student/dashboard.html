@@ -24,7 +24,7 @@
 
     {% if view == 'weekly' %}
     <section class="panel">
-        <p class="section-hint">Click a day above to view and complete that day's plans.</p>
+        <p class="section-hint">Click a day above to view your plans.</p>
         {% if not has_week_plans %}
         <p class="empty-state">No lesson plans for this week.{% if empty_hint %} {{ empty_hint }}{% endif %}</p>
         {% endif %}

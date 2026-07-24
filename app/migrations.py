@@ -167,6 +167,52 @@ def run_schema_migrations(db: Session) -> None:
     _migrate_remove_sick_days(db, inspector)
     _migrate_holidays_to_days_off(db, inspector)
     _ensure_default_science_subject(db, inspect(db.get_bind()))
+    _clear_history_tanbooks_links(db, inspect(db.get_bind()))
+
+
+def _clear_history_tanbooks_links(db: Session, inspector) -> None:
+    """Remove the former default tanbooks.com History subject / activity links."""
+    if _table_exists(inspector, "weekly_schedule_items"):
+        db.execute(
+            text(
+                "UPDATE weekly_schedule_items "
+                "SET external_link = NULL "
+                "WHERE LOWER(name) = 'history' "
+                "AND external_link IS NOT NULL "
+                "AND external_link LIKE '%tanbooks.com%'"
+            )
+        )
+        if _column_exists(inspector, "weekly_schedule_items", "audio_url"):
+            db.execute(
+                text(
+                    "UPDATE weekly_schedule_items "
+                    "SET audio_url = NULL "
+                    "WHERE LOWER(name) = 'history' "
+                    "AND audio_url IS NOT NULL "
+                    "AND audio_url LIKE '%tanbooks.com%'"
+                )
+            )
+        db.commit()
+
+    if _table_exists(inspector, "activities"):
+        db.execute(
+            text(
+                "UPDATE activities "
+                "SET external_link = NULL "
+                "WHERE external_link IS NOT NULL "
+                "AND external_link LIKE '%tanbooks.com%'"
+            )
+        )
+        if _column_exists(inspector, "activities", "audio_url"):
+            db.execute(
+                text(
+                    "UPDATE activities "
+                    "SET audio_url = NULL "
+                    "WHERE audio_url IS NOT NULL "
+                    "AND audio_url LIKE '%tanbooks.com%'"
+                )
+            )
+        db.commit()
 
 
 def _ensure_default_science_subject(db: Session, inspector) -> None:

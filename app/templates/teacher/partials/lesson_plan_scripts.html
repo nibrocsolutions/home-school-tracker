@@ -110,7 +110,8 @@ document.getElementById('lesson-form')?.addEventListener('submit', function(e) {
     }
 });
 document.getElementById('add-activity')?.addEventListener('click', function() {
-    document.getElementById('activities-list').appendChild(createActivityRow());
+    const list = document.getElementById('activities-list');
+    list.insertBefore(createActivityRow(), list.firstChild);
 });
 
 loadScheduleSuggestions();

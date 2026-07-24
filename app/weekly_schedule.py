@@ -1,7 +1,7 @@
 from datetime import date
 
 from app.models import ScheduleItemKind, SpecialActivityKind, WeeklyScheduleItem
-from app.sample_plans import CLASSICAL_CONVERSATIONS_URL, HISTORY_AUDIO_URL
+from app.sample_plans import CLASSICAL_CONVERSATIONS_URL
 
 WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 # Subjects schedule on school days only; weekend choices are omitted from subject editors.
@@ -44,7 +44,6 @@ DEFAULT_SCHEDULE_ITEMS = [
         "weekdays": "",
         "lesson_amount": 72,
         "description": "Listen to the history audio lesson and share what you learned.",
-        "external_link": HISTORY_AUDIO_URL,
         "include_numbering": True,
     },
     {

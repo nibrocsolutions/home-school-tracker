@@ -32,7 +32,7 @@ def month_end(ref: date) -> date:
 def shift_ref_date(ref: date, view: str, direction: int) -> date:
     if view == "weekly":
         return ref + timedelta(weeks=direction)
-    if view in ("monthly", "calendar"):
+    if view == "monthly":
         month = ref.month + direction
         year = ref.year
         while month < 1:
@@ -50,7 +50,7 @@ def filter_plans_by_view(plans: list, view: str, ref: date) -> list:
     if view == "weekly":
         start, end = week_start(ref), week_end(ref)
         return [p for p in plans if start <= p.plan_date <= end]
-    if view in ("monthly", "calendar"):
+    if view == "monthly":
         start, end = month_start(ref), month_end(ref)
         return [p for p in plans if start <= p.plan_date <= end]
     return [p for p in plans if p.plan_date == ref]
@@ -90,6 +90,6 @@ def period_label(view: str, ref: date) -> str:
         if start.month == end.month:
             return f"{start.strftime('%b %d')} – {end.strftime('%d, %Y')}"
         return f"{start.strftime('%b %d')} – {end.strftime('%b %d, %Y')}"
-    if view in ("monthly", "calendar"):
+    if view == "monthly":
         return ref.strftime("%B %Y")
     return ref.strftime("%A, %B %d, %Y")

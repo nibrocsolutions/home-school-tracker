@@ -1,7 +1,7 @@
 from calendar import SUNDAY, Calendar
-from datetime import date
+from datetime import date, timedelta
 
-from app.calendar_utils import month_end, month_start, shift_ref_date
+from app.calendar_utils import month_end, month_start, shift_ref_date, week_start, week_end
 from app.models import LessonPlan, SchoolDayType, SchoolDayYear
 from app.school_day_context import default_cal_month, parse_cal_month, planned_days_map
 from app.school_year_utils import default_day_type, holiday_names_in_range, holidays_in_range
@@ -109,6 +109,31 @@ def _serialize_plan_activities(plan: LessonPlan) -> list[dict]:
     return serialized
 
 
+def _school_weeks_in_month(cal_month: date) -> list[dict]:
+    """Return Mon-Fri school weeks that overlap the given month."""
+    m_start = month_start(cal_month)
+    m_end = month_end(cal_month)
+    weeks: list[dict] = []
+    # Start from the Monday of the week containing the 1st
+    current = week_start(m_start)
+    while current <= m_end:
+        ws = current
+        we = week_end(current)
+        # Only include weeks that overlap the month
+        if we >= m_start and ws <= m_end:
+            # Clamp the label dates to the month
+            label_start = max(ws, m_start)
+            label_end = min(we, m_end)
+            # Use Monday of the week as ref_date for the PDF
+            label = f"{label_start.strftime('%b %d')} – {label_end.strftime('%b %d')}"
+            weeks.append({
+                "ref_date": ws.isoformat(),
+                "label": label,
+            })
+        current += timedelta(days=7)
+    return weeks
+
+
 def build_lesson_planning_context(
     school_year: SchoolDayYear | None,
     plans: list[LessonPlan],
@@ -185,6 +210,7 @@ def build_lesson_planning_context(
         "plan_date_param": plan_date.isoformat() if plan_date else "",
         "editor_context": editor_context,
         "pdf_ref_date": cal_month.isoformat(),
+        "pdf_weeks": _school_weeks_in_month(cal_month),
         "school_day_type_labels": {
             SchoolDayType.actual_school: "School days",
             SchoolDayType.school_off: "Days off",

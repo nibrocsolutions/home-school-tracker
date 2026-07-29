@@ -671,25 +671,46 @@ body {
     gap: 0.5rem;
 }
 
-.pdf-export-groups {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.85rem 1.25rem;
-    align-items: flex-end;
+.pdf-week-dropdown {
+    position: relative;
+    display: inline-block;
 }
 
-.pdf-export-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
+.pdf-dropdown-toggle {
+    cursor: pointer;
 }
 
-.pdf-export-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    color: var(--muted, #666);
+.dropdown-caret {
+    margin-left: 0.25rem;
+    font-size: 0.7em;
+}
+
+.pdf-dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 0.35rem;
+    min-width: 180px;
+    background: white;
+    border: 1px solid var(--border, #ddd);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    z-index: 100;
+    padding: 0.25rem 0;
+}
+
+.pdf-dropdown-item {
+    display: block;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    color: var(--text, #2d3142);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.pdf-dropdown-item:hover {
+    background: var(--header-bg, #ede9fe);
+    color: var(--primary, #4f6ef7);
 }
 
 .btn-pdf,

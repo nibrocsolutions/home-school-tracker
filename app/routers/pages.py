@@ -255,7 +255,7 @@ def _days_off_for_pdf_view(
     all_off = days_off_in_year(school_year)
     if view == "weekly":
         start, end = week_start(ref), week_end(ref)
-    elif view in ("monthly", "calendar"):
+    elif view == "monthly":
         start, end = month_start(ref), month_end(ref)
     else:
         start = end = ref
@@ -1542,18 +1542,16 @@ async def teacher_media_upload(
 async def teacher_lesson_plans_pdf(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
-    view: str = Query("daily", pattern="^(daily|weekly|monthly|calendar)$"),
+    view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
     ref_date: str | None = Query(None),
     disposition: str = Query("attachment", pattern="^(inline|attachment)$"),
 ):
     all_plans = _fetch_teacher_plans(db, current_user.id)
     calendar = build_calendar_context(all_plans, view, ref_date)
     days_off = _days_off_for_pdf_view(db, current_user.id, view, calendar["ref"])
-    completions_by_plan = None
-    if view != "calendar":
-        completions_by_plan = load_completions_for_teacher_plans(
-            db, calendar["lesson_plans"]
-        )
+    completions_by_plan = load_completions_for_teacher_plans(
+        db, calendar["lesson_plans"]
+    )
     pdf_bytes = build_lesson_plan_pdf(
         calendar["lesson_plans"],
         view,
@@ -2070,7 +2068,7 @@ async def student_dashboard(
 async def student_lesson_plans_pdf(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.student))],
-    view: str = Query("daily", pattern="^(daily|weekly|monthly|calendar)$"),
+    view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
     ref_date: str | None = Query(None),
     disposition: str = Query("attachment", pattern="^(inline|attachment)$"),
 ):

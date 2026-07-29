@@ -34,7 +34,7 @@ def build_calendar_context(plans: list, view: str, ref_date: str | None) -> dict
             })
 
     month_grid = []
-    if view in ("monthly", "calendar"):
+    if view == "monthly":
         month_plan_dates = {p.plan_date for p in plans if month_start(ref) <= p.plan_date <= month_end(ref)}
         month_grid = build_month_grid(ref, month_plan_dates)
 

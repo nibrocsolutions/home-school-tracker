@@ -3,32 +3,17 @@
         <h2>Lesson Planning Calendar</h2>
         <p class="section-hint">Click on a day to create or edit a lesson plan</p>
         <div class="calendar-actions">
-            <div class="pdf-export-groups">
-                <div class="pdf-export-group">
-                    <span class="pdf-export-label">Daily PDF</span>
-                    <div class="pdf-buttons">
-                        <a href="/teacher/lesson-plans.pdf?view=monthly&ref_date={{ pdf_ref_date }}&disposition=inline"
-                           class="btn btn-pdf-view btn-sm" target="_blank" rel="noopener">
-                            <span aria-hidden="true">👁</span> View
-                        </a>
-                        <a href="/teacher/lesson-plans.pdf?view=monthly&ref_date={{ pdf_ref_date }}&disposition=attachment"
-                           class="btn btn-pdf btn-sm">
-                            <span aria-hidden="true">📄</span> Download
-                        </a>
-                    </div>
-                </div>
-                <div class="pdf-export-group">
-                    <span class="pdf-export-label">Monthly PDF</span>
-                    <div class="pdf-buttons">
-                        <a href="/teacher/lesson-plans.pdf?view=calendar&ref_date={{ pdf_ref_date }}&disposition=inline"
-                           class="btn btn-pdf-view btn-sm" target="_blank" rel="noopener">
-                            <span aria-hidden="true">👁</span> View
-                        </a>
-                        <a href="/teacher/lesson-plans.pdf?view=calendar&ref_date={{ pdf_ref_date }}&disposition=attachment"
-                           class="btn btn-pdf btn-sm">
-                            <span aria-hidden="true">📄</span> Download
-                        </a>
-                    </div>
+            <div class="pdf-week-dropdown">
+                <button type="button" class="btn btn-pdf-view btn-sm pdf-dropdown-toggle" id="pdf-week-toggle">
+                    <span aria-hidden="true">👁</span> View PDF <span class="dropdown-caret">▾</span>
+                </button>
+                <div class="pdf-dropdown-menu" id="pdf-week-menu" hidden>
+                    {% for week in pdf_weeks %}
+                    <a href="/teacher/lesson-plans.pdf?view=weekly&ref_date={{ week.ref_date }}&disposition=inline"
+                       class="pdf-dropdown-item" target="_blank" rel="noopener">
+                        {{ week.label }}
+                    </a>
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -87,6 +72,21 @@
         </div>
         {% endfor %}
     </div>
+
+    <script>
+    (function() {
+        var toggle = document.getElementById('pdf-week-toggle');
+        var menu = document.getElementById('pdf-week-menu');
+        if (!toggle || !menu) return;
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            menu.hidden = !menu.hidden;
+        });
+        document.addEventListener('click', function() {
+            menu.hidden = true;
+        });
+    })();
+    </script>
 
     <div class="school-day-legend lesson-planning-legend">
         <span class="legend-item"><span class="legend-swatch day-type-actual_school"></span> School days</span>

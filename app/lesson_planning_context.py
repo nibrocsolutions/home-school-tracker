@@ -1,7 +1,14 @@
 from calendar import SUNDAY, Calendar
 from datetime import date, timedelta
 
-from app.calendar_utils import month_end, month_start, shift_ref_date, week_start, week_end
+from app.calendar_utils import (
+    month_end,
+    month_start,
+    shift_ref_date,
+    school_week_dates,
+    school_week_end,
+    school_week_start,
+)
 from app.models import LessonPlan, SchoolDayType, SchoolDayYear
 from app.school_day_context import default_cal_month, parse_cal_month, planned_days_map
 from app.school_year_utils import default_day_type, holiday_names_in_range, holidays_in_range
@@ -109,28 +116,66 @@ def _serialize_plan_activities(plan: LessonPlan) -> list[dict]:
     return serialized
 
 
-def _school_weeks_in_month(cal_month: date) -> list[dict]:
-    """Return Mon-Fri school weeks that overlap the given month."""
+def _is_day_off(day: date, planned: dict[date, dict], school_year: SchoolDayYear | None) -> bool:
+    if school_year is None:
+        return False
+    if not (school_year.start_date <= day <= school_year.end_date):
+        return False
+    entry = planned.get(day)
+    day_type = entry["day_type"] if entry else default_day_type(day)
+    if isinstance(day_type, SchoolDayType):
+        return day_type in (SchoolDayType.school_off, SchoolDayType.holiday)
+    return str(day_type) in (
+        SchoolDayType.school_off.value,
+        SchoolDayType.holiday.value,
+    )
+
+
+def _school_weeks_in_month(
+    cal_month: date,
+    *,
+    plan_dates: set[date],
+    planned: dict[date, dict],
+    school_year: SchoolDayYear | None,
+) -> list[dict]:
+    """Return Mon-Fri school weeks for the month that have plans or are fully days off.
+
+    Weeks span full Mon-Fri even when they cross month boundaries (e.g. Aug 31–Sep 4).
+    A week is listed when any Mon-Fri day falls in the calendar month.
+    """
     m_start = month_start(cal_month)
     m_end = month_end(cal_month)
     weeks: list[dict] = []
-    # Start from the Monday of the week containing the 1st
-    current = week_start(m_start)
-    while current <= m_end:
-        ws = current
-        we = week_end(current)
-        # Only include weeks that overlap the month
-        if we >= m_start and ws <= m_end:
-            # Clamp the label dates to the month
-            label_start = max(ws, m_start)
-            label_end = min(we, m_end)
-            # Use Monday of the week as ref_date for the PDF
-            label = f"{label_start.strftime('%b %d')} – {label_end.strftime('%b %d')}"
-            weeks.append({
-                "ref_date": ws.isoformat(),
-                "label": label,
-            })
-        current += timedelta(days=7)
+    seen_mondays: set[date] = set()
+
+    # Walk every date in the month; collect unique Mon-Fri school weeks that touch it.
+    day = m_start
+    while day <= m_end:
+        monday = school_week_start(day)
+        if monday not in seen_mondays:
+            seen_mondays.add(monday)
+            school_days = school_week_dates(monday)
+            friday = school_week_end(monday)
+            # Week must overlap this calendar month on a weekday
+            if any(m_start <= d <= m_end for d in school_days):
+                has_plans = any(d in plan_dates for d in school_days)
+                all_off = all(
+                    _is_day_off(d, planned, school_year) for d in school_days
+                )
+                if has_plans or all_off:
+                    if monday.month == friday.month:
+                        label = f"{monday.strftime('%b %d')} – {friday.strftime('%d')}"
+                    else:
+                        label = (
+                            f"{monday.strftime('%b %d')} – {friday.strftime('%b %d')}"
+                        )
+                    weeks.append({
+                        "ref_date": monday.isoformat(),
+                        "label": label,
+                    })
+        day += timedelta(days=1)
+
+    weeks.sort(key=lambda w: w["ref_date"])
     return weeks
 
 
@@ -210,7 +255,12 @@ def build_lesson_planning_context(
         "plan_date_param": plan_date.isoformat() if plan_date else "",
         "editor_context": editor_context,
         "pdf_ref_date": cal_month.isoformat(),
-        "pdf_weeks": _school_weeks_in_month(cal_month),
+        "pdf_weeks": _school_weeks_in_month(
+            cal_month,
+            plan_dates=plan_dates,
+            planned=planned,
+            school_year=school_year,
+        ),
         "school_day_type_labels": {
             SchoolDayType.actual_school: "School days",
             SchoolDayType.school_off: "Days off",

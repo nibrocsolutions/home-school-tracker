@@ -3,19 +3,21 @@
         <h2>Lesson Planning Calendar</h2>
         <p class="section-hint">Click on a day to create or edit a lesson plan</p>
         <div class="calendar-actions">
-            <div class="pdf-week-dropdown">
-                <button type="button" class="btn btn-pdf-view btn-sm pdf-dropdown-toggle" id="pdf-week-toggle">
-                    <span aria-hidden="true">👁</span> View PDF <span class="dropdown-caret">▾</span>
-                </button>
-                <div class="pdf-dropdown-menu" id="pdf-week-menu" hidden>
+            {% if pdf_weeks %}
+            <div class="pdf-week-select-wrap">
+                <label for="pdf-week-select" class="pdf-week-select-label">
+                    <span aria-hidden="true">👁</span> View PDF
+                </label>
+                <select id="pdf-week-select" class="pdf-week-select" aria-label="Select a school week to view PDF">
+                    <option value="">Select a school week…</option>
                     {% for week in pdf_weeks %}
-                    <a href="/teacher/lesson-plans.pdf?view=weekly&ref_date={{ week.ref_date }}&disposition=inline"
-                       class="pdf-dropdown-item" target="_blank" rel="noopener">
+                    <option value="/teacher/lesson-plans.pdf?view=weekly&ref_date={{ week.ref_date }}&disposition=inline">
                         {{ week.label }}
-                    </a>
+                    </option>
                     {% endfor %}
-                </div>
+                </select>
             </div>
+            {% endif %}
         </div>
     </div>
 
@@ -75,15 +77,12 @@
 
     <script>
     (function() {
-        var toggle = document.getElementById('pdf-week-toggle');
-        var menu = document.getElementById('pdf-week-menu');
-        if (!toggle || !menu) return;
-        toggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            menu.hidden = !menu.hidden;
-        });
-        document.addEventListener('click', function() {
-            menu.hidden = true;
+        var select = document.getElementById('pdf-week-select');
+        if (!select) return;
+        select.addEventListener('change', function() {
+            if (!select.value) return;
+            window.open(select.value, '_blank', 'noopener');
+            select.selectedIndex = 0;
         });
     })();
     </script>

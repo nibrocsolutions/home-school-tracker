@@ -267,15 +267,6 @@ def _activity_details_text(
     return "\n".join(parts) if parts else "-"
 
 
-def _activities_summary(activities: list) -> str:
-    titles = [a.title for a in sorted(activities, key=lambda a: a.sort_order)]
-    if not titles:
-        return "-"
-    if len(titles) <= 2:
-        return "; ".join(titles)
-    return f"{titles[0]}; {titles[1]} (+{len(titles) - 2} more)"
-
-
 def _render_activity_table(
     pdf: LessonPlanPDF,
     plan: LessonPlan,
@@ -386,59 +377,6 @@ def _render_day_without_splitting(
     )
 
 
-def _render_weekly_overview_table(
-    pdf: LessonPlanPDF,
-    plans: list[LessonPlan],
-    days_off: list[date] | None = None,
-) -> None:
-    pdf._section_title("Weekly Overview")
-    width = pdf._usable_width()
-    widths = [width * 0.14, width * 0.10, width * 0.18, width * 0.28, width * 0.30]
-    pdf._table_row(["Date", "Day", "Student", "Lesson Plan", "Activities"], widths, header=True)
-
-    grouped = group_plans_by_date(plans)
-    off_set = set(days_off or [])
-    all_dates = sorted(set(grouped.keys()) | off_set)
-    row_idx = 0
-    for plan_date in all_dates:
-        day_plans = grouped.get(plan_date, [])
-        if plan_date in off_set:
-            pdf._multi_line_table_row(
-                [
-                    plan_date.strftime("%b %d"),
-                    plan_date.strftime("%a"),
-                    "-",
-                    plan_date.strftime("%A, %B %d, %Y"),
-                    "No lesson plans scheduled (day off).",
-                ],
-                widths,
-                alt=row_idx % 2 == 0,
-                text_colors=[
-                    COLORS["text"],
-                    COLORS["text"],
-                    COLORS["text"],
-                    COLORS["text"],
-                    COLORS["red"],
-                ],
-            )
-            row_idx += 1
-        for plan in day_plans:
-            student_name = plan.student.full_name if plan.student else "-"
-            pdf._multi_line_table_row(
-                [
-                    plan_date.strftime("%b %d"),
-                    plan_date.strftime("%a"),
-                    student_name,
-                    plan.title,
-                    _activities_summary(plan.activities),
-                ],
-                widths,
-                alt=row_idx % 2 == 0,
-            )
-            row_idx += 1
-    pdf.ln(6)
-
-
 def _render_chronological_details(
     pdf: LessonPlanPDF,
     plans: list[LessonPlan],
@@ -474,8 +412,8 @@ def _render_weekly_view(
     completions_by_plan: dict[int, dict[int, bool]] | None,
     days_off: list[date] | None = None,
 ) -> None:
-    _render_weekly_overview_table(pdf, plans, days_off=days_off)
-    pdf._section_title("Lesson Plan Details")
+    # Weekly PDF shows the same chronological daily details as the daily/monthly
+    # detail export — no weekly overview table.
     _render_chronological_details(pdf, plans, completions_by_plan, days_off=days_off)
 
 
@@ -503,7 +441,9 @@ def build_lesson_plan_pdf(
     pdf.add_page()
 
     title = period_label(view, ref)
-    if view == "monthly":
+    if view == "weekly":
+        title = f"Daily Lesson Plans — {title}"
+    elif view == "monthly":
         title = f"Daily Lesson Plans — {title}"
 
     pdf.set_font("Helvetica", "B", 13)

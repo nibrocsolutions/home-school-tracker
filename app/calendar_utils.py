@@ -19,6 +19,22 @@ def week_end(ref: date) -> date:
     return week_start(ref) + timedelta(days=6)
 
 
+def school_week_start(ref: date) -> date:
+    """Monday of the Mon-Fri school week containing ref."""
+    return week_start(ref)
+
+
+def school_week_end(ref: date) -> date:
+    """Friday of the Mon-Fri school week containing ref."""
+    return school_week_start(ref) + timedelta(days=4)
+
+
+def school_week_dates(ref: date) -> list[date]:
+    """Return Mon-Fri dates for the school week containing ref."""
+    start = school_week_start(ref)
+    return [start + timedelta(days=i) for i in range(5)]
+
+
 def month_start(ref: date) -> date:
     return ref.replace(day=1)
 
@@ -48,7 +64,7 @@ def shift_ref_date(ref: date, view: str, direction: int) -> date:
 
 def filter_plans_by_view(plans: list, view: str, ref: date) -> list:
     if view == "weekly":
-        start, end = week_start(ref), week_end(ref)
+        start, end = school_week_start(ref), school_week_end(ref)
         return [p for p in plans if start <= p.plan_date <= end]
     if view == "monthly":
         start, end = month_start(ref), month_end(ref)
@@ -86,7 +102,7 @@ def build_month_grid(ref: date, plan_dates: set[date]) -> list[list[dict]]:
 
 def period_label(view: str, ref: date) -> str:
     if view == "weekly":
-        start, end = week_start(ref), week_end(ref)
+        start, end = school_week_start(ref), school_week_end(ref)
         if start.month == end.month:
             return f"{start.strftime('%b %d')} – {end.strftime('%d, %Y')}"
         return f"{start.strftime('%b %d')} – {end.strftime('%b %d, %Y')}"

@@ -19,7 +19,14 @@ from app.auth import (
 from app.backup import export_database, import_database
 from app.backup_auth import require_backup_export_token
 from app.calendar_context import build_calendar_context
-from app.calendar_utils import month_end, month_start, week_end, week_start
+from app.calendar_utils import (
+    month_end,
+    month_start,
+    school_week_end,
+    school_week_start,
+    week_end,
+    week_start,
+)
 from app.database import get_db
 from app.activity_fields import parse_custom_fields, serialize_custom_fields
 from app.media_library import (
@@ -254,7 +261,7 @@ def _days_off_for_pdf_view(
         return []
     all_off = days_off_in_year(school_year)
     if view == "weekly":
-        start, end = week_start(ref), week_end(ref)
+        start, end = school_week_start(ref), school_week_end(ref)
     elif view == "monthly":
         start, end = month_start(ref), month_end(ref)
     else:

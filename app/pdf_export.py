@@ -1,5 +1,4 @@
 import re
-from calendar import SUNDAY, Calendar
 from datetime import date
 from io import BytesIO
 
@@ -29,8 +28,6 @@ COLORS = {
     "white": (255, 255, 255),
     "row_alt": (248, 246, 242),
     "red": (220, 38, 38),
-    "day_off_bg": (254, 242, 242),
-    "has_plans_bg": (239, 246, 255),
 }
 
 ACTIVITY_TYPE_LABELS = {
@@ -42,8 +39,8 @@ ACTIVITY_TYPE_LABELS = {
 
 
 class LessonPlanPDF(FPDF):
-    def __init__(self, orientation: str = "portrait"):
-        super().__init__(orientation=orientation)
+    def __init__(self):
+        super().__init__()
         self.set_auto_page_break(auto=True, margin=18)
 
     def header(self):
@@ -482,127 +479,6 @@ def _render_weekly_view(
     _render_chronological_details(pdf, plans, completions_by_plan, days_off=days_off)
 
 
-def _calendar_cell_lines(
-    plan_date: date,
-    day_plans: list[LessonPlan],
-    *,
-    is_day_off: bool,
-) -> list[str]:
-    lines = [str(plan_date.day)]
-    if is_day_off:
-        lines.append("Day off")
-    for plan in day_plans:
-        student = plan.student.full_name if plan.student else ""
-        title = _normalize_pdf_text(plan.title)
-        if student and title:
-            label = f"{student}: {title}"
-        else:
-            label = title or student or "Lesson plan"
-        # Keep calendar cells readable.
-        if len(label) > 42:
-            label = label[:39] + "..."
-        lines.append(label)
-        activity_titles = [
-            a.title for a in sorted(plan.activities, key=lambda a: a.sort_order)
-        ][:3]
-        for activity_title in activity_titles:
-            short = _normalize_pdf_text(activity_title)
-            if len(short) > 40:
-                short = short[:37] + "..."
-            lines.append(f"  - {short}")
-        remaining = len(plan.activities) - len(activity_titles)
-        if remaining > 0:
-            lines.append(f"  (+{remaining} more)")
-    return lines
-
-
-def _render_monthly_calendar_view(
-    pdf: LessonPlanPDF,
-    plans: list[LessonPlan],
-    ref: date,
-    days_off: list[date] | None = None,
-) -> None:
-    """Render a month calendar grid (separate from the daily details PDF)."""
-    pdf._section_title("Monthly Calendar")
-    grouped = group_plans_by_date(plans)
-    off_set = set(days_off or [])
-    weeks = Calendar(firstweekday=SUNDAY).monthdayscalendar(ref.year, ref.month)
-
-    usable_width = pdf._usable_width()
-    usable_height = pdf.page_break_trigger - pdf.get_y() - 4
-    col_width = usable_width / 7
-    row_count = max(len(weeks), 1)
-    row_height = max(28.0, min(42.0, usable_height / row_count))
-
-    # Weekday header
-    pdf.set_font("Helvetica", "B", 8)
-    pdf.set_fill_color(*COLORS["primary"])
-    pdf.set_text_color(*COLORS["white"])
-    pdf.set_draw_color(*COLORS["border"])
-    x = pdf.l_margin
-    y = pdf.get_y()
-    for label in ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"):
-        pdf.rect(x, y, col_width, 8, style="DF")
-        pdf.set_xy(x, y + 1.5)
-        pdf.cell(col_width, 5, label, align="C")
-        x += col_width
-    pdf.set_y(y + 8)
-
-    for week in weeks:
-        y = pdf.get_y()
-        if y + row_height > pdf.page_break_trigger:
-            pdf.add_page()
-            y = pdf.get_y()
-        x = pdf.l_margin
-        for day_num in week:
-            if day_num == 0:
-                pdf.set_fill_color(*COLORS["row_alt"])
-                pdf.rect(x, y, col_width, row_height, style="DF")
-            else:
-                plan_date = date(ref.year, ref.month, day_num)
-                day_plans = grouped.get(plan_date, [])
-                is_day_off = plan_date in off_set
-                if is_day_off:
-                    pdf.set_fill_color(*COLORS["day_off_bg"])
-                elif day_plans:
-                    pdf.set_fill_color(*COLORS["has_plans_bg"])
-                else:
-                    pdf.set_fill_color(*COLORS["white"])
-                pdf.rect(x, y, col_width, row_height, style="DF")
-
-                lines = _calendar_cell_lines(
-                    plan_date, day_plans, is_day_off=is_day_off
-                )
-                text_y = y + 1.5
-                for index, line in enumerate(lines):
-                    if text_y + 4 > y + row_height - 1:
-                        break
-                    if index == 0:
-                        pdf.set_font("Helvetica", "B", 8)
-                        pdf.set_text_color(*COLORS["text"])
-                    elif is_day_off and index == 1:
-                        pdf.set_font("Helvetica", "I", 6)
-                        pdf.set_text_color(*COLORS["red"])
-                    else:
-                        pdf.set_font("Helvetica", "", 6)
-                        pdf.set_text_color(*COLORS["text"])
-                    pdf.set_xy(x + 1, text_y)
-                    pdf.cell(col_width - 2, 3.5, _safe_text(line), align="L")
-                    text_y += 3.6
-            x += col_width
-        pdf.set_y(y + row_height)
-
-    pdf.ln(4)
-    pdf.set_font("Helvetica", "I", 8)
-    pdf.set_text_color(*COLORS["muted"])
-    pdf.multi_cell(
-        pdf._usable_width(),
-        4,
-        "Blue cells have lesson plans. Red-tinted cells are days off. "
-        "Use the Daily PDF for full lesson details.",
-    )
-
-
 def _render_monthly_view(
     pdf: LessonPlanPDF,
     plans: list[LessonPlan],
@@ -623,14 +499,11 @@ def build_lesson_plan_pdf(
     completions_by_plan: dict[int, dict[int, bool]] | None = None,
     days_off: list[date] | None = None,
 ) -> bytes:
-    orientation = "landscape" if view == "calendar" else "portrait"
-    pdf = LessonPlanPDF(orientation=orientation)
+    pdf = LessonPlanPDF()
     pdf.add_page()
 
     title = period_label(view, ref)
-    if view == "calendar":
-        title = f"Monthly View — {title}"
-    elif view == "monthly":
+    if view == "monthly":
         title = f"Daily Lesson Plans — {title}"
 
     pdf.set_font("Helvetica", "B", 13)
@@ -649,8 +522,6 @@ def build_lesson_plan_pdf(
         pdf.cell(0, 8, "No lesson plans for this period.", new_x="LMARGIN", new_y="NEXT")
     elif view == "weekly":
         _render_weekly_view(pdf, plans, completions_by_plan, days_off=off_list)
-    elif view == "calendar":
-        _render_monthly_calendar_view(pdf, plans, ref, days_off=off_list)
     elif view == "monthly":
         _render_monthly_view(pdf, plans, ref, completions_by_plan, days_off=off_list)
     else:
@@ -662,14 +533,13 @@ def build_lesson_plan_pdf(
 
 
 def pdf_filename(view: str, ref: date, role: str) -> str:
-    if view in ("monthly", "calendar"):
+    if view == "monthly":
         slug = ref.strftime("%Y-%m")
     elif view == "weekly":
         slug = f"week-{ref.isoformat()}"
     else:
         slug = ref.isoformat()
-    view_slug = "monthly-calendar" if view == "calendar" else view
-    return f"lesson-plans-{role}-{view_slug}-{slug}.pdf"
+    return f"lesson-plans-{role}-{view}-{slug}.pdf"
 
 
 def pdf_response_headers(filename: str, inline: bool) -> dict[str, str]:

@@ -27,12 +27,7 @@
             <input type="hidden" name="activity_student_ids" value="${studentId}">
             <input type="text" name="activity_titles" placeholder="Activity title" required value="${escapeHtml(activity.title || '')}">
             <input type="text" name="activity_descriptions" placeholder="Description (optional)" value="${escapeHtml(activity.description || '')}">
-            <select name="activity_types" class="activity-type-select">
-                <option value="regular" ${type === 'regular' ? 'selected' : ''}>Regular</option>
-                <option value="special" ${type === 'special' ? 'selected' : ''}>Special Activity</option>
-                <option value="subject" ${type === 'subject' ? 'selected' : ''}>Subject</option>
-                <option value="history" ${type === 'history' ? 'selected' : ''}>History</option>
-            </select>
+            <input type="hidden" name="activity_types" value="${escapeHtml(type)}">
             <div class="activity-link-group" data-link-group>
                 <input type="hidden" name="activity_external_links" class="activity-links-field" value="${escapeHtml(activity.external_link || '')}">
                 <div class="activity-link-chips" hidden></div>

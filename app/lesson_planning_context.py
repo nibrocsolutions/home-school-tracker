@@ -164,10 +164,10 @@ def _school_weeks_in_month(
                 )
                 if has_plans or all_off:
                     if monday.month == friday.month:
-                        label = f"{monday.strftime('%b %d')} – {friday.strftime('%d')}"
+                        label = f"{monday.strftime('%b %d')} - {friday.strftime('%d')}"
                     else:
                         label = (
-                            f"{monday.strftime('%b %d')} – {friday.strftime('%b %d')}"
+                            f"{monday.strftime('%b %d')} - {friday.strftime('%b %d')}"
                         )
                     weeks.append({
                         "ref_date": monday.isoformat(),

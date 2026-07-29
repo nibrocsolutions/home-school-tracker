@@ -104,8 +104,8 @@ def period_label(view: str, ref: date) -> str:
     if view == "weekly":
         start, end = school_week_start(ref), school_week_end(ref)
         if start.month == end.month:
-            return f"{start.strftime('%b %d')} – {end.strftime('%d, %Y')}"
-        return f"{start.strftime('%b %d')} – {end.strftime('%b %d, %Y')}"
+            return f"{start.strftime('%b %d')} - {end.strftime('%d, %Y')}"
+        return f"{start.strftime('%b %d')} - {end.strftime('%b %d, %Y')}"
     if view == "monthly":
         return ref.strftime("%B %Y")
     return ref.strftime("%A, %B %d, %Y")

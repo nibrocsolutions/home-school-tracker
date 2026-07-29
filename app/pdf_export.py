@@ -1,14 +1,21 @@
 import re
+from calendar import SUNDAY, Calendar
 from datetime import date
 from io import BytesIO
 
 from fpdf import FPDF
 
+from app.activity_fields import parse_custom_fields
 from app.calendar_utils import (
     group_plans_by_date,
     period_label,
 )
-from app.models import LessonPlan, SchoolDayType
+from app.media_library import (
+    activity_external_web_links,
+    activity_media_urls,
+    media_display_name,
+)
+from app.models import ActivityType, LessonPlan, SchoolDayType
 
 COLORS = {
     "primary": (79, 110, 247),
@@ -22,12 +29,21 @@ COLORS = {
     "white": (255, 255, 255),
     "row_alt": (248, 246, 242),
     "red": (220, 38, 38),
+    "day_off_bg": (254, 242, 242),
+    "has_plans_bg": (239, 246, 255),
+}
+
+ACTIVITY_TYPE_LABELS = {
+    ActivityType.regular: "Regular",
+    ActivityType.special: "Special Activity",
+    ActivityType.subject: "Subject",
+    ActivityType.history: "History",
 }
 
 
 class LessonPlanPDF(FPDF):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, orientation: str = "portrait"):
+        super().__init__(orientation=orientation)
         self.set_auto_page_break(auto=True, margin=18)
 
     def header(self):
@@ -65,6 +81,10 @@ class LessonPlanPDF(FPDF):
 
     def _usable_width(self) -> float:
         return self.w - self.l_margin - self.r_margin
+
+    def _content_top_y(self) -> float:
+        """Y position considered 'top of usable content' after a page break."""
+        return self.t_margin + 2
 
     def _section_title(self, text: str) -> None:
         self.set_font("Helvetica", "B", 12)
@@ -170,10 +190,84 @@ def _activity_completed(completions: dict[int, bool | dict] | None, activity_id:
     return bool(value)
 
 
-def _status_label(activity_id: int, completions: dict[int, bool | dict] | None) -> str:
+def _completion_entry(
+    completions: dict[int, bool | dict] | None, activity_id: int
+) -> dict | None:
     if completions is None:
-        return "Required" if True else ""
-    return "Done" if _activity_completed(completions, activity_id) else "Pending"
+        return None
+    value = completions.get(activity_id)
+    if isinstance(value, dict):
+        return value
+    if value is None:
+        return None
+    return {"completed": bool(value), "student_message": None}
+
+
+def _activity_type_label(activity) -> str:
+    activity_type = getattr(activity, "activity_type", None)
+    if isinstance(activity_type, ActivityType):
+        return ACTIVITY_TYPE_LABELS.get(activity_type, activity_type.value)
+    if activity_type:
+        try:
+            return ACTIVITY_TYPE_LABELS.get(ActivityType(activity_type), str(activity_type))
+        except ValueError:
+            return str(activity_type)
+    return "Regular"
+
+
+def _append_labeled_block(parts: list[str], label: str, body: str) -> None:
+    text = _normalize_pdf_text(body)
+    if not text:
+        return
+    parts.append(f"{label}:\n{text}")
+
+
+def _activity_details_text(
+    act,
+    completions: dict[int, bool | dict] | None,
+) -> str:
+    """Build the full details cell for one activity, including all plan fields."""
+    parts: list[str] = []
+
+    description = _normalize_pdf_text(act.description or "")
+    if description:
+        parts.append(description)
+    if not getattr(act, "is_required", True):
+        parts.append("(optional)")
+
+    activity_type = getattr(act, "activity_type", None)
+    if activity_type and activity_type != ActivityType.regular:
+        parts.append(f"Type: {_activity_type_label(act)}")
+
+    _append_labeled_block(parts, "Teacher Notes", getattr(act, "teacher_notes", None) or "")
+
+    custom_fields = parse_custom_fields(getattr(act, "custom_fields", None))
+    for field_text in custom_fields:
+        text = _normalize_pdf_text(field_text)
+        if text:
+            parts.append(text)
+
+    media_urls = activity_media_urls(
+        media_attachments=getattr(act, "media_attachments", None),
+        external_link=getattr(act, "external_link", None),
+        audio_url=getattr(act, "audio_url", None),
+    )
+    if media_urls:
+        media_lines = [media_display_name(url) or url for url in media_urls]
+        _append_labeled_block(parts, "Media", "\n".join(media_lines))
+
+    web_links = activity_external_web_links(getattr(act, "external_link", None))
+    if web_links:
+        _append_labeled_block(parts, "Links", "\n".join(web_links))
+
+    completion = _completion_entry(completions, act.id)
+    student_notes = ""
+    if completion:
+        student_notes = _normalize_pdf_text(completion.get("student_message") or "")
+    if student_notes:
+        _append_labeled_block(parts, "Student Notes", student_notes)
+
+    return "\n".join(parts) if parts else "-"
 
 
 def _activities_summary(activities: list) -> str:
@@ -193,20 +287,15 @@ def _render_activity_table(
     width = pdf._usable_width()
     show_status = completions is not None
     if show_status:
-        widths = [width * 0.06, width * 0.28, width * 0.46, width * 0.20]
-        headers = ["#", "Activity", "Description", "Status"]
+        widths = [width * 0.06, width * 0.24, width * 0.50, width * 0.20]
+        headers = ["#", "Activity", "Details", "Status"]
     else:
-        widths = [width * 0.06, width * 0.34, width * 0.60]
-        headers = ["#", "Activity", "Description"]
+        widths = [width * 0.06, width * 0.28, width * 0.66]
+        headers = ["#", "Activity", "Details"]
 
     pdf._table_row(headers, widths, header=True)
     for idx, act in enumerate(sorted(plan.activities, key=lambda a: a.sort_order), start=1):
-        desc = act.description or "-"
-        if not act.is_required:
-            desc = f"{desc} (optional)" if desc != "-" else "(optional)"
-        notes = _normalize_pdf_text(getattr(act, "teacher_notes", None) or "")
-        if notes:
-            desc = f"{desc}\nTeacher Notes:\n{notes}" if desc != "-" else f"Teacher Notes:\n{notes}"
+        desc = _activity_details_text(act, completions)
         cells = [str(idx), act.title, desc]
         if show_status:
             status = "Done" if _activity_completed(completions, act.id) else "Pending"
@@ -226,7 +315,8 @@ def _render_plan_block(
     meta = []
     if show_date:
         meta.append(plan.plan_date.strftime("%A, %B %d, %Y"))
-    # Student/teacher names appear once in the PDF subtitle — omit per-day repeats.
+    if plan.student is not None:
+        meta.append(f"Student: {plan.student.full_name}")
     if meta:
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(*COLORS["muted"])
@@ -247,6 +337,56 @@ def _render_day_off_detail(pdf: LessonPlanPDF, day_off: date) -> None:
     pdf.cell(0, 5, "No lesson plans scheduled (day off).", new_x="LMARGIN", new_y="NEXT")
     pdf.set_text_color(*COLORS["text"])
     pdf.ln(4)
+
+
+def _render_single_day(
+    pdf: LessonPlanPDF,
+    plan_date: date,
+    day_plans: list[LessonPlan],
+    completions_by_plan: dict[int, dict[int, bool]] | None,
+    *,
+    is_day_off: bool,
+) -> None:
+    if is_day_off:
+        _render_day_off_detail(pdf, plan_date)
+    for plan in day_plans:
+        plan_completions = completions_by_plan.get(plan.id) if completions_by_plan else None
+        _render_plan_block(pdf, plan, plan_completions, show_date=True)
+
+
+def _render_day_without_splitting(
+    pdf: LessonPlanPDF,
+    plan_date: date,
+    day_plans: list[LessonPlan],
+    completions_by_plan: dict[int, dict[int, bool]] | None,
+    *,
+    is_day_off: bool,
+) -> None:
+    """Render one calendar day on a single page when it fits; never start mid-page if it won't."""
+    start_y = pdf.get_y()
+    start_page = pdf.page_no()
+
+    with pdf.offset_rendering() as dummy:
+        _render_single_day(
+            dummy,
+            plan_date,
+            day_plans,
+            completions_by_plan,
+            is_day_off=is_day_off,
+        )
+        measured_pages = dummy.page_no()
+
+    # Content needs more than the remaining space on this page.
+    if measured_pages > start_page and start_y > pdf._content_top_y() + 8:
+        pdf.add_page()
+
+    _render_single_day(
+        pdf,
+        plan_date,
+        day_plans,
+        completions_by_plan,
+        is_day_off=is_day_off,
+    )
 
 
 def _render_weekly_overview_table(
@@ -308,16 +448,18 @@ def _render_chronological_details(
     completions_by_plan: dict[int, dict[int, bool]] | None,
     days_off: list[date] | None = None,
 ) -> None:
-    """Render lesson plans and day-off markers in date order."""
+    """Render lesson plans and day-off markers in date order, keeping each day together."""
     grouped = group_plans_by_date(plans)
     off_set = set(days_off or [])
     all_dates = sorted(set(grouped.keys()) | off_set)
     for plan_date in all_dates:
-        if plan_date in off_set:
-            _render_day_off_detail(pdf, plan_date)
-        for plan in grouped.get(plan_date, []):
-            plan_completions = completions_by_plan.get(plan.id) if completions_by_plan else None
-            _render_plan_block(pdf, plan, plan_completions, show_date=True)
+        _render_day_without_splitting(
+            pdf,
+            plan_date,
+            grouped.get(plan_date, []),
+            completions_by_plan,
+            is_day_off=plan_date in off_set,
+        )
 
 
 def _render_daily_view(
@@ -340,6 +482,127 @@ def _render_weekly_view(
     _render_chronological_details(pdf, plans, completions_by_plan, days_off=days_off)
 
 
+def _calendar_cell_lines(
+    plan_date: date,
+    day_plans: list[LessonPlan],
+    *,
+    is_day_off: bool,
+) -> list[str]:
+    lines = [str(plan_date.day)]
+    if is_day_off:
+        lines.append("Day off")
+    for plan in day_plans:
+        student = plan.student.full_name if plan.student else ""
+        title = _normalize_pdf_text(plan.title)
+        if student and title:
+            label = f"{student}: {title}"
+        else:
+            label = title or student or "Lesson plan"
+        # Keep calendar cells readable.
+        if len(label) > 42:
+            label = label[:39] + "..."
+        lines.append(label)
+        activity_titles = [
+            a.title for a in sorted(plan.activities, key=lambda a: a.sort_order)
+        ][:3]
+        for activity_title in activity_titles:
+            short = _normalize_pdf_text(activity_title)
+            if len(short) > 40:
+                short = short[:37] + "..."
+            lines.append(f"  - {short}")
+        remaining = len(plan.activities) - len(activity_titles)
+        if remaining > 0:
+            lines.append(f"  (+{remaining} more)")
+    return lines
+
+
+def _render_monthly_calendar_view(
+    pdf: LessonPlanPDF,
+    plans: list[LessonPlan],
+    ref: date,
+    days_off: list[date] | None = None,
+) -> None:
+    """Render a month calendar grid (separate from the daily details PDF)."""
+    pdf._section_title("Monthly Calendar")
+    grouped = group_plans_by_date(plans)
+    off_set = set(days_off or [])
+    weeks = Calendar(firstweekday=SUNDAY).monthdayscalendar(ref.year, ref.month)
+
+    usable_width = pdf._usable_width()
+    usable_height = pdf.page_break_trigger - pdf.get_y() - 4
+    col_width = usable_width / 7
+    row_count = max(len(weeks), 1)
+    row_height = max(28.0, min(42.0, usable_height / row_count))
+
+    # Weekday header
+    pdf.set_font("Helvetica", "B", 8)
+    pdf.set_fill_color(*COLORS["primary"])
+    pdf.set_text_color(*COLORS["white"])
+    pdf.set_draw_color(*COLORS["border"])
+    x = pdf.l_margin
+    y = pdf.get_y()
+    for label in ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"):
+        pdf.rect(x, y, col_width, 8, style="DF")
+        pdf.set_xy(x, y + 1.5)
+        pdf.cell(col_width, 5, label, align="C")
+        x += col_width
+    pdf.set_y(y + 8)
+
+    for week in weeks:
+        y = pdf.get_y()
+        if y + row_height > pdf.page_break_trigger:
+            pdf.add_page()
+            y = pdf.get_y()
+        x = pdf.l_margin
+        for day_num in week:
+            if day_num == 0:
+                pdf.set_fill_color(*COLORS["row_alt"])
+                pdf.rect(x, y, col_width, row_height, style="DF")
+            else:
+                plan_date = date(ref.year, ref.month, day_num)
+                day_plans = grouped.get(plan_date, [])
+                is_day_off = plan_date in off_set
+                if is_day_off:
+                    pdf.set_fill_color(*COLORS["day_off_bg"])
+                elif day_plans:
+                    pdf.set_fill_color(*COLORS["has_plans_bg"])
+                else:
+                    pdf.set_fill_color(*COLORS["white"])
+                pdf.rect(x, y, col_width, row_height, style="DF")
+
+                lines = _calendar_cell_lines(
+                    plan_date, day_plans, is_day_off=is_day_off
+                )
+                text_y = y + 1.5
+                for index, line in enumerate(lines):
+                    if text_y + 4 > y + row_height - 1:
+                        break
+                    if index == 0:
+                        pdf.set_font("Helvetica", "B", 8)
+                        pdf.set_text_color(*COLORS["text"])
+                    elif is_day_off and index == 1:
+                        pdf.set_font("Helvetica", "I", 6)
+                        pdf.set_text_color(*COLORS["red"])
+                    else:
+                        pdf.set_font("Helvetica", "", 6)
+                        pdf.set_text_color(*COLORS["text"])
+                    pdf.set_xy(x + 1, text_y)
+                    pdf.cell(col_width - 2, 3.5, _safe_text(line), align="L")
+                    text_y += 3.6
+            x += col_width
+        pdf.set_y(y + row_height)
+
+    pdf.ln(4)
+    pdf.set_font("Helvetica", "I", 8)
+    pdf.set_text_color(*COLORS["muted"])
+    pdf.multi_cell(
+        pdf._usable_width(),
+        4,
+        "Blue cells have lesson plans. Red-tinted cells are days off. "
+        "Use the Daily PDF for full lesson details.",
+    )
+
+
 def _render_monthly_view(
     pdf: LessonPlanPDF,
     plans: list[LessonPlan],
@@ -347,7 +610,7 @@ def _render_monthly_view(
     completions_by_plan: dict[int, dict[int, bool]] | None,
     days_off: list[date] | None = None,
 ) -> None:
-    # Monthly PDF export includes daily lesson details with days off interleaved.
+    # Monthly details PDF: chronological daily lesson details for the month.
     _render_daily_view(pdf, plans, completions_by_plan, days_off=days_off)
 
 
@@ -360,12 +623,19 @@ def build_lesson_plan_pdf(
     completions_by_plan: dict[int, dict[int, bool]] | None = None,
     days_off: list[date] | None = None,
 ) -> bytes:
-    pdf = LessonPlanPDF()
+    orientation = "landscape" if view == "calendar" else "portrait"
+    pdf = LessonPlanPDF(orientation=orientation)
     pdf.add_page()
+
+    title = period_label(view, ref)
+    if view == "calendar":
+        title = f"Monthly View — {title}"
+    elif view == "monthly":
+        title = f"Daily Lesson Plans — {title}"
 
     pdf.set_font("Helvetica", "B", 13)
     pdf.set_text_color(*COLORS["text"])
-    pdf.cell(0, 8, _safe_text(period_label(view, ref)), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 8, _safe_text(title), new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(*COLORS["muted"])
     pdf.cell(0, 6, _safe_text(subtitle), new_x="LMARGIN", new_y="NEXT")
@@ -379,6 +649,8 @@ def build_lesson_plan_pdf(
         pdf.cell(0, 8, "No lesson plans for this period.", new_x="LMARGIN", new_y="NEXT")
     elif view == "weekly":
         _render_weekly_view(pdf, plans, completions_by_plan, days_off=off_list)
+    elif view == "calendar":
+        _render_monthly_calendar_view(pdf, plans, ref, days_off=off_list)
     elif view == "monthly":
         _render_monthly_view(pdf, plans, ref, completions_by_plan, days_off=off_list)
     else:
@@ -390,13 +662,14 @@ def build_lesson_plan_pdf(
 
 
 def pdf_filename(view: str, ref: date, role: str) -> str:
-    if view == "monthly":
+    if view in ("monthly", "calendar"):
         slug = ref.strftime("%Y-%m")
     elif view == "weekly":
         slug = f"week-{ref.isoformat()}"
     else:
         slug = ref.isoformat()
-    return f"lesson-plans-{role}-{view}-{slug}.pdf"
+    view_slug = "monthly-calendar" if view == "calendar" else view
+    return f"lesson-plans-{role}-{view_slug}-{slug}.pdf"
 
 
 def pdf_response_headers(filename: str, inline: bool) -> dict[str, str]:

@@ -3,15 +3,33 @@
         <h2>Lesson Planning Calendar</h2>
         <p class="section-hint">Click on a day to create or edit a lesson plan</p>
         <div class="calendar-actions">
-            <div class="pdf-buttons">
-                <a href="/teacher/lesson-plans.pdf?view=monthly&ref_date={{ pdf_ref_date }}&disposition=inline"
-                   class="btn btn-pdf-view btn-sm" target="_blank" rel="noopener">
-                    <span aria-hidden="true">👁</span> View PDF
-                </a>
-                <a href="/teacher/lesson-plans.pdf?view=monthly&ref_date={{ pdf_ref_date }}&disposition=attachment"
-                   class="btn btn-pdf btn-sm">
-                    <span aria-hidden="true">📄</span> Download PDF
-                </a>
+            <div class="pdf-export-groups">
+                <div class="pdf-export-group">
+                    <span class="pdf-export-label">Daily PDF</span>
+                    <div class="pdf-buttons">
+                        <a href="/teacher/lesson-plans.pdf?view=monthly&ref_date={{ pdf_ref_date }}&disposition=inline"
+                           class="btn btn-pdf-view btn-sm" target="_blank" rel="noopener">
+                            <span aria-hidden="true">👁</span> View
+                        </a>
+                        <a href="/teacher/lesson-plans.pdf?view=monthly&ref_date={{ pdf_ref_date }}&disposition=attachment"
+                           class="btn btn-pdf btn-sm">
+                            <span aria-hidden="true">📄</span> Download
+                        </a>
+                    </div>
+                </div>
+                <div class="pdf-export-group">
+                    <span class="pdf-export-label">Monthly PDF</span>
+                    <div class="pdf-buttons">
+                        <a href="/teacher/lesson-plans.pdf?view=calendar&ref_date={{ pdf_ref_date }}&disposition=inline"
+                           class="btn btn-pdf-view btn-sm" target="_blank" rel="noopener">
+                            <span aria-hidden="true">👁</span> View
+                        </a>
+                        <a href="/teacher/lesson-plans.pdf?view=calendar&ref_date={{ pdf_ref_date }}&disposition=attachment"
+                           class="btn btn-pdf btn-sm">
+                            <span aria-hidden="true">📄</span> Download
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

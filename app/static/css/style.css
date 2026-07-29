@@ -671,6 +671,27 @@ body {
     gap: 0.5rem;
 }
 
+.pdf-export-groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem 1.25rem;
+    align-items: flex-end;
+}
+
+.pdf-export-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.pdf-export-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--muted, #666);
+}
+
 .btn-pdf,
 .btn-pdf-view {
     color: white;

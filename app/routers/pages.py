@@ -132,6 +132,16 @@ def load_completions_for_plans(
     return result
 
 
+def load_completions_for_teacher_plans(
+    db: Session, plans: list[LessonPlan]
+) -> dict[int, dict[int, dict]]:
+    """Load per-activity completion + student notes for each plan's assigned student."""
+    result: dict[int, dict[int, dict]] = {}
+    for plan in plans:
+        result.update(load_completions_for_plans(db, plan.student_id, [plan]))
+    return result
+
+
 def _enrich_activities_with_subject_links(
     activities: list[Activity],
     schedule_items: list,
@@ -245,7 +255,7 @@ def _days_off_for_pdf_view(
     all_off = days_off_in_year(school_year)
     if view == "weekly":
         start, end = week_start(ref), week_end(ref)
-    elif view == "monthly":
+    elif view in ("monthly", "calendar"):
         start, end = month_start(ref), month_end(ref)
     else:
         start = end = ref
@@ -1532,18 +1542,24 @@ async def teacher_media_upload(
 async def teacher_lesson_plans_pdf(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
-    view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    view: str = Query("daily", pattern="^(daily|weekly|monthly|calendar)$"),
     ref_date: str | None = Query(None),
     disposition: str = Query("attachment", pattern="^(inline|attachment)$"),
 ):
     all_plans = _fetch_teacher_plans(db, current_user.id)
     calendar = build_calendar_context(all_plans, view, ref_date)
     days_off = _days_off_for_pdf_view(db, current_user.id, view, calendar["ref"])
+    completions_by_plan = None
+    if view != "calendar":
+        completions_by_plan = load_completions_for_teacher_plans(
+            db, calendar["lesson_plans"]
+        )
     pdf_bytes = build_lesson_plan_pdf(
         calendar["lesson_plans"],
         view,
         calendar["ref"],
         subtitle=f"Teacher: {current_user.full_name}",
+        completions_by_plan=completions_by_plan,
         days_off=days_off,
     )
     filename = pdf_filename(view, calendar["ref"], "teacher")
@@ -2054,7 +2070,7 @@ async def student_dashboard(
 async def student_lesson_plans_pdf(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_roles(UserRole.student))],
-    view: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    view: str = Query("daily", pattern="^(daily|weekly|monthly|calendar)$"),
     ref_date: str | None = Query(None),
     disposition: str = Query("attachment", pattern="^(inline|attachment)$"),
 ):

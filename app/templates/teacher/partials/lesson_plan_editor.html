@@ -98,12 +98,7 @@
                                        value="{{ activity.title }}">
                                 <input type="text" name="activity_descriptions" placeholder="Description (optional)"
                                        value="{{ activity.description }}">
-                                <select name="activity_types" class="activity-type-select">
-                                    <option value="regular" {% if activity.activity_type == 'regular' %}selected{% endif %}>Regular</option>
-                                    <option value="special" {% if activity.activity_type == 'special' %}selected{% endif %}>Special Activity</option>
-                                    <option value="subject" {% if activity.activity_type == 'subject' %}selected{% endif %}>Subject</option>
-                                    <option value="history" {% if activity.activity_type == 'history' %}selected{% endif %}>History</option>
-                                </select>
+                                <input type="hidden" name="activity_types" value="{{ activity.activity_type }}">
                                 <div class="activity-link-group" data-link-group>
                                     <input type="hidden" name="activity_external_links" class="activity-links-field"
                                            value="{{ activity.external_link }}">
@@ -136,12 +131,7 @@
                                 <input type="hidden" name="activity_student_ids" value="{{ plan.student_id }}">
                                 <input type="text" name="activity_titles" placeholder="Activity title" required>
                                 <input type="text" name="activity_descriptions" placeholder="Description (optional)">
-                                <select name="activity_types" class="activity-type-select">
-                                    <option value="regular">Regular</option>
-                                    <option value="special">Special Activity</option>
-                                    <option value="subject">Subject</option>
-                                    <option value="history">History</option>
-                                </select>
+                                <input type="hidden" name="activity_types" value="regular">
                                 <div class="activity-link-group" data-link-group>
                                     <input type="hidden" name="activity_external_links" class="activity-links-field" value="">
                                     <div class="activity-link-chips" hidden></div>

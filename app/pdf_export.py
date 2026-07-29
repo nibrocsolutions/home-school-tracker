@@ -14,7 +14,7 @@ from app.media_library import (
     activity_media_urls,
     media_display_name,
 )
-from app.models import ActivityType, LessonPlan, SchoolDayType
+from app.models import LessonPlan, SchoolDayType
 
 COLORS = {
     "primary": (79, 110, 247),
@@ -28,13 +28,6 @@ COLORS = {
     "white": (255, 255, 255),
     "row_alt": (248, 246, 242),
     "red": (220, 38, 38),
-}
-
-ACTIVITY_TYPE_LABELS = {
-    ActivityType.regular: "Regular",
-    ActivityType.special: "Special Activity",
-    ActivityType.subject: "Subject",
-    ActivityType.history: "History",
 }
 
 
@@ -175,16 +168,19 @@ def _normalize_pdf_text(text: str) -> str:
 
 
 def _safe_text(text: str) -> str:
-    return _normalize_pdf_text(text).encode("latin-1", errors="replace").decode("latin-1")
-
-
-def _activity_completed(completions: dict[int, bool | dict] | None, activity_id: int) -> bool:
-    if completions is None:
-        return False
-    value = completions.get(activity_id)
-    if isinstance(value, dict):
-        return bool(value.get("completed"))
-    return bool(value)
+    # Map common Unicode punctuation to ASCII so Helvetica/latin-1 PDF text
+    # does not turn dashes and quotes into "?".
+    normalized = (
+        _normalize_pdf_text(text)
+        .replace("\u2013", "-")  # en dash
+        .replace("\u2014", "-")  # em dash
+        .replace("\u2212", "-")  # minus sign
+        .replace("\u2018", "'")
+        .replace("\u2019", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+    )
+    return normalized.encode("latin-1", errors="replace").decode("latin-1")
 
 
 def _completion_entry(
@@ -198,18 +194,6 @@ def _completion_entry(
     if value is None:
         return None
     return {"completed": bool(value), "student_message": None}
-
-
-def _activity_type_label(activity) -> str:
-    activity_type = getattr(activity, "activity_type", None)
-    if isinstance(activity_type, ActivityType):
-        return ACTIVITY_TYPE_LABELS.get(activity_type, activity_type.value)
-    if activity_type:
-        try:
-            return ACTIVITY_TYPE_LABELS.get(ActivityType(activity_type), str(activity_type))
-        except ValueError:
-            return str(activity_type)
-    return "Regular"
 
 
 def _append_labeled_block(parts: list[str], label: str, body: str) -> None:
@@ -231,10 +215,6 @@ def _activity_details_text(
         parts.append(description)
     if not getattr(act, "is_required", True):
         parts.append("(optional)")
-
-    activity_type = getattr(act, "activity_type", None)
-    if activity_type and activity_type != ActivityType.regular:
-        parts.append(f"Type: {_activity_type_label(act)}")
 
     _append_labeled_block(parts, "Teacher Notes", getattr(act, "teacher_notes", None) or "")
 
@@ -273,21 +253,13 @@ def _render_activity_table(
     completions: dict[int, bool | dict] | None,
 ) -> None:
     width = pdf._usable_width()
-    show_status = completions is not None
-    if show_status:
-        widths = [width * 0.06, width * 0.24, width * 0.50, width * 0.20]
-        headers = ["#", "Activity", "Details", "Status"]
-    else:
-        widths = [width * 0.06, width * 0.28, width * 0.66]
-        headers = ["#", "Activity", "Details"]
+    widths = [width * 0.06, width * 0.28, width * 0.66]
+    headers = ["#", "Activity", "Details"]
 
     pdf._table_row(headers, widths, header=True)
     for idx, act in enumerate(sorted(plan.activities, key=lambda a: a.sort_order), start=1):
         desc = _activity_details_text(act, completions)
         cells = [str(idx), act.title, desc]
-        if show_status:
-            status = "Done" if _activity_completed(completions, act.id) else "Pending"
-            cells.append(status)
         pdf._multi_line_table_row(cells, widths, alt=idx % 2 == 0)
     pdf.ln(4)
 
@@ -442,9 +414,9 @@ def build_lesson_plan_pdf(
 
     title = period_label(view, ref)
     if view == "weekly":
-        title = f"Daily Lesson Plans — {title}"
+        title = f"Daily Lesson Plans - {title}"
     elif view == "monthly":
-        title = f"Daily Lesson Plans — {title}"
+        title = f"Daily Lesson Plans - {title}"
 
     pdf.set_font("Helvetica", "B", 13)
     pdf.set_text_color(*COLORS["text"])

@@ -1398,147 +1398,217 @@ body {
     border: 1px solid #bbf7d0;
 }
 
-/* Teacher Chrome-style tab shell */
+/* Teacher shell — wifi-monitor-style sidebar + main */
 .teacher-page {
-    background: var(--bg);
+    --teacher-sidebar: 248px;
+    background:
+        radial-gradient(900px 420px at 8% -8%, rgba(79, 110, 247, 0.08), transparent 55%),
+        radial-gradient(700px 360px at 100% 0%, rgba(255, 140, 66, 0.08), transparent 50%),
+        var(--bg);
 }
 
 .teacher-shell {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1.5rem 1.5rem;
+    display: grid;
+    grid-template-columns: var(--teacher-sidebar) 1fr;
+    min-height: 100vh;
 }
 
-.chrome-tabstrip {
+.teacher-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
     display: flex;
-    align-items: flex-end;
-    flex-wrap: nowrap;
-    gap: 0;
-    min-height: 40px;
-    padding: 6px 8px 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-    background: linear-gradient(180deg, #eef6f0 0%, #e4efe8 100%);
-    border: 1px solid var(--border);
-    border-bottom: none;
-    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-    box-shadow: inset 0 -1px 0 rgba(34, 197, 94, 0.12);
-    scrollbar-width: thin;
-    -webkit-overflow-scrolling: touch;
+    flex-direction: column;
+    gap: 1.35rem;
+    padding: 1.35rem 1rem;
+    border-right: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(16px);
 }
 
-.chrome-tab {
-    position: relative;
-    top: 1px;
-    display: inline-flex;
+.teacher-brand {
+    padding: 0.25rem 0.5rem 0.5rem;
+}
+
+.teacher-brand-link {
+    display: flex;
     align-items: center;
-    gap: 0;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: var(--text);
+}
+
+.teacher-brand-mark {
+    width: 2.375rem;
+    height: 2.375rem;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    color: var(--primary);
+    background: linear-gradient(180deg, rgba(79, 110, 247, 0.16), rgba(79, 110, 247, 0.05));
+    border: 1px solid rgba(79, 110, 247, 0.28);
     flex: 0 0 auto;
+}
+
+.teacher-brand-copy {
+    display: flex;
+    flex-direction: column;
     min-width: 0;
-    max-width: 240px;
-    height: 32px;
-    padding: 0 14px;
-    margin: 0 1px;
-    font-family: var(--font);
-    font-size: 0.8rem;
+}
+
+.teacher-brand-name {
+    font-family: var(--font-display);
+    font-size: 1rem;
     font-weight: 600;
-    line-height: 1;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+}
+
+.teacher-brand-tagline {
+    margin-top: 0.15rem;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+.teacher-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.teacher-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
     color: var(--text-muted);
     text-decoration: none;
-    background: #f3f7f4;
-    border: 1px solid var(--border);
-    border-bottom: none;
-    border-radius: 8px 8px 0 0;
-    transition: background 0.12s ease, height 0.12s ease, color 0.12s ease;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background 0.12s ease, color 0.12s ease;
 }
 
-.chrome-tab.has-unread-badge {
-    padding-right: 10px;
+.teacher-nav-icon {
+    flex: 0 0 auto;
+    opacity: 0.85;
 }
 
-.chrome-tab-label {
+.teacher-nav-label {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.chrome-tab-badge,
-.chrome-tab .chrome-tab-badge {
-    display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-    min-width: 1.35rem;
-    width: auto;
-    height: 1.35rem;
-    margin: 0 0 0 0.15rem;
-    padding: 0 0.35rem;
+.teacher-nav-count {
+    margin-left: auto;
+    min-width: 1.15rem;
+    padding: 0 0.4rem;
     border-radius: 999px;
-    background-color: #2563eb !important;
-    color: #ffffff !important;
+    background: rgba(37, 99, 235, 0.12);
+    color: #1d4ed8;
     font-size: 0.7rem;
     font-weight: 700;
-    line-height: 1;
-    flex: 0 0 auto;
-    border: 2px solid #ffffff;
-    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.35);
+    line-height: 1.35rem;
+    text-align: center;
 }
 
-.chrome-tab:hover:not(.active) {
-    background: #f8faf9;
+.teacher-nav-link:hover {
     color: var(--text);
-    border-color: #c8e6d0;
+    background: rgba(45, 49, 66, 0.04);
 }
 
-.chrome-tab.active {
-    top: 0;
-    z-index: 2;
-    height: 36px;
-    color: var(--text);
-    background: var(--surface);
-    border-color: var(--border);
-    border-bottom: 1px solid var(--surface);
-    box-shadow: 0 1px 0 var(--surface);
+.teacher-nav-link.active {
+    color: var(--primary);
+    background: rgba(79, 110, 247, 0.12);
 }
 
-.chrome-tab.active::before,
-.chrome-tab.active::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    width: 10px;
-    height: 10px;
-    pointer-events: none;
+.teacher-nav-link.active .teacher-nav-icon {
+    opacity: 1;
 }
 
-.chrome-tab.active::before {
-    left: -10px;
-    border-bottom-right-radius: 10px;
-    box-shadow: 2px 2px 0 var(--surface);
-}
-
-.chrome-tab.active::after {
-    right: -10px;
-    border-bottom-left-radius: 10px;
-    box-shadow: -2px 2px 0 var(--surface);
-}
-
-.chrome-tab:focus-visible {
+.teacher-nav-link:focus-visible {
     outline: 2px solid var(--primary);
-    outline-offset: -2px;
-    z-index: 3;
+    outline-offset: 2px;
 }
 
-.chrome-tab-content {
-    background: var(--surface);
+.teacher-sidebar-foot {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem;
     border: 1px solid var(--border);
-    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-    padding: 1.25rem;
-    min-height: 280px;
-    box-shadow: var(--shadow);
+    border-radius: 12px;
+    background: rgba(247, 244, 239, 0.65);
 }
 
-.teacher-page .chrome-tab-inner-panel {
+.teacher-user {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.teacher-user-meta {
+    min-width: 0;
+}
+
+.teacher-user-meta strong {
+    display: block;
+    font-size: 0.85rem;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.teacher-sign-out {
+    align-self: flex-start;
+}
+
+.teacher-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.teacher-topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 1.75rem 0.5rem;
+}
+
+.teacher-topbar-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.65rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--text);
+}
+
+.teacher-topbar-lede {
+    margin: 0.4rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    max-width: 45rem;
+}
+
+.teacher-content {
+    padding: 0.75rem 1.75rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+    min-height: 280px;
+}
+
+.teacher-page .chrome-tab-inner-panel,
+.teacher-page .teacher-panel-flush {
     background: transparent;
     border: none;
     box-shadow: none;
@@ -1552,6 +1622,61 @@ body {
 
 .teacher-page .panel-grid {
     gap: 1.25rem;
+}
+
+@media (max-width: 1100px) {
+    .teacher-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .teacher-sidebar {
+        position: relative;
+        height: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        gap: 0.85rem;
+    }
+
+    .teacher-brand {
+        padding: 0;
+    }
+
+    .teacher-nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        width: 100%;
+        order: 3;
+    }
+
+    .teacher-sidebar-foot {
+        margin-top: 0;
+        margin-left: auto;
+        flex-direction: row;
+        align-items: center;
+        width: auto;
+        max-width: 100%;
+    }
+
+    .teacher-topbar,
+    .teacher-content {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+}
+
+@media (max-width: 720px) {
+    .teacher-topbar,
+    .teacher-content {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .teacher-topbar-title {
+        font-size: 1.35rem;
+    }
 }
 
 .section-hint {

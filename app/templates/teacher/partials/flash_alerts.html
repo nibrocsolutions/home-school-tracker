@@ -22,7 +22,7 @@
 <div class="alert alert-error">Please enter a name for the subject or activity.</div>
 {% endif %}
 {% if request.query_params.get('error') == 'school-year' %}
-<div class="alert alert-error">Set your school year range on the School Year Planning tab before saving lesson plans.</div>
+<div class="alert alert-error">Set your school year range in School Year Planning before saving lesson plans.</div>
 {% endif %}
 {% if request.query_params.get('success') == 'config' %}
 <div class="alert alert-success">School year settings saved.</div>

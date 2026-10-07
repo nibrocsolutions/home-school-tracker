@@ -1,20 +1,34 @@
-<nav class="chrome-tabstrip" role="tablist" aria-label="Teacher sections">
+<nav class="teacher-nav" aria-label="Teacher sections">
     <a href="/teacher/lesson-planning"
-       class="chrome-tab {% if active_page == 'lesson-planning' %}active{% endif %}"
-       role="tab" aria-selected="{{ 'true' if active_page == 'lesson-planning' else 'false' }}">
-        <span class="chrome-tab-label">Lesson Planning</span>
+       class="teacher-nav-link {% if active_page == 'lesson-planning' %}active{% endif %}"
+       {% if active_page == 'lesson-planning' %}aria-current="page"{% endif %}>
+        <svg class="teacher-nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M16 2v4M8 2v4M3 10h18"/>
+        </svg>
+        <span class="teacher-nav-label">Lesson Planning</span>
     </a>
     <a href="/teacher/school-days"
-       class="chrome-tab {% if active_page == 'school-days' %}active{% endif %}"
-       role="tab" aria-selected="{{ 'true' if active_page == 'school-days' else 'false' }}">
-        <span class="chrome-tab-label">School Year Planning</span>
+       class="teacher-nav-link {% if active_page == 'school-days' %}active{% endif %}"
+       {% if active_page == 'school-days' %}aria-current="page"{% endif %}>
+        <svg class="teacher-nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8 2v4M16 2v4"/>
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+        </svg>
+        <span class="teacher-nav-label">School Year Planning</span>
     </a>
     <a href="/teacher/student-responses"
-       class="chrome-tab {% if active_page == 'student-responses' %}active{% endif %}{% if unread_student_message_count %} has-unread-badge{% endif %}"
-       role="tab" aria-selected="{{ 'true' if active_page == 'student-responses' else 'false' }}">
-        <span class="chrome-tab-label">Student Responses</span>{% if unread_student_message_count %}<span class="chrome-tab-badge"
-              style="display:inline-flex;align-items:center;justify-content:center;min-width:1.35rem;height:1.35rem;margin:0 0 0 0.15rem;padding:0 0.35rem;border-radius:999px;background-color:#2563eb;color:#ffffff;font-size:0.7rem;font-weight:700;line-height:1;border:2px solid #ffffff;"
+       class="teacher-nav-link {% if active_page == 'student-responses' %}active{% endif %}{% if unread_student_message_count %} has-unread-badge{% endif %}"
+       {% if active_page == 'student-responses' %}aria-current="page"{% endif %}>
+        <svg class="teacher-nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
+        </svg>
+        <span class="teacher-nav-label">Student Responses</span>
+        {% if unread_student_message_count %}
+        <span class="teacher-nav-count"
               title="{{ unread_student_message_count }} unread"
-              aria-label="{{ unread_student_message_count }} unread student messages">{{ unread_student_message_count }}</span>{% endif %}
+              aria-label="{{ unread_student_message_count }} unread student messages">{{ unread_student_message_count }}</span>
+        {% endif %}
     </a>
 </nav>

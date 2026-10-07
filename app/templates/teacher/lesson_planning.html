@@ -9,15 +9,15 @@
 {% block teacher_content %}
 {% include "teacher/partials/flash_alerts.html" %}
 
-<section class="panel lesson-planning-layout chrome-tab-inner-panel">
+<section class="panel lesson-planning-layout teacher-panel-flush">
     {% if editor_context and school_year %}
     {% include "teacher/partials/lesson_plan_editor.html" %}
     {% else %}
     <div class="lesson-planning-overview">
         {% if not school_year %}
         <div class="alert alert-info lesson-planning-notice">
-            Set your school year date range on the
-            <a href="/teacher/school-days">School Year Planning</a> tab before creating or editing lesson plans.
+            Set your school year date range in
+            <a href="/teacher/school-days">School Year Planning</a> before creating or editing lesson plans.
         </div>
         {% else %}
         {% include "teacher/partials/lesson_planning_calendar.html" %}

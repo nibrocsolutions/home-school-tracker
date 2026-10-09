@@ -22,9 +22,7 @@ def parse_cal_month(value: str | None, fallback: date) -> date:
     return fallback.replace(day=1)
 
 
-def default_cal_month(school_year: SchoolDayYear | None = None) -> date:
-    """Month containing today (school_year unused; kept for existing call sites)."""
-    _ = school_year
+def default_cal_month(school_year: SchoolDayYear | None) -> date:
     return date.today().replace(day=1)
 
 

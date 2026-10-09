@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Tutorial — {{ app_name }}{% endblock %}
+{% block body_class %}tutorial-page{% endblock %}
+
+{% block body %}
+<div class="tutorial-wrapper">
+    <div class="tutorial-card">
+        <header class="tutorial-header">
+            <a href="/" class="btn btn-ghost btn-sm tutorial-back">← Back to sign in</a>
+            <div class="brand tutorial-brand">
+                <div class="brand-icon" aria-hidden="true">📚</div>
+                <h1>{{ app_name }}</h1>
+                <p class="tagline">A quick tour of how teachers and students use the app.</p>
+            </div>
+        </header>
+
+        <div class="tutorial-video-wrap">
+            <video
+                class="tutorial-video"
+                controls
+                playsinline
+                preload="metadata"
+                poster="/static/videos/tutorial-poster.jpg"
+            >
+                <source src="/static/videos/hst-tutorial.mp4" type="video/mp4">
+                Your browser does not support embedded video.
+                <a href="/static/videos/hst-tutorial.mp4">Download the tutorial video</a>.
+            </video>
+        </div>
+
+        <section class="tutorial-outline" aria-labelledby="tutorial-outline-heading">
+            <h2 id="tutorial-outline-heading">What you’ll see</h2>
+            <ol class="tutorial-steps">
+                <li><strong>Sign in</strong> — use your admin, teacher, or student account.</li>
+                <li><strong>Teacher hub</strong> — plan lessons, manage subjects, and track school days.</li>
+                <li><strong>Student checklist</strong> — open today’s activities and mark them complete.</li>
+            </ol>
+        </section>
+    </div>
+</div>
+{% endblock %}

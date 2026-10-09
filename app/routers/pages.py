@@ -1949,43 +1949,6 @@ def _fetch_student_plans(db: Session, student_id: int) -> list[LessonPlan]:
     return _visible_lesson_plans(db, plans)
 
 
-def _default_student_ref_date(db: Session, student_id: int) -> date | None:
-    """Return the teacher's school-year start date for this student, if configured."""
-    plan = (
-        db.query(LessonPlan)
-        .filter(LessonPlan.student_id == student_id)
-        .order_by(LessonPlan.plan_date.asc())
-        .first()
-    )
-    teacher_ids: list[int] = []
-    if plan is not None:
-        teacher_ids.append(plan.teacher_id)
-
-    schedule_items = (
-        db.query(WeeklyScheduleItem)
-        .options(joinedload(WeeklyScheduleItem.assigned_students))
-        .all()
-    )
-    for item in schedule_items:
-        if any(student.id == student_id for student in item.assigned_students):
-            if item.teacher_id not in teacher_ids:
-                teacher_ids.append(item.teacher_id)
-
-    if not teacher_ids:
-        teachers = (
-            db.query(User)
-            .filter(User.role == UserRole.teacher, User.is_active == True)
-            .all()
-        )
-        teacher_ids = [teacher.id for teacher in teachers]
-
-    for teacher_id in teacher_ids:
-        school_year = _fetch_school_day_year(db, teacher_id)
-        if school_year is not None:
-            return school_year.start_date
-    return None
-
-
 @router.get("/student", response_class=HTMLResponse)
 async def student_dashboard(
     request: Request,
@@ -1994,11 +1957,6 @@ async def student_dashboard(
     view: str = Query("weekly", pattern="^(daily|weekly)$"),
     ref_date: str | None = Query(None),
 ):
-    if not ref_date:
-        school_start = _default_student_ref_date(db, current_user.id)
-        if school_start is not None:
-            ref_date = school_start.isoformat()
-
     all_plans = _fetch_student_plans(db, current_user.id)
     calendar = build_calendar_context(all_plans, view, ref_date)
     ref = calendar["ref"]
@@ -2079,11 +2037,6 @@ async def student_lesson_plans_pdf(
     ref_date: str | None = Query(None),
     disposition: str = Query("attachment", pattern="^(inline|attachment)$"),
 ):
-    if not ref_date:
-        school_start = _default_student_ref_date(db, current_user.id)
-        if school_start is not None:
-            ref_date = school_start.isoformat()
-
     all_plans = _fetch_student_plans(db, current_user.id)
     calendar = build_calendar_context(all_plans, view, ref_date)
     completions_by_plan = load_completions_for_plans(db, current_user.id, calendar["lesson_plans"])

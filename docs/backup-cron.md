@@ -43,9 +43,26 @@ crontab -e
 
 Snapshots land in `./backups/hst-backup-YYYYMMDD-HHMMSS.json`.
 
-## Mac pull (optional secondary)
+## HTTP pull (optional secondary)
 
-1. Set a long random token on the server:
+`GET /api/backup/export` returns the same JSON as Admin → Export Backup.
+
+### Easy: admin username + password query params
+
+```bash
+curl -fsS \
+  "https://your-host/api/backup/export?user=admin&pass=YOUR_ADMIN_PASSWORD" \
+  -o ~/Documents/hst-backups/hst-backup.json
+```
+
+`user` / `pass` must match an **active admin** account. This is convenient for a
+quick manual or cron pull, but passwords in URLs can appear in access logs,
+browser history, and shell history.
+
+### More secure (still easy): shared backup token
+
+Prefer a dedicated export token sent in a header so the admin password never
+appears in the URL:
 
 ```bash
 # in .env
@@ -60,7 +77,7 @@ curl -fsS -H "Authorization: Bearer long-random-secret" \
   -o ~/Documents/hst-backups/hst-backup.json
 ```
 
-2. See `scripts/crontab.mac.example` and `scripts/mac-backup.env.example`.
+See `scripts/crontab.mac.example` and `scripts/mac-backup.env.example`.
 
 ## Media files
 

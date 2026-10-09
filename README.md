@@ -98,7 +98,15 @@ Admins can export and import a full JSON backup of all application data from the
 
 **Recommended:** run a cron job on the Raspberry Pi / Docker host that writes snapshots into `./backups` (optionally upload to S3/Backblaze). That keeps working even when your Mac is asleep.
 
-**Optional extra:** have your Mac curl `/api/backup/export` with a shared token and save copies locally.
+**Optional extra:** pull `/api/backup/export` from another machine:
+
+```bash
+# Easy — admin credentials as query params
+curl -fsS "https://your-host/api/backup/export?user=admin&pass=YOUR_ADMIN_PASSWORD" -o hst-backup.json
+
+# More secure — dedicated token in a header (set BACKUP_EXPORT_TOKEN in .env)
+curl -fsS -H "Authorization: Bearer long-random-secret" "https://your-host/api/backup/export" -o hst-backup.json
+```
 
 Full guide + crontab examples: [`docs/backup-cron.md`](docs/backup-cron.md)
 

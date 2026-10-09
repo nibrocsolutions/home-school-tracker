@@ -81,9 +81,9 @@ def apply_search_replace(
 ) -> SearchReplaceResult:
     """Apply find/replace across plan and activity text fields. Mutates in place.
 
-    Covers lesson plan title/description and activity title, description,
-    teacher notes, and custom text fields. Does not modify media URLs or
-    external links.
+    Intended for system-wide runs over every lesson plan. Covers lesson plan
+    title/description and activity title, description, teacher notes, and
+    custom text fields. Does not modify media URLs or external links.
     """
     find = find or ""
     replace = replace if replace is not None else ""

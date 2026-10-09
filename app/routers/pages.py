@@ -695,6 +695,17 @@ def _fetch_teacher_plans(db: Session, teacher_id: int) -> list[LessonPlan]:
     return _visible_lesson_plans(db, plans)
 
 
+def _fetch_all_lesson_plans(db: Session) -> list[LessonPlan]:
+    """All lesson plans in the system (sample plans respect admin sample-data setting)."""
+    plans = (
+        db.query(LessonPlan)
+        .options(joinedload(LessonPlan.activities), joinedload(LessonPlan.student))
+        .order_by(LessonPlan.plan_date.desc())
+        .all()
+    )
+    return _visible_lesson_plans(db, plans)
+
+
 def _fetch_school_day_year(db: Session, teacher_id: int) -> SchoolDayYear | None:
     return (
         db.query(SchoolDayYear)
@@ -1232,7 +1243,8 @@ async def lesson_planning_search_replace(
             error="search-replace-empty",
         )
 
-    plans = _fetch_teacher_plans(db, current_user.id)
+    # System-wide: every lesson plan for every teacher/student.
+    plans = _fetch_all_lesson_plans(db)
     result = apply_search_replace(
         plans,
         find_text,

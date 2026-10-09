@@ -3032,6 +3032,28 @@ button.school-day-cell:hover {
     max-width: 100%;
 }
 
+.lesson-plan-search-replace-panel {
+    max-width: 36rem;
+}
+
+.lesson-plan-search-replace-panel .search-replace-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.lesson-plan-search-replace-panel .search-replace-options {
+    margin-bottom: 0.25rem;
+}
+
+.lesson-plan-search-replace-panel .checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
 .lesson-planning-notice {
     margin-bottom: 0;
 }

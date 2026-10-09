@@ -1,0 +1,58 @@
+<div class="panel lesson-plan-search-replace-panel">
+    <h2>Search &amp; Replace</h2>
+    <p class="section-hint">
+        Find and replace text across all of your lesson plans — titles, descriptions,
+        activity text, teacher notes, and custom fields. Media links are left unchanged.
+    </p>
+    <form method="post"
+          action="/teacher/lesson-planning/search-replace"
+          class="search-replace-form"
+          id="lesson-plan-search-replace-form">
+        <input type="hidden" name="cal_month" value="{{ cal_month_param }}">
+        <div class="form-row">
+            <label for="find_text">Find</label>
+            <input type="text"
+                   id="find_text"
+                   name="find_text"
+                   required
+                   maxlength="500"
+                   autocomplete="off"
+                   placeholder="Text to find">
+        </div>
+        <div class="form-row">
+            <label for="replace_text">Replace with</label>
+            <input type="text"
+                   id="replace_text"
+                   name="replace_text"
+                   maxlength="500"
+                   autocomplete="off"
+                   placeholder="Replacement text (may be empty)">
+        </div>
+        <div class="form-row search-replace-options">
+            <label class="checkbox-label">
+                <input type="checkbox" name="match_case" value="1" id="match_case">
+                Match case
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary">Replace All</button>
+    </form>
+</div>
+<script>
+(function () {
+    var form = document.getElementById("lesson-plan-search-replace-form");
+    if (!form) return;
+    form.addEventListener("submit", function (event) {
+        var findInput = document.getElementById("find_text");
+        var replaceInput = document.getElementById("replace_text");
+        var find = findInput ? findInput.value : "";
+        if (!find) return;
+        var replace = replaceInput ? replaceInput.value : "";
+        var message =
+            'Replace all occurrences of "' + find + '" with "' + replace +
+            '" in every lesson plan? This cannot be undone.';
+        if (!window.confirm(message)) {
+            event.preventDefault();
+        }
+    });
+})();
+</script>

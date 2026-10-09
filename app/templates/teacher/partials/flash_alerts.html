@@ -61,3 +61,14 @@
 {% if request.query_params.get('error') == 'date' %}
 <div class="alert alert-error">That date could not be updated. Please try again.</div>
 {% endif %}
+{% if request.query_params.get('success') == 'search-replace' %}
+<div class="alert alert-success">
+    Replaced {{ request.query_params.get('count', '0') }} occurrence{{ 's' if request.query_params.get('count', '0') != '1' else '' }} across your lesson plans.
+</div>
+{% endif %}
+{% if request.query_params.get('error') == 'search-replace-empty' %}
+<div class="alert alert-error">Enter text to find before running search and replace.</div>
+{% endif %}
+{% if request.query_params.get('error') == 'search-replace-none' %}
+<div class="alert alert-error">No matches found in your lesson plans.</div>
+{% endif %}

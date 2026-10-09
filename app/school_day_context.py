@@ -23,9 +23,7 @@ def parse_cal_month(value: str | None, fallback: date) -> date:
 
 
 def default_cal_month(school_year: SchoolDayYear | None) -> date:
-    if school_year is None:
-        return date.today().replace(day=1)
-    return school_year.start_date.replace(day=1)
+    return date.today().replace(day=1)
 
 
 def planned_days_map(school_year: SchoolDayYear) -> dict[date, dict]:

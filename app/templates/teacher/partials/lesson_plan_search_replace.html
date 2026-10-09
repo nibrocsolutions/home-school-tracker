@@ -1,15 +1,27 @@
-<div class="panel lesson-plan-search-replace-panel">
-    <h2>Search &amp; Replace</h2>
-    <p class="section-hint">
-        Find and replace text across all of your lesson plans (every student and date) —
-        titles, descriptions, activity text, teacher notes, and custom fields.
-        Media links are left unchanged.
-    </p>
+<div class="lesson-plan-search-replace-actions">
+    <button type="button" class="btn btn-secondary" id="open-search-replace">
+        Search &amp; Replace
+    </button>
+</div>
+
+<dialog id="search-replace-dialog"
+        class="search-replace-dialog"
+        aria-labelledby="search-replace-title">
     <form method="post"
           action="/teacher/lesson-planning/search-replace"
           class="search-replace-form"
           id="lesson-plan-search-replace-form">
         <input type="hidden" name="cal_month" value="{{ cal_month_param }}">
+        <div class="search-replace-header">
+            <h3 id="search-replace-title">Search &amp; Replace</h3>
+            <button type="button" class="search-replace-close" aria-label="Close">&times;</button>
+        </div>
+        <p class="section-hint">
+            Find and replace text across all of your lesson plans (every student and date) —
+            titles, descriptions, activity text, teacher notes, custom fields,
+            external links, and media attachments. Also updates links on your
+            yearly subjects.
+        </p>
         <div class="form-row">
             <label for="find_text">Find</label>
             <input type="text"
@@ -35,18 +47,55 @@
                 Match case
             </label>
         </div>
-        <button type="submit" class="btn btn-primary">Replace All</button>
+        <div class="search-replace-dialog-actions">
+            <button type="button" class="btn btn-secondary" id="search-replace-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">Replace All</button>
+        </div>
     </form>
-</div>
+</dialog>
 <script>
 (function () {
+    var dialog = document.getElementById("search-replace-dialog");
+    var openBtn = document.getElementById("open-search-replace");
+    var closeBtn = dialog && dialog.querySelector(".search-replace-close");
+    var cancelBtn = document.getElementById("search-replace-cancel");
     var form = document.getElementById("lesson-plan-search-replace-form");
-    if (!form) return;
+    var findInput = document.getElementById("find_text");
+
+    if (!dialog || !openBtn || !form) return;
+
+    function openDialog() {
+        if (typeof dialog.showModal === "function") {
+            dialog.showModal();
+        } else {
+            dialog.setAttribute("open", "open");
+        }
+        if (findInput) {
+            findInput.focus();
+        }
+    }
+
+    function closeDialog() {
+        if (typeof dialog.close === "function") {
+            dialog.close();
+        } else {
+            dialog.removeAttribute("open");
+        }
+    }
+
+    openBtn.addEventListener("click", openDialog);
+    if (closeBtn) closeBtn.addEventListener("click", closeDialog);
+    if (cancelBtn) cancelBtn.addEventListener("click", closeDialog);
+
+    dialog.addEventListener("cancel", function (event) {
+        event.preventDefault();
+        closeDialog();
+    });
+
     form.addEventListener("submit", function (event) {
-        var findInput = document.getElementById("find_text");
-        var replaceInput = document.getElementById("replace_text");
         var find = findInput ? findInput.value : "";
         if (!find) return;
+        var replaceInput = document.getElementById("replace_text");
         var replace = replaceInput ? replaceInput.value : "";
         var message =
             'Replace all occurrences of "' + find + '" with "' + replace +

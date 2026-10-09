@@ -163,6 +163,13 @@ body {
     background: #111827;
 }
 
+.tutorial-audio-note {
+    margin-top: 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    text-align: center;
+}
+
 .tutorial-outline {
     margin-top: 1.5rem;
     padding-top: 1.25rem;

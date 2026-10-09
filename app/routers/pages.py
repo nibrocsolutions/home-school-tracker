@@ -72,6 +72,7 @@ from app.lesson_plan_generator import (
     shift_unfinished_activity_like_day_off,
 )
 from app.lesson_planning_context import build_lesson_planning_context
+from app.lesson_plan_search_replace import apply_search_replace
 from app.sample_plans import SAMPLE_LESSON_PLANS
 from app.school_day_context import build_school_day_context
 from app.school_year_utils import (
@@ -1213,6 +1214,43 @@ async def save_lesson_planning_plan(
         plan_date=plan_date,
         success="plan",
         count=str(count),
+    )
+
+
+@router.post("/teacher/lesson-planning/search-replace")
+async def lesson_planning_search_replace(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_roles(UserRole.teacher))],
+    find_text: str = Form(""),
+    replace_text: str = Form(""),
+    match_case: str | None = Form(None),
+    cal_month: str = Form(""),
+):
+    if find_text == "":
+        return _lesson_planning_redirect(
+            cal_month=cal_month or None,
+            error="search-replace-empty",
+        )
+
+    # Every lesson plan for this teacher (all students / dates).
+    plans = _fetch_teacher_plans(db, current_user.id)
+    result = apply_search_replace(
+        plans,
+        find_text,
+        replace_text if replace_text is not None else "",
+        case_sensitive=bool(match_case),
+    )
+    if result.replacements == 0:
+        return _lesson_planning_redirect(
+            cal_month=cal_month or None,
+            error="search-replace-none",
+        )
+
+    db.commit()
+    return _lesson_planning_redirect(
+        cal_month=cal_month or None,
+        success="search-replace",
+        count=str(result.replacements),
     )
 
 

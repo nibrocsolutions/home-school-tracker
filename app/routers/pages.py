@@ -285,6 +285,11 @@ async def home(
     )
 
 
+@router.get("/tutorial", response_class=HTMLResponse)
+async def tutorial_page(request: Request):
+    return render(request, "tutorial.html", {})
+
+
 @router.post("/login")
 async def login(
     response: Response,

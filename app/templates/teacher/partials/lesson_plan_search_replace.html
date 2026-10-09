@@ -1,9 +1,9 @@
 <div class="panel lesson-plan-search-replace-panel">
     <h2>Search &amp; Replace</h2>
     <p class="section-hint">
-        Find and replace text across <strong>all lesson plans in the system</strong>
-        (every teacher and student) — titles, descriptions, activity text, teacher notes,
-        and custom fields. Media links are left unchanged.
+        Find and replace text across all of your lesson plans (every student and date) —
+        titles, descriptions, activity text, teacher notes, and custom fields.
+        Media links are left unchanged.
     </p>
     <form method="post"
           action="/teacher/lesson-planning/search-replace"
@@ -50,7 +50,7 @@
         var replace = replaceInput ? replaceInput.value : "";
         var message =
             'Replace all occurrences of "' + find + '" with "' + replace +
-            '" in every lesson plan in the system? This cannot be undone.';
+            '" in all of your lesson plans? This cannot be undone.';
         if (!window.confirm(message)) {
             event.preventDefault();
         }

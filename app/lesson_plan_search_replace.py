@@ -6,10 +6,12 @@ import re
 from dataclasses import dataclass
 
 from app.activity_fields import parse_custom_fields, serialize_custom_fields
-from app.models import LessonPlan
+from app.models import LessonPlan, WeeklyScheduleItem
 
 PLAN_TITLE_MAX = 200
 ACTIVITY_TITLE_MAX = 200
+ACTIVITY_AUDIO_URL_MAX = 500
+SCHEDULE_LINK_MAX = 500
 
 
 @dataclass(frozen=True)
@@ -82,8 +84,8 @@ def apply_search_replace(
     """Apply find/replace across plan and activity text fields. Mutates in place.
 
     Covers lesson plan title/description and activity title, description,
-    teacher notes, and custom text fields. Does not modify media URLs or
-    external links.
+    teacher notes, custom text fields, external links, media attachments,
+    and legacy audio URLs.
     """
     find = find or ""
     replace = replace if replace is not None else ""
@@ -159,6 +161,34 @@ def apply_search_replace(
                 total_replacements += count
                 activity_touch = True
 
+            new_link, count = _replace_in_text(
+                activity.external_link, find, replace, case_sensitive=case_sensitive
+            )
+            if count:
+                activity.external_link = new_link
+                total_replacements += count
+                activity_touch = True
+
+            new_media, count = _replace_in_text(
+                activity.media_attachments, find, replace, case_sensitive=case_sensitive
+            )
+            if count:
+                activity.media_attachments = new_media
+                total_replacements += count
+                activity_touch = True
+
+            new_audio, count = _replace_in_text(
+                activity.audio_url,
+                find,
+                replace,
+                case_sensitive=case_sensitive,
+                max_length=ACTIVITY_AUDIO_URL_MAX,
+            )
+            if count:
+                activity.audio_url = new_audio
+                total_replacements += count
+                activity_touch = True
+
             if activity_touch:
                 activities_updated += 1
                 plan_touch = True
@@ -171,3 +201,43 @@ def apply_search_replace(
         plans_updated=plans_updated,
         activities_updated=activities_updated,
     )
+
+
+def apply_search_replace_to_schedule_items(
+    items: list[WeeklyScheduleItem],
+    find: str,
+    replace: str,
+    *,
+    case_sensitive: bool = True,
+) -> int:
+    """Replace text in yearly-subject / schedule item link fields. Returns count."""
+    find = find or ""
+    replace = replace if replace is not None else ""
+    if not find:
+        return 0
+
+    total = 0
+    for item in items:
+        new_link, count = _replace_in_text(
+            item.external_link,
+            find,
+            replace,
+            case_sensitive=case_sensitive,
+            max_length=SCHEDULE_LINK_MAX,
+        )
+        if count:
+            item.external_link = new_link
+            total += count
+
+        new_audio, count = _replace_in_text(
+            item.audio_url,
+            find,
+            replace,
+            case_sensitive=case_sensitive,
+            max_length=SCHEDULE_LINK_MAX,
+        )
+        if count:
+            item.audio_url = new_audio
+            total += count
+
+    return total

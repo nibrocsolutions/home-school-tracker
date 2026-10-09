@@ -72,7 +72,10 @@ from app.lesson_plan_generator import (
     shift_unfinished_activity_like_day_off,
 )
 from app.lesson_planning_context import build_lesson_planning_context
-from app.lesson_plan_search_replace import apply_search_replace
+from app.lesson_plan_search_replace import (
+    apply_search_replace,
+    apply_search_replace_to_schedule_items,
+)
 from app.sample_plans import SAMPLE_LESSON_PLANS
 from app.school_day_context import build_school_day_context
 from app.school_year_utils import (
@@ -1232,15 +1235,30 @@ async def lesson_planning_search_replace(
             error="search-replace-empty",
         )
 
-    # Every lesson plan for this teacher (all students / dates).
+    # Every lesson plan for this teacher (all students / dates), plus
+    # subject/schedule links that feed activities.
     plans = _fetch_teacher_plans(db, current_user.id)
+    case_sensitive = bool(match_case)
+    replacement = replace_text if replace_text is not None else ""
     result = apply_search_replace(
         plans,
         find_text,
-        replace_text if replace_text is not None else "",
-        case_sensitive=bool(match_case),
+        replacement,
+        case_sensitive=case_sensitive,
     )
-    if result.replacements == 0:
+    schedule_items = (
+        db.query(WeeklyScheduleItem)
+        .filter(WeeklyScheduleItem.teacher_id == current_user.id)
+        .all()
+    )
+    schedule_replacements = apply_search_replace_to_schedule_items(
+        schedule_items,
+        find_text,
+        replacement,
+        case_sensitive=case_sensitive,
+    )
+    total_replacements = result.replacements + schedule_replacements
+    if total_replacements == 0:
         return _lesson_planning_redirect(
             cal_month=cal_month or None,
             error="search-replace-none",
@@ -1250,7 +1268,7 @@ async def lesson_planning_search_replace(
     return _lesson_planning_redirect(
         cal_month=cal_month or None,
         success="search-replace",
-        count=str(result.replacements),
+        count=str(total_replacements),
     )
 
 
